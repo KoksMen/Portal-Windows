@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+        <PlatformTarget>x64</PlatformTarget>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <RootNamespace>Portal.Common</RootNamespace>
+        <AssemblyName>Portal.Common</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" />
+        <PackageReference Include="Serilog" Version="4.3.1" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+        <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.3" />
+    </ItemGroup>
+
+	<PropertyGroup>
+		<Authors>xXKoksMenXx</Authors>
+		<Company>xXTeam</Company>
+		<Product>Portal Common Files (Windows)</Product>
+		<Copyright>Copyright © 2026</Copyright>
+		<Version>1.0.0</Version>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<InformationalVersion>1.0.0-Eve-Stable-Release</InformationalVersion>
+	</PropertyGroup>
+
+	<Target Name="SignOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+		<Exec
+            Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;7492EFCAEAEFD328F405F05E0A6BCBF12402C7A8&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(TargetPath)&quot;" />
+	</Target>
+
+</Project>

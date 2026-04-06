@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Portal.Common/Portal.Common.csproj" />
+    <Project Path="src/Portal.CredentialProvider/Portal.CredentialProvider.csproj" />
+    <Project Path="src/Portal.Host/Portal.Host.csproj" />
+    <Project Path="src/Portal.Updater/Portal.Updater.csproj" />
+  </Folder>
+</Solution>

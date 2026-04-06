@@ -1,0 +1,2764 @@
+<Window
+    x:Class="Portal.Host.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:Portal.Host.Converters"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+    Title="Portal Manager"
+    Width="540"
+    Height="760"
+    MinWidth="540"
+    MinHeight="760"
+    AllowsTransparency="True"
+    Background="Transparent"
+    Closing="Window_Closing"
+    Icon="/Assets/portal-icon.png"
+    PreviewKeyDown="Window_PreviewKeyDown"
+    ResizeMode="CanResizeWithGrip"
+    WindowStyle="None"
+    WindowStartupLocation="CenterScreen">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome
+            CaptionHeight="0"
+            CornerRadius="0"
+            GlassFrameThickness="0"
+            ResizeBorderThickness="6"
+            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <Color x:Key="AccentBlue">#3864dc</Color>
+        <Color x:Key="AccentPurple">#9850e6</Color>
+        <SolidColorBrush x:Key="AccentBlueBrush" Color="{StaticResource AccentBlue}" />
+        <SolidColorBrush x:Key="AccentPurpleBrush" Color="{StaticResource AccentPurple}" />
+        <SolidColorBrush x:Key="TextMain" Color="#e0e0e8" />
+        <SolidColorBrush x:Key="TextMuted" Color="#8888a0" />
+        <SolidColorBrush x:Key="InputBg" Color="#14141e" />
+        <SolidColorBrush x:Key="CardBg" Color="#14141e" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#333344" />
+        <SolidColorBrush x:Key="GreenBrush" Color="#4cd964" />
+        <SolidColorBrush x:Key="RedBrush" Color="#ff5555" />
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource InputBg}" />
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="{StaticResource InputBg}" />
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PortalComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="#d9e2ff" />
+            <Setter Property="Background" Value="#111a31" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border
+                            x:Name="ItemBorder"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="6">
+                            <ContentPresenter VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#355ca9" />
+                                <Setter Property="Foreground" Value="#f5f9ff" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#4676d1" />
+                                <Setter Property="Foreground" Value="#ffffff" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PortalComboToggle" TargetType="ToggleButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="Transparent" BorderThickness="0">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PortalComboBox" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#eef3ff" />
+            <Setter Property="Background" Value="#101728" />
+            <Setter Property="BorderBrush" Value="#37589f" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource PortalComboBoxItem}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border
+                                x:Name="MainBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                                <ToggleButton
+                                    Style="{StaticResource PortalComboToggle}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    ClickMode="Press"
+                                    Focusable="False"
+                                    IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <Grid>
+                                        <ContentPresenter
+                                            Margin="10,4,30,4"
+                                            VerticalAlignment="Center"
+                                            Content="{TemplateBinding SelectionBoxItem}"
+                                            ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                            TextElement.Foreground="{TemplateBinding Foreground}" />
+                                        <TextBlock
+                                            Margin="0,0,10,0"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center"
+                                            Foreground="#9bb8ff"
+                                            Text="▼" />
+                                    </Grid>
+                                </ToggleButton>
+                            </Border>
+
+                            <Popup
+                                x:Name="PART_Popup"
+                                AllowsTransparency="True"
+                                IsOpen="{TemplateBinding IsDropDownOpen}"
+                                Placement="Bottom">
+                                <Border
+                                    Margin="0,4,0,0"
+                                    Padding="8"
+                                    Background="#101728"
+                                    BorderBrush="#3b5ea7"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer MaxHeight="220">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#4f77cf" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#6b95f7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="NetworkIpOptionTemplate">
+            <StackPanel>
+                <TextBlock Foreground="#d9e2ff" Text="{Binding InterfaceName}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Margin="0,2,0,0" FontFamily="Consolas" Foreground="#9ec1ff" Text="{Binding IpAddress}" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="LocalAccountOptionTemplate">
+            <TextBlock Foreground="#eef3ff" Text="{Binding DisplayName}" />
+        </DataTemplate>
+
+        <Style x:Key="PortalCheckBox" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#e6edff" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal">
+                            <Border
+                                x:Name="Box"
+                                Width="18"
+                                Height="18"
+                                Margin="0,0,10,0"
+                                VerticalAlignment="Center"
+                                Background="#0f1630"
+                                BorderBrush="#486dbd"
+                                BorderThickness="1"
+                                CornerRadius="5">
+                                <Path
+                                    x:Name="Mark"
+                                    Margin="4,2,0,0"
+                                    Data="M 1 5 L 4 8 L 10 2"
+                                    Stroke="White"
+                                    StrokeThickness="2"
+                                    StrokeEndLineCap="Round"
+                                    StrokeStartLineCap="Round"
+                                    Visibility="Collapsed" />
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#6b95f7" />
+                                <Setter TargetName="Box" Property="Background" Value="#15234b" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#3d6ec8" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#76a3ff" />
+                                <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Padding="0,15"
+                            CornerRadius="10">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Offset="0" Color="{StaticResource AccentBlue}" />
+                                    <GradientStop Offset="1" Color="{StaticResource AccentPurple}" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+            <Setter Property="Background" Value="#222233" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Padding="15,10"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2a2a3a" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsSectionExpander" TargetType="Expander">
+            <Setter Property="Margin" Value="0,0,0,20" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="IsExpanded" Value="True" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <Border
+                            x:Name="RootBd"
+                            Background="#121525"
+                            BorderBrush="#2a3350"
+                            BorderThickness="1"
+                            CornerRadius="14">
+                            <StackPanel>
+                                <ToggleButton
+                                    x:Name="HeaderToggle"
+                                    Margin="0"
+                                    MinHeight="50"
+                                    Padding="12,8"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    FocusVisualStyle="{x:Null}"
+                                    Focusable="False"
+                                    IsTabStop="False"
+                                    IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border
+                                                x:Name="HeaderBd"
+                                                Background="Transparent"
+                                                CornerRadius="14">
+                                                <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="HeaderBd" Property="Background" Value="#151b30" />
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="HeaderBd" Property="Background" Value="#1a2139" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="24" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="24" />
+                                        </Grid.ColumnDefinitions>
+                                        <ContentPresenter
+                                            Grid.Column="1"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            ContentSource="Header"
+                                            RecognizesAccessKey="True"
+                                            TextElement.FontSize="16"
+                                            TextElement.FontWeight="SemiBold"
+                                            TextElement.Foreground="#eef3ff" />
+                                        <Grid
+                                            Grid.Column="2"
+                                            Width="14"
+                                            Height="14"
+                                            VerticalAlignment="Center"
+                                            HorizontalAlignment="Center">
+                                            <TextBlock
+                                                x:Name="ChevronDown"
+                                                FontFamily="Segoe MDL2 Assets"
+                                                FontSize="10"
+                                                Foreground="#9fb0d9"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Text="&#xE70D;" />
+                                            <TextBlock
+                                                x:Name="ChevronRight"
+                                                FontFamily="Segoe MDL2 Assets"
+                                                FontSize="10"
+                                                Foreground="#9fb0d9"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Text="&#xE76C;"
+                                                Visibility="Collapsed" />
+                                        </Grid>
+                                    </Grid>
+                                </ToggleButton>
+
+                                <ContentPresenter
+                                    x:Name="ContentSite"
+                                    Margin="14,6,14,14"
+                                    Visibility="Collapsed" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger SourceName="HeaderToggle" Property="IsChecked" Value="True">
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="RootBd" Property="BorderBrush" Value="#313c5d" />
+                                <Setter TargetName="ChevronDown" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="ChevronRight" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                            <Trigger SourceName="HeaderToggle" Property="IsChecked" Value="False">
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="RootBd" Property="BorderBrush" Value="#2a3350" />
+                                <Setter TargetName="ChevronDown" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="ChevronRight" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="UpdateHeroButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="48" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Padding="20,11" CornerRadius="12">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Offset="0" Color="#3E7CF0" />
+                                    <GradientStop Offset="1" Color="#6E4DE0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.84" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="AboutRowButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Padding="12,11"
+                            Background="Transparent"
+                            CornerRadius="14">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3A3740" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="UpdateCloseButton" TargetType="Button">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Foreground" Value="#F5F8FF" />
+            <Setter Property="Background" Value="#243755" />
+            <Setter Property="BorderBrush" Value="#315080" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2E446B" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="UpdateProgressBar" TargetType="ProgressBar">
+            <Setter Property="Background" Value="#0f1420" />
+            <Setter Property="Foreground" Value="#4f8cff" />
+            <Setter Property="BorderBrush" Value="#2a3b5e" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Height" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            SnapsToDevicePixels="True">
+                            <Grid x:Name="PART_Track" ClipToBounds="True">
+                                <Border
+                                    x:Name="PART_Indicator"
+                                    HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}"
+                                    CornerRadius="5"
+                                    Width="0" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsIndeterminate" Value="True">
+                                <Setter TargetName="PART_Indicator" Property="Width" Value="120" />
+                                <Setter TargetName="PART_Indicator" Property="HorizontalAlignment" Value="Stretch" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TileIconButton" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="StatusDot" TargetType="Ellipse">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+        </Style>
+
+        <Style x:Key="CardHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="Margin" Value="0,0,0,15" />
+        </Style>
+        <Style x:Key="ModeCard" TargetType="RadioButton">
+            <Setter Property="Background" Value="{StaticResource InputBg}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border
+                            x:Name="bd"
+                            Margin="0,0,0,10"
+                            Padding="15"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Cursor="Hand">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse
+                                        x:Name="dot"
+                                        Width="10"
+                                        Height="10"
+                                        Margin="0,0,10,0"
+                                        VerticalAlignment="Center"
+                                        Stroke="{StaticResource AccentBlueBrush}"
+                                        StrokeThickness="1" />
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        FontSize="14"
+                                        FontWeight="Bold"
+                                        Foreground="White"
+                                        Text="{TemplateBinding Content}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Margin="20,5,0,0"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextMuted}"
+                                    Text="{TemplateBinding Tag}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBlueBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="#181828" />
+                                <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBlueBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBlueBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="WindowControlButton" TargetType="Button">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="0,0,0,0" />
+            <Setter Property="Background" Value="#151d31" />
+            <Setter Property="BorderBrush" Value="#28334d" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#f7f9ff" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="ChromeButtonBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ChromeButtonBorder" Property="Background" Value="#1d2944" />
+                                <Setter TargetName="ChromeButtonBorder" Property="BorderBrush" Value="#3a4f7a" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ChromeButtonBorder" Property="Background" Value="#0f1729" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CloseWindowControlButton" BasedOn="{StaticResource WindowControlButton}" TargetType="Button">
+            <Setter Property="Background" Value="#2a1520" />
+            <Setter Property="BorderBrush" Value="#553147" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#d55679" />
+                    <Setter Property="BorderBrush" Value="#f38aa7" />
+                    <Setter Property="Foreground" Value="White" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#b53f61" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+    </Window.Resources>
+
+    <Border
+        Background="#0a0a0f"
+        BorderBrush="#232c43"
+        BorderThickness="1"
+        CornerRadius="24"
+        SnapsToDevicePixels="True">
+        <Grid ClipToBounds="True">
+        <Border
+            Height="56"
+            VerticalAlignment="Top"
+            Background="#0e1320"
+            BorderBrush="#232c43"
+            BorderThickness="0,0,0,1"
+            CornerRadius="24,24,0,0"
+            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
+            Panel.ZIndex="20">
+            <Grid Margin="14,10,14,10" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Width="36"
+                    Height="36"
+                    Background="#131c30"
+                    BorderBrush="#2b395b"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <Image
+                        Margin="6"
+                        RenderOptions.BitmapScalingMode="Fant"
+                        SnapsToDevicePixels="True"
+                        Source="/Assets/portal-icon.png"
+                        Stretch="Uniform" />
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                    <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="#f3f6ff" Text="Portal" />
+                    <TextBlock FontSize="11" Foreground="#8f9bbb" Text="{Binding AppReleaseVersion}" />
+                </StackPanel>
+
+                <Border
+                    Grid.Column="2"
+                    Padding="3"
+                    Background="#0f1729"
+                    BorderBrush="#26324c"
+                    BorderThickness="1"
+                    CornerRadius="14">
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            Click="MinimizeWindow_Click"
+                            Style="{StaticResource WindowControlButton}">
+                            <Rectangle
+                                Width="12"
+                                Height="1.8"
+                                RadiusX="0.9"
+                                RadiusY="0.9"
+                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                        </Button>
+                        <Button
+                            Margin="6,0,0,0"
+                            Click="ToggleMaximizeWindow_Click"
+                            Style="{StaticResource WindowControlButton}">
+                            <Grid Width="12" Height="12">
+                                <Rectangle
+                                    x:Name="WindowToggleOutline"
+                                    Width="10"
+                                    Height="8"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    RadiusX="1"
+                                    RadiusY="1"
+                                    Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                    StrokeThickness="1.4" />
+                                <Rectangle
+                                    x:Name="WindowToggleOutlineBack"
+                                    Width="8"
+                                    Height="6"
+                                    Margin="0,0,2,2"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    RadiusX="1"
+                                    RadiusY="1"
+                                    Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                    StrokeThickness="1.2"
+                                    Visibility="Collapsed" />
+                            </Grid>
+                        </Button>
+                        <Button
+                            Margin="6,0,0,0"
+                            Click="CloseWindow_Click"
+                            Style="{StaticResource CloseWindowControlButton}">
+                            <Path
+                                Width="12"
+                                Height="12"
+                                Data="M1,1 L11,11 M11,1 L1,11"
+                                SnapsToDevicePixels="True"
+                                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                StrokeEndLineCap="Round"
+                                StrokeStartLineCap="Round"
+                                StrokeThickness="1.7" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Margin="0,56,0,0">
+        <Ellipse
+            Width="400"
+            Height="400"
+            Margin="-100,-100,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            IsHitTestVisible="False"
+            Opacity="0.1">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Offset="0" Color="{StaticResource AccentBlue}" />
+                    <GradientStop Offset="1" Color="Transparent" />
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+        <Grid
+            x:Name="ViewDashboard"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Visibility="{Binding ShowDashboard, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Width="320">
+                <Border
+                    Width="176"
+                    Height="176"
+                    Margin="0,0,0,20"
+                    HorizontalAlignment="Center"
+                    CornerRadius="44"
+                    ClipToBounds="True">
+                    <Image
+                        Width="176"
+                        Height="176"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        RenderOptions.BitmapScalingMode="HighQuality"
+                        SnapsToDevicePixels="True"
+                        Source="/Assets/portal-icon.png"
+                        Stretch="Uniform" />
+                </Border>
+
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="32"
+                    FontWeight="Bold"
+                    Foreground="White"
+                    Text="Portal" />
+                <TextBlock
+                    Margin="0,5,0,40"
+                    HorizontalAlignment="Center"
+                    FontSize="14"
+                    Foreground="{StaticResource TextMuted}"
+                    Text="Remote Unlock System" />
+
+                <!--  Setup State  -->
+                <StackPanel x:Name="PanelSetup" Visibility="{Binding ShowSetupPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Border
+                        Margin="0,0,0,15"
+                        Padding="12"
+                        Background="#2A1117"
+                        BorderBrush="#A33A4F"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Visibility="{Binding HasSetupIssues, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="#FF9FB3"
+                                Text="⚠ Setup Required" />
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                FontSize="12"
+                                Foreground="#FFD7DF"
+                                Text="{Binding SetupIssueTitle}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,6,0,0"
+                                FontSize="11"
+                                Foreground="#F6B8C7"
+                                Text="{Binding SetupIssueHint}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Button
+                        Height="55"
+                        Margin="0,0,0,15"
+                        Command="{Binding StartWizardCommand}"
+                        Content="START / ACTIVATE"
+                        IsEnabled="{Binding CanStartWizardButton}"
+                        Style="{StaticResource PrimaryButton}" />
+                </StackPanel>
+
+                <!--  Connected State  -->
+                <StackPanel x:Name="PanelConnected" Visibility="{Binding ShowConnectedPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Button
+                        Height="50"
+                        Margin="0,0,0,10"
+                        Command="{Binding AddDeviceCommand}"
+                        Content="+ Add Another Device"
+                        Style="{StaticResource PrimaryButton}" />
+
+                    <Button
+                        Height="40"
+                        Margin="0,0,0,15"
+                        Background="#221111"
+                        Command="{Binding ResetAllCommand}"
+                        Content="⚠ Reset &amp; Re-create All"
+                        Foreground="#ff6666"
+                        Style="{StaticResource SecondaryButton}" />
+                </StackPanel>
+
+                <TextBlock
+                    x:Name="LblMainStatus"
+                    HorizontalAlignment="Center"
+                    FontSize="12"
+                    Text="{Binding MainStatusText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsServiceActive}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <Button
+                    Margin="0,30,0,0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding ShowSettingsCommand}"
+                    Content="⚙  Advanced Settings"
+                    FontSize="12"
+                    Foreground="#666688"
+                    Style="{StaticResource SecondaryButton}" />
+
+                <Button
+                    Margin="0,10,0,0"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Command="{Binding ShowAboutCommand}"
+                    Content="About Portal"
+                    FontSize="12"
+                    Foreground="#7b88b6"
+                    Style="{StaticResource SecondaryButton}" />
+            </StackPanel>
+        </Grid>
+
+        <Grid
+            x:Name="ViewSettings"
+            Background="#0a0a0f"
+            Visibility="{Binding ShowSettingsPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="30">
+                    <Grid Margin="0,0,0,30">
+                        <Button
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{Binding CloseSettingsCommand}"
+                            Content="← Back"
+                            Style="{StaticResource SecondaryButton}" />
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="20"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Settings" />
+                    </Grid>
+
+                    <Expander
+                        Header="Connected Devices"
+                        Style="{StaticResource SettingsSectionExpander}">
+                        <StackPanel>
+                            <TextBlock
+                                x:Name="LblClientCount"
+                                Margin="0,0,0,5"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="{Binding ClientCountText}" />
+
+                            <ListView
+                                x:Name="ListClients"
+                                MaxHeight="200"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Foreground="White"
+                                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                ScrollViewer.CanContentScroll="False"
+                                VirtualizingPanel.IsVirtualizing="False"
+                                ItemsSource="{Binding Devices}">
+                                <ListView.ItemContainerStyle>
+                                    <Style TargetType="ListViewItem">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="Padding" Value="0" />
+                                        <Setter Property="Focusable" Value="False" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListViewItem">
+                                                    <ContentPresenter />
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListView.ItemContainerStyle>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border
+                                            Margin="0,6,0,0"
+                                            Padding="12,10"
+                                            Background="#101626"
+                                            BorderBrush="#28334d"
+                                            BorderThickness="1"
+                                            CornerRadius="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock
+                                                            Margin="0,0,8,0"
+                                                            VerticalAlignment="Center"
+                                                            FontSize="15"
+                                                            Text="🖥️" />
+                                                        <TextBlock
+                                                            VerticalAlignment="Center"
+                                                            FontSize="14"
+                                                            FontWeight="Bold"
+                                                            Foreground="White"
+                                                            Text="{Binding Name}" />
+                                                        <Border
+                                                            Margin="8,0,0,0"
+                                                            Padding="6,1"
+                                                            Background="#1b2f4f"
+                                                            CornerRadius="6">
+                                                            <TextBlock
+                                                                FontSize="10"
+                                                                Foreground="#9ec1ff"
+                                                                Text="{Binding TransportType}" />
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <TextBlock
+                                                        Margin="23,3,0,0"
+                                                        FontSize="12"
+                                                        Foreground="#c0caea"
+                                                        Text="{Binding Accounts[0].Username, FallbackValue=No account}" />
+                                                    <TextBlock
+                                                        Margin="23,5,0,0"
+                                                        FontSize="10"
+                                                        Foreground="#8f9bbf"
+                                                        Text="{Binding PairedAt, StringFormat='Paired: {0:yyyy-MM-dd HH:mm}'}" />
+                                                    <TextBlock
+                                                        Margin="23,2,0,0"
+                                                        FontSize="9"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        Foreground="#6f7ca1"
+                                                        Text="{Binding ClientId}" />
+                                                </StackPanel>
+
+                                                <StackPanel
+                                                    Grid.Column="1"
+                                                    VerticalAlignment="Center"
+                                                    Orientation="Horizontal">
+                                                    <CheckBox
+                                                        Margin="0,0,8,0"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding DataContext.ToggleDeviceEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="Enabled"
+                                                        FontSize="11"
+                                                        Foreground="#cfe0ff"
+                                                        IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                        Style="{StaticResource PortalCheckBox}" />
+                                                    <Button
+                                                        Margin="0,0,6,0"
+                                                        Background="#1b2842"
+                                                        BorderBrush="#405681"
+                                                        Command="{Binding DataContext.EditDeviceAccountCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding ClientId}"
+                                                        Content="✏️"
+                                                        FontSize="14"
+                                                        Style="{StaticResource TileIconButton}"
+                                                        ToolTip="Edit Account" />
+                                                    <Button
+                                                        Background="#2b1620"
+                                                        BorderBrush="#6a2f48"
+                                                        Command="{Binding DataContext.RemoveDeviceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding ClientId}"
+                                                        Content="❌"
+                                                        FontSize="12"
+                                                        Foreground="#ff5555"
+                                                        Style="{StaticResource TileIconButton}"
+                                                        ToolTip="Remove Device / Удалить" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+
+                        </StackPanel>
+                    </Expander>
+
+
+                    <Expander
+                        Header="System Health &amp; Maintenance"
+                        Style="{StaticResource SettingsSectionExpander}">
+                        <StackPanel>
+                            <!--  Provider  -->
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                    <Ellipse>
+                                        <Ellipse.Style>
+                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Foreground="White" Text="Credential Provider" />
+                                </StackPanel>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Margin="0,0,15,0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Missing" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                    <Setter Property="Text" Value="Installed" />
+                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button
+                                        Margin="0,0,5,0"
+                                        Padding="8,4"
+                                        Command="{Binding InstallProviderCommand}"
+                                        Content="{Binding ProviderInstallButtonText}"
+                                        FontSize="10"
+                                        IsEnabled="{Binding IsNotWorkingHealth}"
+                                        Style="{StaticResource SecondaryButton}" />
+                                    <Button
+                                        Padding="8,4"
+                                        Command="{Binding UninstallProviderCommand}"
+                                        Content="Uninstall"
+                                        FontSize="10"
+                                        IsEnabled="{Binding IsNotWorkingHealth}"
+                                        Style="{StaticResource SecondaryButton}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!--  Firewall  -->
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                    <Ellipse>
+                                        <Ellipse.Style>
+                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Foreground="White" Text="Firewall Rule" />
+                                </StackPanel>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Margin="0,0,15,0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Missing" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                    <Setter Property="Text" Value="Active" />
+                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button
+                                        Margin="0,0,5,0"
+                                        Padding="8,4"
+                                        Command="{Binding FixFirewallCommand}"
+                                        Content="Fix / Update"
+                                        FontSize="10"
+                                        IsEnabled="{Binding IsNotWorkingHealth}"
+                                        Style="{StaticResource SecondaryButton}" />
+                                    <Button
+                                        Padding="8,4"
+                                        Background="#331111"
+                                        Command="{Binding RemoveFirewallRulesCommand}"
+                                        Content="Delete Rules"
+                                        FontSize="10"
+                                        Foreground="#ffb0b0"
+                                        IsEnabled="{Binding IsNotWorkingHealth}"
+                                        Style="{StaticResource SecondaryButton}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!--  Url / Cert  -->
+                            <Grid Margin="0,0,0,15">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                                    <Ellipse>
+                                        <Ellipse.Style>
+                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Foreground="White" Text="SSL Certificate" />
+                                </StackPanel>
+                                <TextBlock
+                                    Grid.Column="1"
+                                    Margin="0,0,15,0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Missing" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                    <Setter Property="Text" Value="Reserved" />
+                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <Button
+                                    Grid.Column="2"
+                                    Padding="8,4"
+                                    Background="#5a1f28"
+                                    Command="{Binding FixCertCommand}"
+                                    Content="Regenerate"
+                                    FontSize="10"
+                                    Foreground="#ffe6ea"
+                                    IsEnabled="{Binding IsNotWorkingHealth}"
+                                    Style="{StaticResource SecondaryButton}" />
+                            </Grid>
+
+                            <Grid Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse>
+                                        <Ellipse.Style>
+                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Foreground="White" Text="DLL Files" />
+                                </StackPanel>
+                                <TextBlock HorizontalAlignment="Right">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Missing" />
+                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                    <Setter Property="Text" Value="OK" />
+                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <Button
+                                Margin="0,10,0,0"
+                                Command="{Binding StartWizardCommand}"
+                                Content="Run Full Setup Wizard"
+                                IsEnabled="{Binding IsNotWorkingHealth}"
+                                Style="{StaticResource SecondaryButton}" />
+                            <Button
+                                Margin="0,10,0,0"
+                                Background="#331111"
+                                Command="{Binding UninstallCommand}"
+                                Content="{Binding UninstallBtnText}"
+                                Foreground="#ff8888"
+                                IsEnabled="{Binding IsNotWorkingSettings}"
+                                Style="{StaticResource SecondaryButton}" />
+                            <TextBlock
+                                Margin="0,10,0,0"
+                                HorizontalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="{Binding IpAddressText}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Expander>
+
+
+                    <Expander
+                        Header="Configuration"
+                        Style="{StaticResource SettingsSectionExpander}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,5"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Port"
+                                Visibility="Collapsed" />
+                            <TextBox
+                                x:Name="TxtPort"
+                                Margin="0,0,0,15"
+                                Text="{Binding SettingsPort, UpdateSourceTrigger=PropertyChanged}"
+                                Visibility="Collapsed" />
+                            <TextBlock
+                                Margin="0,0,0,5"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Unlock Mode" />
+                            <RadioButton
+                                x:Name="RbModeClient"
+                                Content="Client-Initiated (Type 1)"
+                                GroupName="UnlockMode"
+                                IsChecked="{Binding IsModeClient}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Phone scans PC's QR code. Standard mode." />
+                            <RadioButton
+                                x:Name="RbModeHost"
+                                Content="Host-Initiated (Type 2)"
+                                GroupName="UnlockMode"
+                                IsChecked="{Binding IsModeHost}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="PC requests unlock. Good for remote access." />
+                            <RadioButton
+                                x:Name="RbModeBoth"
+                                Content="Both (Type 3)"
+                                GroupName="UnlockMode"
+                                IsChecked="{Binding IsModeBoth}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Supports both modes simultaneously." />
+
+                            <!-- Host Request Trigger Selector (visible only for Host-Initiated / Both modes) -->
+                            <StackPanel
+                                Margin="0,10,0,0"
+                                Visibility="{Binding ShowHostTriggerSelector, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock
+                                    Margin="0,0,0,8"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextMuted}"
+                                    Text="Auto-Request Trigger" />
+                                <RadioButton
+                                    Content="Request on click"
+                                    GroupName="HostTrigger"
+                                    IsChecked="{Binding IsTriggerOnClick}"
+                                    Style="{StaticResource ModeCard}"
+                                    Tag="Unlock request is sent only when the user clicks the button on the lock screen." />
+                                <RadioButton
+                                    Content="On click + PC startup"
+                                    GroupName="HostTrigger"
+                                    IsChecked="{Binding IsTriggerOnClickAndStartup}"
+                                    Style="{StaticResource ModeCard}"
+                                    Tag="Request on button click AND automatically at PC startup (first logon after boot)." />
+                                <RadioButton
+                                    Content="On click + any lock screen"
+                                    GroupName="HostTrigger"
+                                    IsChecked="{Binding IsTriggerOnClickAndAnyLockScreen}"
+                                    Style="{StaticResource ModeCard}"
+                                    Tag="Request on button click AND automatically whenever the lock screen appears (startup, Win+L, etc.)." />
+
+                                <Border
+                                    Margin="0,10,0,0"
+                                    Padding="12"
+                                    Background="#101728"
+                                    BorderBrush="#2c3f66"
+                                    BorderThickness="1"
+                                    CornerRadius="10">
+                                    <StackPanel>
+                                        <TextBlock
+                                            Margin="0,0,0,6"
+                                            FontSize="12"
+                                            FontWeight="Bold"
+                                            Foreground="#dfe8ff"
+                                            Text="Request validity time (minutes)" />
+                                        <TextBox
+                                            MaxLength="5"
+                                            Text="{Binding SettingsHostRequestTimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock
+                                            Margin="0,6,0,0"
+                                            FontSize="11"
+                                            Foreground="#8fa2cf"
+                                            Text="How long Host waits for device approval. Use 0 to wait until manual cancellation."
+                                            TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <Border
+                                Margin="0,10,0,12"
+                                Padding="12"
+                                Background="#101728"
+                                BorderBrush="#2c3f66"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                                <StackPanel>
+                                    <CheckBox
+                                        IsChecked="{Binding IsDuplicateAccountProtectionEnabled}"
+                                        Style="{StaticResource PortalCheckBox}"
+                                        Foreground="#e6edff"
+                                        Content="Block duplicate account pairing on same transport" />
+                                    <CheckBox
+                                        Margin="0,8,0,0"
+                                        IsChecked="{Binding IsCrossTransportDuplicateProtectionEnabled}"
+                                        IsEnabled="{Binding CanUseCrossTransportProtection}"
+                                        Style="{StaticResource PortalCheckBox}"
+                                        Foreground="#e6edff"
+                                        Content="Also block pairing this account on another transport" />
+                                    <TextBlock
+                                        Margin="0,6,0,0"
+                                        FontSize="11"
+                                        Foreground="#8fa2cf"
+                                        Text="Second option depends on the first one. If the first is off, this one is disabled and turned off."
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="12"
+                                Background="#101728"
+                                BorderBrush="#2c3f66"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                                <StackPanel>
+                                    <CheckBox
+                                        IsChecked="{Binding IsVpnCompatibilityModeEnabled}"
+                                        Style="{StaticResource PortalCheckBox}"
+                                        Foreground="#e6edff"
+                                        Content="VPN compatibility mode (ignore VPN/virtual adapters)" />
+                                    <TextBlock
+                                        Margin="0,6,0,0"
+                                        FontSize="11"
+                                        Foreground="#8fa2cf"
+                                        Text="Recommended for stable pairing/restore IP routing when VPN is active."
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <Button
+                                Margin="0,0,0,10"
+                                Command="{Binding SaveSettingsCommand}"
+                                Content="{Binding SaveConfigBtnText}"
+                                IsEnabled="{Binding IsNotWorkingSettings}"
+                                Style="{StaticResource PrimaryButton}" />
+
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander
+                        Header="Backup"
+                        Style="{StaticResource SettingsSectionExpander}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Encrypted backup includes config settings, trusted devices and host certificate."
+                                TextWrapping="Wrap" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Button
+                                    Grid.Column="0"
+                                    Background="#1b2c4a"
+                                    Command="{Binding OpenCreateBackupDialogCommand}"
+                                    Content="Create Backup"
+                                    Foreground="#eaf1ff"
+                                    Style="{StaticResource SecondaryButton}" />
+
+                                <Button
+                                    Grid.Column="2"
+                                    Background="#1a3d30"
+                                    Command="{Binding OpenRestoreBackupDialogCommand}"
+                                    Content="Restore From Backup"
+                                    Foreground="#e6fff5"
+                                    Style="{StaticResource SecondaryButton}" />
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander
+                        Header="Diagnostics"
+                        Style="{StaticResource SettingsSectionExpander}"
+                        Visibility="{Binding ShowDiagnosticsSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Troubleshooting tools."
+                                TextWrapping="Wrap" />
+                            <Button
+                                Background="#1f2d4f"
+                                Command="{Binding OpenLogsWindowCommand}"
+                                Content="View Logs"
+                                Foreground="#e3ecff"
+                                Style="{StaticResource SecondaryButton}" />
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander
+                        Header="Updates"
+                        Style="{StaticResource SettingsSectionExpander}"
+                        Visibility="{Binding ShowUpdatesSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                FontSize="12"
+                                Foreground="#9fa8c4"
+                                Text="{Binding UpdateCurrentVersionText, StringFormat='Current version: {0}'}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                FontSize="12"
+                                Foreground="#9fa8c4"
+                                Text="{Binding UpdateLastInstalledText}"
+                                TextWrapping="Wrap" />
+
+                            <Grid Margin="0,14,0,0">
+                                <Button
+                                    Command="{Binding CheckForUpdatesCommand}"
+                                    Content="Check update"
+                                    IsEnabled="{Binding IsUpdateOperationInProgress, Converter={StaticResource InverseBooleanConverter}}"
+                                    HorizontalAlignment="Stretch"
+                                    Style="{StaticResource UpdateHeroButton}" />
+                            </Grid>
+
+                            <CheckBox
+                                Margin="0,12,0,0"
+                                IsChecked="{Binding IsAutoUpdateChecksEnabled}"
+                                Style="{StaticResource PortalCheckBox}"
+                                Content="Enable automatic update checks" />
+                        </StackPanel>
+                    </Expander>
+
+                    <!--  App Info  -->
+                    <StackPanel Margin="0,12,0,20" HorizontalAlignment="Center">
+                        <TextBlock
+                            Margin="0,0,0,0"
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            Foreground="#444455"
+                            Text="{Binding AppVersion, StringFormat='Portal {0}'}" />
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <Grid
+            x:Name="UpdateOverlay"
+            Background="#E6050508"
+            Visibility="{Binding ShowUpdateWizard, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                Width="500"
+                MaxWidth="500"
+                MaxHeight="620"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#13192a"
+                BorderBrush="#315080"
+                BorderThickness="1"
+                CornerRadius="24">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            FontSize="23"
+                            FontWeight="SemiBold"
+                            Foreground="#f6f9ff"
+                            Text="Update Wizard" />
+
+                        <Button
+                            Grid.Column="1"
+                            Command="{Binding CloseUpdateWizardCommand}"
+                            Content="×"
+                            IsEnabled="{Binding CanCloseUpdateWizard}"
+                            Style="{StaticResource UpdateCloseButton}" />
+                    </Grid>
+
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        FontSize="14"
+                        Foreground="#c8d9ff"
+                        Text="{Binding UpdateAvailableVersionText}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="#f4f7ff"
+                        Text="{Binding UpdateStatusTitle}"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        FontSize="13"
+                        Foreground="#b6c7ea"
+                        Text="{Binding UpdateStatusMessage}"
+                        TextWrapping="Wrap" />
+
+                    <ProgressBar
+                        Margin="0,18,0,0"
+                        IsIndeterminate="True"
+                        Style="{StaticResource UpdateProgressBar}"
+                        Visibility="{Binding ShowIndeterminateProgressBar, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                    <ProgressBar
+                        Margin="0,10,0,0"
+                        Maximum="100"
+                        Style="{StaticResource UpdateProgressBar}"
+                        Value="{Binding UpdateProgressPercent}"
+                        Visibility="{Binding ShowDeterminateProgressBar, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                    <TextBlock
+                        Margin="0,8,0,0"
+                        Foreground="#8dc5ff"
+                        Text="{Binding UpdateProgressPercent, StringFormat='Progress: {0:0.0}%'}"
+                        Visibility="{Binding ShowDeterminateProgressBar, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                    <Border
+                        Margin="0,16,0,0"
+                        Padding="16"
+                        Background="#0f1728"
+                        BorderBrush="#28436a"
+                        BorderThickness="1"
+                        CornerRadius="16"
+                        Visibility="{Binding ShowUpdateTransferBlock, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Margin="0,0,12,0"
+                                VerticalAlignment="Center"
+                                Foreground="#7fa3d8"
+                                Text="File" />
+                            <TextBlock
+                                Grid.Column="1"
+                                FontFamily="Consolas"
+                                Foreground="#e1ebff"
+                                Text="{Binding UpdateFileName}"
+                                TextWrapping="Wrap" />
+
+                            <TextBlock
+                                Grid.Row="1"
+                                Margin="0,12,12,0"
+                                VerticalAlignment="Center"
+                                Foreground="#7fa3d8"
+                                Text="Transfer" />
+                            <TextBlock
+                                Grid.Row="1"
+                                Grid.Column="1"
+                                Margin="0,12,0,0"
+                                FontFamily="Consolas"
+                                Foreground="#e1ebff"
+                                Text="{Binding UpdateTransferText}" />
+
+                            <TextBlock
+                                Grid.Row="2"
+                                Margin="0,12,12,0"
+                                VerticalAlignment="Center"
+                                Foreground="#7fa3d8"
+                                Text="Speed" />
+                            <TextBlock
+                                Grid.Row="2"
+                                Grid.Column="1"
+                                Margin="0,12,0,0"
+                                FontFamily="Consolas"
+                                Foreground="#e1ebff"
+                                Text="{Binding UpdateSpeedText}" />
+                        </Grid>
+                    </Border>
+
+                    <TextBlock
+                        Margin="0,14,0,0"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="{Binding UpdateProgressHintText}"
+                        TextWrapping="Wrap" />
+
+                    <StackPanel Margin="0,16,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button
+                            Padding="20,10"
+                            Command="{Binding InstallUpdateCommand}"
+                            Content="{Binding InstallUpdateButtonText}"
+                            IsEnabled="{Binding CanInstallUpdate}"
+                            Style="{StaticResource UpdateHeroButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            x:Name="AboutOverlay"
+            Background="#DE05070F"
+            Visibility="{Binding ShowAboutDialog, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Width="420" MaxWidth="420" MaxHeight="720" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#16141B" BorderBrush="#2C2A31" BorderThickness="1" CornerRadius="30">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="#F4F1F8" Text="Settings" />
+                                <TextBlock Margin="0,10,0,0" FontSize="13" Foreground="#B3AFC0" Text="About app" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding CloseAboutCommand}" Content="×" Style="{StaticResource UpdateCloseButton}" />
+                        </Grid>
+
+                        <Border Padding="10" Background="#2C2931" BorderBrush="#34303B" BorderThickness="1" CornerRadius="22">
+                            <StackPanel>
+                                <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutTermsUrl}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Border Width="40" Height="40" Background="#3A3740" CornerRadius="12"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#F1EEF7" Text="&#xE71D;" /></Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock FontSize="14" Foreground="#F6F3FA" Text="Terms of Use" /><TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AboutTermsDisplay}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#A8A2B2" Text="&#xE72A;" />
+                                    </Grid>
+                                </Button>
+
+                                <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutPrivacyUrl}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Border Width="40" Height="40" Background="#3A3740" CornerRadius="12"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#F1EEF7" Text="&#xE72E;" /></Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock FontSize="14" Foreground="#F6F3FA" Text="Privacy Policy" /><TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AboutPrivacyDisplay}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#A8A2B2" Text="&#xE72A;" />
+                                    </Grid>
+                                </Button>
+
+                                <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutAndroidSourceUrl}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Border Width="40" Height="40" Background="#3A3740" CornerRadius="12"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Consolas" FontSize="15" FontWeight="Bold" Foreground="#F1EEF7" Text="&lt;/&gt;" /></Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock FontSize="14" Foreground="#F6F3FA" Text="Source Code of android app" /><TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AboutAndroidSourceDisplay}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#A8A2B2" Text="&#xE72A;" />
+                                    </Grid>
+                                </Button>
+
+                                <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutDesktopSourceUrl}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Border Width="40" Height="40" Background="#3A3740" CornerRadius="12"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Consolas" FontSize="15" FontWeight="Bold" Foreground="#F1EEF7" Text="&lt;/&gt;" /></Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock FontSize="14" Foreground="#F6F3FA" Text="Source Code of PC client" /><TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AboutDesktopSourceDisplay}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#A8A2B2" Text="&#xE72A;" />
+                                    </Grid>
+                                </Button>
+
+                                <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutAndroidDeveloperProfileUrl}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Grid Width="42" Height="42" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                            <Border Background="#201D26" BorderBrush="#5A5366" BorderThickness="1" CornerRadius="14" />
+                                            <Image
+                                                Margin="1"
+                                                Loaded="AvatarImage_Loaded"
+                                                SizeChanged="AvatarImage_SizeChanged"
+                                                RenderOptions.BitmapScalingMode="HighQuality"
+                                                SnapsToDevicePixels="True"
+                                                Source="{Binding AboutAndroidDeveloperAvatarImage}"
+                                                Stretch="UniformToFill" />
+                                        </Grid>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock FontSize="14" Foreground="#F6F3FA" Text="Android app developer" /><TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AboutAndroidDeveloperHandle}" /></StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#A8A2B2" Text="&#xE72A;" />
+                                    </Grid>
+                                </Button>
+
+                                <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutDesktopDeveloperProfileUrl}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Grid Width="42" Height="42" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                            <Border Background="#201D26" BorderBrush="#5A5366" BorderThickness="1" CornerRadius="14" />
+                                            <Image
+                                                Margin="1"
+                                                Loaded="AvatarImage_Loaded"
+                                                SizeChanged="AvatarImage_SizeChanged"
+                                                RenderOptions.BitmapScalingMode="HighQuality"
+                                                SnapsToDevicePixels="True"
+                                                Source="{Binding AboutDesktopDeveloperAvatarImage}"
+                                                Stretch="UniformToFill" />
+                                        </Grid>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock FontSize="14" Foreground="#F6F3FA" Text="PC client developer" /><TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AboutDesktopDeveloperHandle}" /></StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#A8A2B2" Text="&#xE72A;" />
+                                    </Grid>
+                                </Button>
+
+                                <Button Command="{Binding RegisterAboutVersionTapCommand}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <Border Width="40" Height="40" Background="#3A3740" CornerRadius="12"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#F1EEF7" Text="&#xE946;" /></Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock FontSize="14" Foreground="#F6F3FA" Text="App Version" />
+                                            <TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AppReleaseVersion}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid
+            x:Name="ModalOverlay"
+            Background="#E6050508"
+            Visibility="{Binding ShowWizard, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                Width="430"
+                MaxHeight="720"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#1a1a24"
+                BorderBrush="#333344"
+                BorderThickness="1"
+                CornerRadius="24">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <Grid Margin="0,0,4,0">
+                    <StackPanel x:Name="StepProgress" Visibility="{Binding StepProgressVis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="20"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Configuring..." />
+                        <ProgressBar
+                            x:Name="WizProgress"
+                            Margin="0,0,0,15"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Foreground="Blue"
+                            IsIndeterminate="{Binding WizProgressIsIndeterminate}"
+                            Style="{StaticResource SpinnerStyle}" />
+                        <TextBlock
+                            x:Name="WizStatusText"
+                            HorizontalAlignment="Center"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="{Binding WizStatusText}"
+                            TextWrapping="Wrap" />
+                        <Button
+                            Margin="0,30,0,0"
+                            Padding="20,10"
+                            HorizontalAlignment="Center"
+                            Background="Transparent"
+                            BorderBrush="#444"
+                            BorderThickness="1"
+                            Command="{Binding CloseWizardCommand}"
+                            Content="Cancel Setup"
+                            Foreground="White"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="StepCreds" Visibility="{Binding StepCredsVis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Center"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="PC Login Details" />
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Required for Windows to unlock." />
+                        <Border
+                            Padding="12"
+                            Background="#101525"
+                            BorderBrush="#2b3f6c"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Visibility="{Binding WizShowAutoAccountSelector, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock
+                                    Margin="0,0,0,6"
+                                    FontSize="11"
+                                    Foreground="{StaticResource TextMuted}"
+                                    Text="Choose Windows Account" />
+                                <ComboBox
+                                    x:Name="InputAccount"
+                                    ItemTemplate="{StaticResource LocalAccountOptionTemplate}"
+                                    ItemsSource="{Binding AvailableLocalAccounts}"
+                                    SelectedItem="{Binding SelectedLocalAccount}"
+                                    Style="{StaticResource PortalComboBox}"
+                                    SelectionChanged="InputAccount_SelectionChanged" />
+                                <TextBlock
+                                    Margin="0,8,0,0"
+                                    FontSize="11"
+                                    Foreground="#8fa2cf"
+                                    Text="{Binding SelectedLocalAccount.DisplayName, FallbackValue=Select account from list}" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock
+                            Margin="0,10,0,5"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Password" />
+                        <PasswordBox x:Name="InputPass" />
+
+                        <!--  Device Name (Visible only when Editing)  -->
+                        <TextBlock
+                            Margin="0,10,0,5"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Device Name"
+                            Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <TextBox
+                            x:Name="InputEditDeviceName"
+                            Text="{Binding WizDeviceName, UpdateSourceTrigger=PropertyChanged}"
+                            Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                        <Grid Margin="0,20,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button
+                                Grid.Column="0"
+                                Command="{Binding StepCredsBackCommand}"
+                                Content="Back"
+                                Style="{StaticResource SecondaryButton}"
+                                Visibility="{Binding WizHideDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <Button
+                                Grid.Column="0"
+                                Command="{Binding CancelEditCommand}"
+                                Content="Cancel"
+                                Style="{StaticResource SecondaryButton}"
+                                Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <Button
+                                Grid.Column="2"
+                                Command="{Binding CredsNextCommand}"
+                                CommandParameter="{Binding ElementName=InputPass}"
+                                Content="{Binding WizCredsNextText}"
+                                Style="{StaticResource PrimaryButton}" />
+                        </Grid>
+
+                        <Button
+                            Margin="0,15,0,0"
+                            HorizontalAlignment="Center"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{Binding CloseWizardCommand}"
+                            Content="Cancel Setup"
+                            Foreground="{StaticResource TextMuted}"
+                            Style="{StaticResource SecondaryButton}"
+                            Visibility="{Binding WizHideDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </StackPanel>
+
+                    <!--  Transport Selection Step  -->
+                    <StackPanel x:Name="StepTransport" Visibility="{Binding StepTransportVis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Center"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Choose Pairing Method" />
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Select how you want to pair with the device." />
+
+                        <RadioButton
+                            x:Name="RbTransportNetwork"
+                            Content="🌐 Network (Wi-Fi / LAN)"
+                            GroupName="Transport"
+                            IsChecked="{Binding IsTransTcp}"
+                            Style="{StaticResource ModeCard}"
+                            Tag="Pair over local network. Both devices must be on the same Wi-Fi/LAN." />
+                        <RadioButton
+                            x:Name="RbTransportBluetooth"
+                            Content="📶 Bluetooth"
+                            GroupName="Transport"
+                            IsChecked="{Binding IsTransBt}"
+                            Style="{StaticResource ModeCard}"
+                            Tag="Pair over Bluetooth. No Wi-Fi required. Devices must be in range." />
+
+                        <Grid Margin="0,20,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button
+                                Grid.Column="0"
+                                Command="{Binding StepTransportBackCommand}"
+                                Content="Back"
+                                Style="{StaticResource SecondaryButton}" />
+                            <Button
+                                Grid.Column="2"
+                                Command="{Binding TransportNextCommand}"
+                                Content="Next →"
+                                Style="{StaticResource PrimaryButton}" />
+                        </Grid>
+
+                        <Button
+                            Margin="0,15,0,0"
+                            HorizontalAlignment="Center"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{Binding CloseWizardCommand}"
+                            Content="Cancel Setup"
+                            Foreground="{StaticResource TextMuted}"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="StepPairing" Visibility="{Binding StepPairingVis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Margin="0,0,0,5"
+                            HorizontalAlignment="Center"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Connect Phone" />
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Enter this code in the mobile app:" />
+                        <Border
+                            Margin="0,0,0,20"
+                            Padding="15"
+                            Background="#000"
+                            BorderBrush="#333"
+                            BorderThickness="1"
+                            CornerRadius="12">
+                            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                <TextBlock
+                                    x:Name="WizPairCode"
+                                    VerticalAlignment="Center"
+                                    FontSize="32"
+                                    FontWeight="Bold"
+                                    Foreground="White"
+                                    Text="{Binding WizPairCode}" />
+                                <Button
+                                    Margin="15,0,0,0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding CopyCodeCommand}"
+                                    Content="📋"
+                                    Cursor="Hand"
+                                    FontSize="20"
+                                    Foreground="#8888a0"
+                                    ToolTip="Copy Code / Копировать код" />
+                            </StackPanel>
+                        </Border>
+                        <ProgressBar
+                            Margin="20,0,20,10"
+                            IsIndeterminate="True"
+                            Style="{StaticResource SpinnerStyle}" />
+                        <TextBlock
+                            x:Name="WizPairInfo"
+                            HorizontalAlignment="Center"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="{Binding WizPairInfo}" />
+
+                        <TextBlock
+                            x:Name="WizExpiresInfo"
+                            Margin="0,4,0,0"
+                            HorizontalAlignment="Center"
+                            FontSize="10"
+                            Foreground="#664444"
+                            Text="{Binding WizExpiresInfo}" />
+
+                        <!--  Network info panel  -->
+                        <StackPanel
+                            x:Name="PanelNetworkInfo"
+                            Margin="0,20,0,0"
+                            HorizontalAlignment="Center"
+                            Orientation="Vertical"
+                            Visibility="{Binding WizShowNetworkInfo, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                            <!--  IP Selection -->
+                            <Grid Width="330" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="252" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="68" />
+                                </Grid.ColumnDefinitions>
+                                <Border
+                                    Grid.Column="0"
+                                    Padding="10,5"
+                                    Background="#111"
+                                    BorderBrush="#333"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                    <StackPanel Orientation="Vertical">
+                                        <TextBlock
+                                            Margin="0,0,0,4"
+                                            Foreground="#88a"
+                                            Text="IP Interface:" />
+                                        <ComboBox
+                                            ItemTemplate="{StaticResource NetworkIpOptionTemplate}"
+                                            MinHeight="52"
+                                            FontSize="12"
+                                            ItemsSource="{Binding AvailableLocalIps}"
+                                            SelectedItem="{Binding SelectedPairIp}"
+                                            Style="{StaticResource PortalComboBox}"
+                                            SelectionChanged="InputPairIp_SelectionChanged" />
+                                    </StackPanel>
+                                </Border>
+                                <Button
+                                    x:Name="BtnCopyIp"
+                                    Grid.Column="2"
+                                    Padding="10,0"
+                                    Click="BtnCopyIp_Click"
+                                    Content="📋"
+                                    FontSize="16"
+                                    ToolTip="Copy IP"
+                                    Style="{StaticResource SecondaryButton}" />
+                            </Grid>
+
+                            <!--  Port Display  -->
+                            <Grid Width="330">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="252" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="68" />
+                                </Grid.ColumnDefinitions>
+                                <Border
+                                    Grid.Column="0"
+                                    Padding="10,5"
+                                    Background="#111"
+                                    BorderBrush="#333"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Foreground="#88a"
+                                            Text="Port: " />
+                                        <TextBlock
+                                            x:Name="WizPortOnly"
+                                            VerticalAlignment="Center"
+                                            FontWeight="Bold"
+                                            Foreground="#eee"
+                                            Text="{Binding WizPortOnly}" />
+                                    </StackPanel>
+                                </Border>
+                                <Button
+                                    x:Name="BtnCopyPort"
+                                    Grid.Column="2"
+                                    Padding="10,0"
+                                    Click="BtnCopyPort_Click"
+                                    Content="📋"
+                                    FontSize="16"
+                                    ToolTip="Copy Port"
+                                    Style="{StaticResource SecondaryButton}" />
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel
+                            x:Name="PanelBluetoothInfo"
+                            Margin="0,20,0,0"
+                            HorizontalAlignment="Center"
+                            Visibility="{Binding WizShowBluetoothInfo, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+                            <StackPanel Margin="0,0,0,10" Orientation="Horizontal">
+                                <Border
+                                    Width="260"
+                                    Padding="10,5"
+                                    Background="#111"
+                                    BorderBrush="#333"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            Foreground="#88a"
+                                            Text="BT: " />
+                                        <TextBlock
+                                            x:Name="WizBtAddress"
+                                            VerticalAlignment="Center"
+                                            FontWeight="Bold"
+                                            Foreground="#eee"
+                                            Text="{Binding WizBtAddress}" />
+                                    </StackPanel>
+                                </Border>
+                                <Button
+                                    x:Name="BtnCopyBt"
+                                    Margin="10,0,0,0"
+                                    Padding="10,0"
+                                    Click="BtnCopyBt_Click"
+                                    Content="📋"
+                                    FontSize="16"
+                                    ToolTip="Copy Bluetooth address"
+                                    Style="{StaticResource SecondaryButton}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Border
+                            x:Name="QrCodeBorder"
+                            Margin="0,12,0,0"
+                            Padding="8"
+                            HorizontalAlignment="Center"
+                            Background="White"
+                            CornerRadius="8"
+                            Visibility="{Binding WizShowQrCode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Image
+                                x:Name="QrCodeImage"
+                                Width="144"
+                                Height="144"
+                                RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                Source="{Binding WizQrCodeImage}" />
+                        </Border>
+
+                        <StackPanel
+                            Margin="0,14,0,0"
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal">
+
+                            <Button
+                                Height="35"
+                                Margin="0,0,10,0"
+                                Command="{Binding StepPairingBackCommand}"
+                                Content="← Back"
+                                FontSize="12"
+                                Style="{StaticResource SecondaryButton}" />
+
+                            <Button
+                                Height="35"
+                                Command="{Binding RefreshCodeCommand}"
+                                Content="↻ Refresh Code"
+                                FontSize="12"
+                                Style="{StaticResource SecondaryButton}" />
+                        </StackPanel>
+
+                        <Button
+                            Margin="0,10,0,0"
+                            HorizontalAlignment="Center"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{Binding CloseWizardCommand}"
+                            Content="Cancel Setup"
+                            Foreground="{StaticResource TextMuted}"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="StepNameDevice" Visibility="{Binding StepNameDeviceVis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Center"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Name Device" />
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Give this device a friendly name." />
+
+                        <TextBox
+                            x:Name="InputDeviceName"
+                            Margin="0,0,0,20"
+                            Text="{Binding WizDeviceName, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <Button
+                            Command="{Binding NameDeviceNextCommand}"
+                            Content="Save &amp; Finish"
+                            Style="{StaticResource PrimaryButton}" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="StepSuccess" Visibility="{Binding StepSuccessVis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="24"
+                            Text="✅" />
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Foreground="White"
+                            Text="Success!" />
+                        <Button
+                            Command="{Binding CloseWizardCommand}"
+                            Content="Close"
+                            Style="{StaticResource PrimaryButton}" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="StepError" Visibility="{Binding StepErrorVis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="24"
+                            Text="❌" />
+                        <TextBlock
+                            Margin="0,0,0,10"
+                            HorizontalAlignment="Center"
+                            FontSize="18"
+                            FontWeight="Bold"
+                            Foreground="#ff5555"
+                            Text="Error" />
+                        <TextBlock
+                            x:Name="WizErrorText"
+                            Margin="0,0,0,20"
+                            HorizontalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="{Binding WizErrorText}"
+                            TextWrapping="Wrap" />
+                        <Button
+                            Command="{Binding CloseWizardCommand}"
+                            Content="Close"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    </Grid>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid
+            x:Name="BusyOverlay"
+            Background="#D9090A12"
+            Visibility="{Binding IsBusyOverlayVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                Width="360"
+                Padding="28"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#14141e"
+                BorderBrush="#355ca9"
+                BorderThickness="1"
+                CornerRadius="20">
+                <StackPanel>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="{Binding BusyOperationTitle}"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                    <ProgressBar
+                        Margin="24,18,24,14"
+                        IsIndeterminate="True">
+                        <ProgressBar.Style>
+                            <Style BasedOn="{StaticResource SpinnerStyle}" TargetType="ProgressBar">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBusyOperationResultVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ProgressBar.Style>
+                    </ProgressBar>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="13"
+                        Foreground="#d9e2ff"
+                        Text="{Binding BusyOperationStatus}"
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,12,0,0"
+                        FontSize="11"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Action is in progress. Please wait and avoid interacting with Host until it finishes."
+                        TextAlignment="Center"
+                        TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBusyOperationResultVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button
+                        Margin="0,18,0,0"
+                        Background="#331111"
+                        Command="{Binding CancelBusyOperationCommand}"
+                        Content="{Binding BusyCancelButtonText}"
+                        Foreground="#ffb0b0"
+                        IsEnabled="{Binding CanCancelBusyOperation}">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource SecondaryButton}" TargetType="Button">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBusyOperationCancelable}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsBusyOperationResultVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        FontSize="11"
+                        Foreground="#caa3a3"
+                        Text="Cancelling can interrupt configuration and may require manual recovery or reinstall."
+                        TextAlignment="Center"
+                        TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBusyOperationCancelable}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsBusyOperationResultVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button
+                        Margin="0,18,0,0"
+                        Command="{Binding AcknowledgeBusyResultCommand}"
+                        Content="{Binding BusyResultButtonText}">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource PrimaryButton}" TargetType="Button">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBusyOperationResultVisible}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            x:Name="CreateBackupOverlay"
+            Background="#CC050913"
+            Visibility="{Binding ShowCreateBackupDialog, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                Width="440"
+                Padding="20"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#101626"
+                BorderBrush="#2b446b"
+                BorderThickness="1"
+                CornerRadius="14">
+                <StackPanel>
+                    <TextBlock
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Foreground="#dce7ff"
+                        Text="Create Backup" />
+                    <TextBlock
+                        Margin="0,8,0,14"
+                        FontSize="12"
+                        Foreground="#97acd8"
+                        Text="Backup includes config settings, trusted devices and host server certificate."
+                        TextWrapping="Wrap" />
+
+                    <TextBlock FontSize="12" Foreground="#c9d8ff" Text="Password" />
+                    <PasswordBox
+                        x:Name="BackupPasswordBox"
+                        Margin="0,6,0,10"
+                        ToolTip="Enter backup encryption password" />
+
+                    <TextBlock FontSize="12" Foreground="#c9d8ff" Text="Confirm Password" />
+                    <PasswordBox
+                        x:Name="BackupPasswordConfirmBox"
+                        Margin="0,6,0,14"
+                        ToolTip="Repeat password" />
+
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button
+                            Margin="0,0,10,0"
+                            Command="{Binding CloseCreateBackupDialogCommand}"
+                            Content="Cancel"
+                            Style="{StaticResource SecondaryButton}" />
+                        <Button
+                            Background="#1b2c4a"
+                            Click="BtnCreateBackup_Click"
+                            Content="Create Backup"
+                            Foreground="#eaf1ff"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            x:Name="RestoreBackupOverlay"
+            Background="#CC07110D"
+            Visibility="{Binding ShowRestoreBackupDialog, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                Width="460"
+                Padding="20"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#102019"
+                BorderBrush="#2d5c4a"
+                BorderThickness="1"
+                CornerRadius="14">
+                <StackPanel>
+                    <TextBlock
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Foreground="#d8ffed"
+                        Text="Restore From Backup" />
+                    <TextBlock
+                        Margin="0,8,0,14"
+                        FontSize="12"
+                        Foreground="#9ad0ba"
+                        Text="Restore replaces current config settings, trusted devices and host server certificate."
+                        TextWrapping="Wrap" />
+
+                    <TextBlock FontSize="12" Foreground="#c9f0dd" Text="Backup File" />
+                    <Grid Margin="0,6,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            Grid.Column="0"
+                            Margin="0,0,10,0"
+                            Padding="10,8"
+                            Background="#0f1b16"
+                            BorderBrush="#355e4d"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                            <TextBlock
+                                Foreground="#b7e5d1"
+                                Text="{Binding RestoreBackupFileText}"
+                                TextTrimming="CharacterEllipsis" />
+                        </Border>
+
+                        <Button
+                            Grid.Column="1"
+                            Background="#17352a"
+                            Command="{Binding SelectRestoreBackupFileCommand}"
+                            Content="Browse"
+                            Foreground="#e6fff5"
+                            Style="{StaticResource SecondaryButton}" />
+                    </Grid>
+
+                    <TextBlock FontSize="12" Foreground="#c9f0dd" Text="Password" />
+                    <PasswordBox
+                        x:Name="RestoreBackupPasswordBox"
+                        Margin="0,6,0,14"
+                        ToolTip="Enter backup password" />
+
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button
+                            Margin="0,0,10,0"
+                            Command="{Binding CloseRestoreBackupDialogCommand}"
+                            Content="Cancel"
+                            Style="{StaticResource SecondaryButton}" />
+                        <Button
+                            Background="#1a3d30"
+                            Click="BtnRestoreBackup_Click"
+                            Content="Restore"
+                            Foreground="#e6fff5"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+        </Grid>
+
+        <!--  NOTIFICATION OVERLAY  -->
+        <Grid
+            x:Name="NotificationOverlay"
+            Background="#BF050510"
+            Panel.ZIndex="40"
+            Visibility="Collapsed">
+            <Border
+                Width="320"
+                Padding="2"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BorderBrush="#ff007a"
+                BorderThickness="1"
+                CornerRadius="16">
+                <Border.Background>
+                    <SolidColorBrush Opacity="0.9" Color="#141424" />
+                </Border.Background>
+
+                <StackPanel Margin="20">
+                    <TextBlock
+                        x:Name="NotifyTitle"
+                        Margin="0,0,0,10"
+                        HorizontalAlignment="Center"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Notification" />
+                    <TextBlock
+                        x:Name="NotifyMessage"
+                        MaxHeight="200"
+                        Margin="0,0,0,25"
+                        HorizontalAlignment="Center"
+                        FontSize="14"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="Message goes here..."
+                        TextAlignment="Center"
+                        TextWrapping="Wrap" />
+
+                    <!--  Buttons for Actions  -->
+                    <StackPanel
+                        x:Name="NotifyActions"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal"
+                        Visibility="Visible">
+                        <Button
+                            x:Name="BtnNotifyYes"
+                            Width="100"
+                            Margin="0,0,10,0"
+                            Click="OnNotifyYes"
+                            Content="YES"
+                            Style="{StaticResource PrimaryButton}" />
+                        <Button
+                            x:Name="BtnNotifyNo"
+                            Width="100"
+                            Click="OnNotifyNo"
+                            Content="NO"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    <!--  Button for Verify/OK  -->
+                    <Button
+                        x:Name="BtnNotifyOk"
+                        Width="100"
+                        HorizontalAlignment="Center"
+                        Click="OnNotifyOk"
+                        Content="OK"
+                        Style="{StaticResource PrimaryButton}"
+                        Visibility="Collapsed" />
+                </StackPanel>
+            </Border>
+        </Grid>
+        </Grid>
+    </Border>
+</Window>
+
