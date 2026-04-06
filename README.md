@@ -1,5 +1,55 @@
 # Portal-Windows
 
+## About the Project
+PortalWin is a custom Windows Credential Provider designed for convenient unlocking of the Windows operating system using a mobile device.
+
+## Purpose
+The project solves the problem of the daily login routine. Instead of manually typing credentials on the keyboard every time, the user can delegate this task to their trusted smartphone. This is especially relevant for complex passwords that are inconvenient to enter frequently but are necessary for security.
+
+## How It Works & Key Features
+The system consists of several key components: a host application for configuration (`Portal.Host`) and a system DLL provider library (`Portal.CredentialProvider`) that integrates into the Windows login screen (LogonUI).
+
+1. **Pairing**: A QR code is generated through the convenient interface of the desktop application. The user scans it with their mobile device, after which a secure key exchange (Pairing Context) takes place.
+2. **Discovery**: The computer announces itself on the local network using the mDNS protocol so the smartphone can find it automatically, without manual IP address entry.
+3. **Unlocking**: While on the lock screen, the computer opens a secure channel (via Wi-Fi or Bluetooth) and waits for a command from the smartphone. Upon receiving and successfully validating the request, the system passes the credentials to Windows, and the desktop is unlocked.
+
+**Key features:**
+- Automatic PC discovery on the network (mDNS).
+- Local network unlocking (Wi-Fi) via WebSockets.
+- Direct unlocking via Bluetooth (for cases when the network is unavailable).
+- One-click device pairing configuration via QR code.
+- Creation of encrypted credential backups.
+
+## Technologies Used
+- **Programming Language:** C#
+- **UI Framework:** WPF (Windows Presentation Foundation) for the client configuration interface.
+- **OS Integration:** Windows Credential Provider API (COM interfaces).
+- **Networking:** WebSockets, mDNS (Multicast DNS).
+- **Security:** TLS (Transport Layer Security) for network traffic protection, cryptography for backup encryption.
+- **Data Storage:** Windows LSA (Local Security Authority) Secret Store.
+- **Communication:** Bluetooth RFCOMM / duplex streams.
+
+---
+
+## Project Advantages
+
+### 🛡️ Security
+* **No plaintext passwords:** User credentials are not stored in standard configuration files. The secure Windows LSA storage is used for saving them, accessible only by the system.
+* **Traffic encryption:** All unlock commands and service data transfers over Wi-Fi are wrapped in TLS. Custom protection mechanisms are implemented for the duplex channel over Bluetooth.
+* **Strict authorization:** The computer can only be unlocked by a device that has completed the cryptographic pairing process. External attempts to hijack the connection are rejected.
+* **Isolation:** Even if network traffic is intercepted, an attacker will not be able to extract the original password for a Microsoft account or local user.
+
+### ⚡ Convenience
+* **Seamless login:** Unlocking the computer requires just one action on the smartphone, which significantly saves time.
+* **Zero-Configuration:** Thanks to the implementation of mDNS, the user does not need to be a system administrator. The smartphone "sees" the computer on the network by itself — no setup required.
+* **Fallback communication channels:** If the router goes offline, unlocking will continue to work via a direct Bluetooth connection between the phone and PC.
+* **Intuitive setup interface:** The process of adding a new phone comes down to simply opening the `Portal.Host` application and scanning the generated QR code.
+
+---
+---
+
+# Portal-Windows
+
 ## О проекте
 PortalWin — это кастомный поставщик учетных данных (Windows Credential Provider), предназначенный для удобной разблокировки операционной системы Windows с помощью мобильного устройства. 
 
