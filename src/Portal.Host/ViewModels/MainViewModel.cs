@@ -133,6 +133,7 @@ public partial class MainViewModel : ObservableObject
     // This is the single place to edit About screen links.
     private const string AboutTermsUrlValue = "https://github.com/xXMRK888YTXx/Portal-Docs/blob/master/Windows/Terms%20of%20Service.md";
     private const string AboutPrivacyUrlValue = "https://github.com/xXMRK888YTXx/Portal-Docs/blob/master/Windows/Privacy%20Policy.md";
+    private const string AboutMobileClientUrlValue = "https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal";
     private const string AboutAndroidSourceUrlValue = "https://github.com/xXMRK888YTXx/Portal-Android";
     private const string AboutDesktopSourceUrlValue = "https://github.com/KoksMen/Portal-Windows";
     private const string AboutAndroidDeveloperHandleValue = "xXMRK888YTXx";
@@ -140,10 +141,12 @@ public partial class MainViewModel : ObservableObject
 
     public string AboutTermsUrl => AboutTermsUrlValue;
     public string AboutPrivacyUrl => AboutPrivacyUrlValue;
+    public string AboutMobileClientUrl => AboutMobileClientUrlValue;
     public string AboutAndroidSourceUrl => AboutAndroidSourceUrlValue;
     public string AboutDesktopSourceUrl => AboutDesktopSourceUrlValue;
     public string AboutTermsDisplay => AboutTermsUrl.Replace("https://", "");
     public string AboutPrivacyDisplay => AboutPrivacyUrl.Replace("https://", "");
+    public string AboutMobileClientDisplay => AboutMobileClientUrl.Replace("https://", "");
     public string AboutAndroidSourceDisplay => AboutAndroidSourceUrl.Replace("https://", "");
     public string AboutDesktopSourceDisplay => AboutDesktopSourceUrl.Replace("https://", "");
     public string AboutAndroidDeveloperHandle => $"@{AboutAndroidDeveloperHandleValue}";

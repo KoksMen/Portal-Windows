@@ -40,6 +40,8 @@ public class ProviderSetupService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            ValidateProviderPathIsOnCurrentVolume(dllPath);
+
             if (!File.Exists(dllPath))
             {
                 Logger.LogError($"[ProviderSetup] DLL not found at: {dllPath}");
@@ -89,6 +91,7 @@ public class ProviderSetupService
         {
             if (!string.IsNullOrEmpty(dllPath) && File.Exists(dllPath))
             {
+                ValidateProviderPathIsOnCurrentVolume(dllPath);
                 Logger.Log("[ProviderSetup] Unregistering COM DLL...");
                 await RunProcessAsync("regsvr32", $"/u /s \"{dllPath}\"", cancellationToken);
             }
@@ -175,6 +178,20 @@ public class ProviderSetupService
                 Logger.LogError($"[ProviderSetup] Missing required COM dependency: {file}");
                 throw new FileNotFoundException($"Missing required file for .NET COM hosting. Please make sure '{Path.GetFileName(file)}' is located in the same folder as the .comhost.dll!");
             }
+        }
+    }
+
+    private static void ValidateProviderPathIsOnCurrentVolume(string dllPath)
+    {
+        var normalizedPath = NormalizePath(dllPath) ?? throw new InvalidOperationException("Provider path could not be resolved.");
+        var currentAppBaseDir = NormalizePath(AppDomain.CurrentDomain.BaseDirectory) ?? throw new InvalidOperationException("Application base directory could not be resolved.");
+        var providerVolume = Path.GetPathRoot(normalizedPath);
+        var currentVolume = Path.GetPathRoot(currentAppBaseDir);
+
+        if (!string.Equals(providerVolume, currentVolume, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Provider registration is allowed only on the current application volume. Current volume: {currentVolume}. Provider volume: {providerVolume}. Path: {normalizedPath}");
         }
     }
 
