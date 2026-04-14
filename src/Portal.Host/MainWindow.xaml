@@ -1839,6 +1839,15 @@
                                     </Grid>
                                 </Button>
 
+                                <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutMobileClientUrl}" Style="{StaticResource AboutRowButton}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Border Width="40" Height="40" Background="#3A3740" CornerRadius="12"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="#F1EEF7" Text="&#xE896;" /></Border>
+                                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock FontSize="14" Foreground="#F6F3FA" Text="Download mobile app" /><TextBlock FontSize="12" Foreground="#B7B0C3" Text="{Binding AboutMobileClientDisplay}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#A8A2B2" Text="&#xE72A;" />
+                                    </Grid>
+                                </Button>
+
                                 <Button Command="{Binding OpenExternalLinkCommand}" CommandParameter="{Binding AboutAndroidSourceUrl}" Style="{StaticResource AboutRowButton}">
                                     <Grid>
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
