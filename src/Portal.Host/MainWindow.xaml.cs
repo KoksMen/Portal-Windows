@@ -39,12 +39,17 @@ public partial class MainWindow : Window
         _viewModel.OpenLogsWindowRequested += OnOpenLogsWindowRequested;
 
         Loaded += MainWindow_Loaded;
-        StateChanged += (_, _) => UpdateWindowToggleGlyph();
+        StateChanged += (_, _) =>
+        {
+            UpdateWindowToggleGlyph();
+            UpdateWindowSurfaceClip();
+        };
         UpdateWindowToggleGlyph();
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        UpdateWindowSurfaceClip();
         await _viewModel.InitializeAsync();
 
         if (Application.Current is App app && !string.IsNullOrWhiteSpace(app.StartupBackupFilePath))
@@ -291,6 +296,29 @@ public partial class MainWindow : Window
         WindowToggleOutlineBack.Visibility = WindowState == WindowState.Maximized
             ? Visibility.Visible
             : Visibility.Collapsed;
+    }
+
+    private void WindowContentClipHost_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateWindowSurfaceClip();
+    }
+
+    private void UpdateWindowSurfaceClip()
+    {
+        if (WindowContentClipHost == null)
+        {
+            return;
+        }
+
+        var width = WindowContentClipHost.ActualWidth;
+        var height = WindowContentClipHost.ActualHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        var radius = WindowState == WindowState.Maximized ? 0d : 24d;
+        WindowContentClipHost.Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius);
     }
 
     private void OnNotifyOk(object sender, RoutedEventArgs e)

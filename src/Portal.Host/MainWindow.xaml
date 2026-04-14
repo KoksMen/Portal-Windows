@@ -725,12 +725,16 @@
     </Window.Resources>
 
     <Border
+        x:Name="WindowSurfaceBorder"
         Background="#0a0a0f"
         BorderBrush="#232c43"
         BorderThickness="1"
         CornerRadius="24"
         SnapsToDevicePixels="True">
-        <Grid ClipToBounds="True">
+        <Grid
+            x:Name="WindowContentClipHost"
+            ClipToBounds="True"
+            SizeChanged="WindowContentClipHost_SizeChanged">
         <Border
             Height="56"
             VerticalAlignment="Top"
