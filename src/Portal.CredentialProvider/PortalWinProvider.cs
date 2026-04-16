@@ -17,8 +17,8 @@ namespace Portal.CredentialProvider;
 [Guid("4F507F6A-5A02-4F19-86B3-1C04F0E8C2E5")]
 public class PortalWinProvider : PortalWinProviderBase
 {
-    internal UnlockMode UnlockMode { get; private set; } = UnlockMode.ClientInitiated;
-    internal HostRequestTrigger HostRequestTrigger { get; private set; } = HostRequestTrigger.OnClick;
+    internal UnlockMode UnlockMode { get; private set; } = UnlockMode.Both;
+    internal HostRequestTrigger HostRequestTrigger { get; private set; } = HostRequestTrigger.OnClickAndAnyLockScreen;
 
     private string? _preferredDefaultSid;
     private string? _preferredDefaultCanonicalUser;

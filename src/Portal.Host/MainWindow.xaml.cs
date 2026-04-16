@@ -586,6 +586,17 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (vm.ShowCertificateInfoDialog && e.Key == Key.Escape)
+        {
+            if (vm.CloseCertificateInfoCommand.CanExecute(null))
+            {
+                vm.CloseCertificateInfoCommand.Execute(null);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
         if (vm.ShowUpdateWizard && e.Key == Key.Escape)
         {
             if (vm.CloseUpdateWizardCommand.CanExecute(null))

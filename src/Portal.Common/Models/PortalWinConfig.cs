@@ -36,10 +36,10 @@ public class PortalWinConfig
     public int Port { get; set; } = 29170;
 
     [JsonPropertyName("unlockMode")]
-    public UnlockMode UnlockMode { get; set; } = UnlockMode.ClientInitiated;
+    public UnlockMode UnlockMode { get; set; } = UnlockMode.Both;
 
     [JsonPropertyName("hostRequestTrigger")]
-    public HostRequestTrigger HostRequestTrigger { get; set; } = HostRequestTrigger.OnClick;
+    public HostRequestTrigger HostRequestTrigger { get; set; } = HostRequestTrigger.OnClickAndAnyLockScreen;
 
     [JsonPropertyName("enforceUniqueAccountPerTransport")]
     public bool EnforceUniqueAccountPerTransport { get; set; } = true;

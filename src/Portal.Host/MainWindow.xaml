@@ -605,6 +605,45 @@
             </Setter>
         </Style>
 
+        <Style x:Key="InfoIconButton" TargetType="Button">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="#17253f" />
+            <Setter Property="BorderBrush" Value="#46689c" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#dbe8ff" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="11">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#203255" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#7096d6" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="StatusDot" TargetType="Ellipse">
             <Setter Property="Width" Value="10" />
             <Setter Property="Height" Value="10" />
@@ -979,6 +1018,16 @@
 
                 <Button
                     Margin="0,10,0,0"
+                    Background="#18311f"
+                    BorderBrush="#2f5b3a"
+                    Command="{Binding OpenExternalLinkCommand}"
+                    CommandParameter="{Binding AboutMobileClientUrl}"
+                    Content="Download Mobile Client"
+                    Foreground="#d8ffe1"
+                    Style="{StaticResource SecondaryButton}" />
+
+                <Button
+                    Margin="0,10,0,0"
                     Background="Transparent"
                     BorderThickness="0"
                     Command="{Binding ShowAboutCommand}"
@@ -993,24 +1042,38 @@
             x:Name="ViewSettings"
             Background="#0a0a0f"
             Visibility="{Binding ShowSettingsPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="30">
-                    <Grid Margin="0,0,0,30">
-                        <Button
-                            Padding="0"
-                            HorizontalAlignment="Left"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Command="{Binding CloseSettingsCommand}"
-                            Content="← Back"
-                            Style="{StaticResource SecondaryButton}" />
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            FontSize="20"
-                            FontWeight="Bold"
-                            Foreground="White"
-                            Text="Settings" />
-                    </Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border
+                Grid.Row="0"
+                Padding="30,24,30,18"
+                Background="#101523"
+                BorderBrush="#232c43"
+                BorderThickness="0,0,0,1">
+                <Grid>
+                    <Button
+                        Padding="0"
+                        HorizontalAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding CloseSettingsCommand}"
+                        Content="← Back"
+                        Style="{StaticResource SecondaryButton}" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Settings" />
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="30,24,30,18">
 
                     <Expander
                         Header="Connected Devices"
@@ -1119,6 +1182,13 @@
                                                         Foreground="#cfe0ff"
                                                         IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                         Style="{StaticResource PortalCheckBox}" />
+                                                    <Button
+                                                        Margin="0,0,6,0"
+                                                        Command="{Binding DataContext.ShowDeviceCertificateInfoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="i"
+                                                        Style="{StaticResource InfoIconButton}"
+                                                        ToolTip="Certificate information" />
                                                     <Button
                                                         Margin="0,0,6,0"
                                                         Background="#1b2842"
@@ -1314,16 +1384,23 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <Button
-                                    Grid.Column="2"
-                                    Padding="8,4"
-                                    Background="#5a1f28"
-                                    Command="{Binding FixCertCommand}"
-                                    Content="Regenerate"
-                                    FontSize="10"
-                                    Foreground="#ffe6ea"
-                                    IsEnabled="{Binding IsNotWorkingHealth}"
-                                    Style="{StaticResource SecondaryButton}" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <Button
+                                        Margin="0,0,6,0"
+                                        Command="{Binding ShowHostCertificateInfoCommand}"
+                                        Content="i"
+                                        Style="{StaticResource InfoIconButton}"
+                                        ToolTip="Host certificate information" />
+                                    <Button
+                                        Padding="8,4"
+                                        Background="#5a1f28"
+                                        Command="{Binding FixCertCommand}"
+                                        Content="Regenerate"
+                                        FontSize="10"
+                                        Foreground="#ffe6ea"
+                                        IsEnabled="{Binding IsNotWorkingHealth}"
+                                        Style="{StaticResource SecondaryButton}" />
+                                </StackPanel>
                             </Grid>
 
                             <Grid Margin="0,0,0,12">
@@ -1531,13 +1608,6 @@
                                 </StackPanel>
                             </Border>
 
-                            <Button
-                                Margin="0,0,0,10"
-                                Command="{Binding SaveSettingsCommand}"
-                                Content="{Binding SaveConfigBtnText}"
-                                IsEnabled="{Binding IsNotWorkingSettings}"
-                                Style="{StaticResource PrimaryButton}" />
-
                         </StackPanel>
                     </Expander>
 
@@ -1643,6 +1713,19 @@
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
+
+            <Border
+                Grid.Row="2"
+                Padding="30,16,30,24"
+                Background="#101523"
+                BorderBrush="#232c43"
+                BorderThickness="0,1,0,0">
+                <Button
+                    Command="{Binding SaveSettingsCommand}"
+                    Content="{Binding SaveConfigBtnText}"
+                    IsEnabled="{Binding IsNotWorkingSettings}"
+                    Style="{StaticResource PrimaryButton}" />
+            </Border>
         </Grid>
 
         <Grid
@@ -2695,6 +2778,81 @@
                             Foreground="#e6fff5"
                             Style="{StaticResource SecondaryButton}" />
                     </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <Grid
+            x:Name="CertificateInfoOverlay"
+            Background="#CC08101A"
+            Visibility="{Binding ShowCertificateInfoDialog, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                Width="500"
+                MaxWidth="500"
+                Padding="24"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#111827"
+                BorderBrush="#35527e"
+                BorderThickness="1"
+                CornerRadius="16">
+                <StackPanel>
+                    <TextBlock
+                        FontSize="20"
+                        FontWeight="Bold"
+                        Foreground="#edf4ff"
+                        Text="{Binding CertificateInfoTitle}" />
+                    <Border
+                        Margin="0,14,0,10"
+                        Padding="14,12"
+                        Background="#162133"
+                        BorderBrush="#2e486f"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="#eef4ff"
+                                Text="{Binding CertificateInfoSummary}"
+                                TextWrapping="Wrap" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                FontSize="13"
+                                Foreground="#c8d8f5"
+                                Text="{Binding CertificateInfoDetails}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border
+                        Margin="0,0,0,18"
+                        Padding="14,12"
+                        Background="#0f1726"
+                        BorderBrush="#35527e"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Foreground="#93abd4"
+                                Text="Certificate SHA-256" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                FontFamily="Consolas"
+                                FontSize="13"
+                                Foreground="#e4eeff"
+                                LineHeight="20"
+                                Text="{Binding CertificateInfoHash}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Button
+                        Width="110"
+                        HorizontalAlignment="Right"
+                        Command="{Binding CloseCertificateInfoCommand}"
+                        Content="Close"
+                        Style="{StaticResource SecondaryButton}" />
                 </StackPanel>
             </Border>
         </Grid>
