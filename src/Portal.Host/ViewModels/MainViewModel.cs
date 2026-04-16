@@ -326,6 +326,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _restoreBackupFileText = "No backup file selected";
     [ObservableProperty] private bool _showCreateBackupDialog;
     [ObservableProperty] private bool _showRestoreBackupDialog;
+    [ObservableProperty] private bool _showCertificateInfoDialog;
+    [ObservableProperty] private string _certificateInfoTitle = "Certificate Information";
+    [ObservableProperty] private string _certificateInfoSummary = string.Empty;
+    [ObservableProperty] private string _certificateInfoDetails = string.Empty;
+    [ObservableProperty] private string _certificateInfoHash = string.Empty;
 
     private string? _restoreBackupFilePath;
     public event Action? OpenLogsWindowRequested;
@@ -910,6 +915,80 @@ public partial class MainViewModel : ObservableObject
     private void CloseAbout()
     {
         ShowAboutDialog = false;
+    }
+
+    [RelayCommand]
+    private void ShowDeviceCertificateInfo(DeviceModel? device)
+    {
+        if (device == null)
+        {
+            return;
+        }
+
+        CertificateInfoTitle = $"{device.Name} certificate";
+        CertificateInfoSummary = $"Client: {device.Name}";
+        CertificateInfoDetails = $"Client ID: {device.ClientId}";
+        CertificateInfoHash = string.IsNullOrWhiteSpace(device.CertHash)
+            ? "Certificate hash is not available for this client."
+            : FormatCertificateHash(device.CertHash);
+        ShowCertificateInfoDialog = true;
+    }
+
+    [RelayCommand]
+    private void ShowHostCertificateInfo()
+    {
+        using var cert = CertificateService.LoadCertificate();
+        if (cert == null)
+        {
+            CertificateInfoTitle = "Host certificate";
+            CertificateInfoSummary = "Host certificate is not available.";
+            CertificateInfoDetails = "Generate or restore the certificate first.";
+            CertificateInfoHash = "Hash is unavailable.";
+            ShowCertificateInfoDialog = true;
+            return;
+        }
+
+        var certHash = CertificateService.GetCertHash(cert);
+        CertificateInfoTitle = "Host certificate";
+        CertificateInfoSummary = $"Subject: {cert.Subject}";
+        CertificateInfoDetails =
+            $"Thumbprint: {FormatCertificateHash(cert.Thumbprint)}{Environment.NewLine}" +
+            $"Valid from: {cert.NotBefore:G}{Environment.NewLine}" +
+            $"Valid to: {cert.NotAfter:G}";
+        CertificateInfoHash = FormatCertificateHash(certHash);
+        ShowCertificateInfoDialog = true;
+    }
+
+    [RelayCommand]
+    private void CloseCertificateInfo()
+    {
+        ShowCertificateInfoDialog = false;
+    }
+
+    private static string FormatCertificateHash(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = new string(value
+            .Where(char.IsLetterOrDigit)
+            .Select(char.ToUpperInvariant)
+            .ToArray());
+
+        if (normalized.Length < 2)
+        {
+            return normalized;
+        }
+
+        return string.Join(":", Enumerable.Range(0, (normalized.Length + 1) / 2)
+            .Select(index =>
+            {
+                var start = index * 2;
+                var length = Math.Min(2, normalized.Length - start);
+                return normalized.Substring(start, length);
+            }));
     }
 
     [RelayCommand]
