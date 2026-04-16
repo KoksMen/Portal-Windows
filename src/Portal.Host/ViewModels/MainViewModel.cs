@@ -126,8 +126,8 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<DeviceModel> Devices { get; } = new();
 
     // --- App Info ---
-    public string AppVersion => "v1.0.0";
-    public string AppReleaseVersion => "1.0.0-Eve-Stable-Release";
+    public string AppVersion => "v1.1.4";
+    public string AppReleaseVersion => "1.1.4-Eve-Stable-Release";
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.
