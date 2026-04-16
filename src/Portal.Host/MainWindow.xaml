@@ -979,6 +979,16 @@
 
                 <Button
                     Margin="0,10,0,0"
+                    Background="#18311f"
+                    BorderBrush="#2f5b3a"
+                    Command="{Binding OpenExternalLinkCommand}"
+                    CommandParameter="{Binding AboutMobileClientUrl}"
+                    Content="Download Mobile Client"
+                    Foreground="#d8ffe1"
+                    Style="{StaticResource SecondaryButton}" />
+
+                <Button
+                    Margin="0,10,0,0"
                     Background="Transparent"
                     BorderThickness="0"
                     Command="{Binding ShowAboutCommand}"
