@@ -332,7 +332,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowHostTriggerSelector))]
-    private bool _isModeClient = true;
+    private bool _isModeClient;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowHostTriggerSelector))]
@@ -340,7 +340,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowHostTriggerSelector))]
-    private bool _isModeBoth;
+    private bool _isModeBoth = true;
 
     /// <summary>
     /// Show the host request trigger selector only when HostInitiated or Both mode is selected.
@@ -348,9 +348,9 @@ public partial class MainViewModel : ObservableObject
     public bool ShowHostTriggerSelector => IsModeHost || IsModeBoth;
 
     // Host Request Trigger radio buttons
-    [ObservableProperty] private bool _isTriggerOnClick = true;
+    [ObservableProperty] private bool _isTriggerOnClick;
     [ObservableProperty] private bool _isTriggerOnClickAndStartup;
-    [ObservableProperty] private bool _isTriggerOnClickAndAnyLockScreen;
+    [ObservableProperty] private bool _isTriggerOnClickAndAnyLockScreen = true;
 
     // Loading State for Settings
     [ObservableProperty]
