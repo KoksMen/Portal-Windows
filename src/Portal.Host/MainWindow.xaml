@@ -994,28 +994,37 @@
             Background="#0a0a0f"
             Visibility="{Binding ShowSettingsPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="30,30,30,18">
-                    <Grid Margin="0,0,0,30">
-                        <Button
-                            Padding="0"
-                            HorizontalAlignment="Left"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Command="{Binding CloseSettingsCommand}"
-                            Content="← Back"
-                            Style="{StaticResource SecondaryButton}" />
-                        <TextBlock
-                            HorizontalAlignment="Center"
-                            FontSize="20"
-                            FontWeight="Bold"
-                            Foreground="White"
-                            Text="Settings" />
-                    </Grid>
+            <Border
+                Grid.Row="0"
+                Padding="30,24,30,18"
+                Background="#101523"
+                BorderBrush="#232c43"
+                BorderThickness="0,0,0,1">
+                <Grid>
+                    <Button
+                        Padding="0"
+                        HorizontalAlignment="Left"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding CloseSettingsCommand}"
+                        Content="← Back"
+                        Style="{StaticResource SecondaryButton}" />
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Settings" />
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="30,24,30,18">
 
                     <Expander
                         Header="Connected Devices"
@@ -1643,7 +1652,7 @@
             </ScrollViewer>
 
             <Border
-                Grid.Row="1"
+                Grid.Row="2"
                 Padding="30,16,30,24"
                 Background="#101523"
                 BorderBrush="#232c43"
