@@ -703,28 +703,11 @@ public class PortalWinTile : PortalWinTileBase
     private void HandleApproval(PortalWinConfig config, Portal.Common.Models.DeviceModel targetDevice)
     {
         UpdateStatus("Approved! Loading credentials...");
-        var canonicalUser = IdentityHelper.ToCanonical(User?.QualifiedUserName)
-            ?? IdentityHelper.ToCanonical(_usernameControl?.Text)
-            ?? IdentityHelper.ToCanonical(User?.UserName);
-        var shortUser = IdentityHelper.GetShortUsername(User?.QualifiedUserName)
-            ?? IdentityHelper.GetShortUsername(_usernameControl?.Text)
-            ?? IdentityHelper.GetShortUsername(User?.UserName);
-
-        Portal.Common.Models.DeviceAccount? targetAccount = targetDevice.Accounts.FirstOrDefault(a =>
-            IdentityHelper.EqualsIgnoreCase(
-                IdentityHelper.ToCanonical(a.Username, a.Domain),
-                canonicalUser));
-
-        if (targetAccount == null && !string.IsNullOrEmpty(shortUser))
-        {
-            targetAccount = targetDevice.Accounts.FirstOrDefault(a =>
-                IdentityHelper.EqualsIgnoreCase(IdentityHelper.GetShortUsername(a.Username), shortUser));
-
-            if (targetAccount != null)
-            {
-                Logger.LogWarning($"[Tile] approval_account_fallback reason=identity_mismatch requested='{canonicalUser ?? shortUser}' matchedShort='{targetAccount.Username}'");
-            }
-        }
+        var targetAccount = CredentialProviderTilePolicy.ResolveApprovalAccount(
+            targetDevice,
+            User?.QualifiedUserName,
+            User?.UserName,
+            _usernameControl?.Text);
 
         if (targetAccount != null)
         {
@@ -743,7 +726,11 @@ public class PortalWinTile : PortalWinTileBase
         }
         else
         {
-            Logger.LogWarning($"[Tile] approval_account_match_failed selected='{canonicalUser ?? shortUser ?? "unknown"}' device='{targetDevice.Name}' accounts='{targetDevice.Accounts.Count}'");
+            var selected = User?.QualifiedUserName
+                ?? _usernameControl?.Text
+                ?? User?.UserName
+                ?? "unknown";
+            Logger.LogWarning($"[Tile] approval_account_match_failed selected='{selected}' device='{targetDevice.Name}' accounts='{targetDevice.Accounts.Count}'");
             UpdateStatus("Approved, but no account matched.");
         }
 

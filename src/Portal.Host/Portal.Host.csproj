@@ -28,6 +28,7 @@
         <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
         <PackageReference Include="System.Management" Version="9.0.8" />
         <ProjectReference Include="..\Portal.Common\Portal.Common.csproj" />
+        <ProjectReference Include="..\Portal.CredentialProvider\Portal.CredentialProvider.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>
 
     <PropertyGroup>
@@ -35,10 +36,10 @@
         <Company>xXTeam</Company>
         <Product>Portal Host (Windows)</Product>
         <Copyright>Copyright © 2026</Copyright>
-		<Version>1.1.4</Version>
-		<AssemblyVersion>1.1.4.0</AssemblyVersion>
-		<FileVersion>1.1.4.0</FileVersion>
-		<InformationalVersion>1.1.4-Eve-Stable-Release</InformationalVersion>
+		<Version>1.2.1</Version>
+		<AssemblyVersion>1.2.1.0</AssemblyVersion>
+		<FileVersion>1.2.1.0</FileVersion>
+		<InformationalVersion>1.2.1-Eve-Stable-Release</InformationalVersion>
     </PropertyGroup>
 
     <Target Name="SignOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
@@ -46,5 +47,14 @@
         <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(TargetDir)$(TargetName).exe&quot;" Condition="Exists('$(TargetDir)$(TargetName).exe')" />
     </Target>
 
+    <Target Name="CopyCredentialProviderOutput" AfterTargets="Build">
+        <ItemGroup>
+            <CredentialProviderOutput Include="..\Portal.CredentialProvider\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(CredentialProviderOutput)"
+            DestinationFiles="@(CredentialProviderOutput->'$(TargetDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true" />
+    </Target>
 
 </Project>

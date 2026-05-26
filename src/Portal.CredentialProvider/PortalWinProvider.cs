@@ -37,13 +37,7 @@ public class PortalWinProvider : PortalWinProviderBase
             PortalWinTile.ResetAutoRequestClaim();
             ResolvePreferredDefaultUser();
 
-            var supported = cpus switch
-            {
-                UsageScenario.Logon => true,
-                UsageScenario.UnlockWorkstation => true,
-                UsageScenario.CredUI => true,
-                _ => false
-            };
+            var supported = CredentialProviderTilePolicy.IsUsageScenarioSupported(cpus, dwFlags);
             Logger.Log($"[PortalWinProvider] Scenario supported? {supported}");
             return supported;
         }
@@ -100,7 +94,9 @@ public class PortalWinProvider : PortalWinProviderBase
         yield return cancelButton;
 
         var usernameField = new TextboxControl("UsernameField", "Username");
-        usernameField.State = FieldState.Hidden;
+        usernameField.State = cpus == UsageScenario.CredUI
+            ? FieldState.DisplayInSelectedTile
+            : FieldState.Hidden;
         yield return usernameField;
 
         var passwordField = new SecurePasswordTextboxControl("PasswordField", "Password");
@@ -110,8 +106,8 @@ public class PortalWinProvider : PortalWinProviderBase
         yield return new SubmitButtonControl("SubmitButton", "Unlock", passwordField);
     }
 
-    public override bool ShouldIncludeGenericTile() => true;
-    public override bool ShouldIncludeUserTile(CredentialProviderUser user) => true;
+    public override bool ShouldIncludeGenericTile() => CredentialProviderTilePolicy.ShouldIncludeGenericTile(UsageScenario);
+    public override bool ShouldIncludeUserTile(CredentialProviderUser user) => CredentialProviderTilePolicy.ShouldIncludeUserTile(UsageScenario);
     public override CredentialTile CreateGenericTile() => new PortalWinTile(this);
     public override CredentialTile2 CreateUserTile(CredentialProviderUser user)
     {
