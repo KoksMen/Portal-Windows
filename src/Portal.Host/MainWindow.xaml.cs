@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Security;
 using System.Threading.Tasks;
 using System.Windows;
@@ -7,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Interop;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Portal.Host.Models;
@@ -17,6 +19,8 @@ namespace Portal.Host;
 
 public partial class MainWindow : Window
 {
+    private const int WmGetMinMaxInfo = 0x0024;
+    private const uint MonitorDefaultToNearest = 0x00000002;
     private readonly MainViewModel _viewModel;
     private readonly IDialogService _dialogService;
     private TaskCompletionSource<bool>? _notificationTcs;
@@ -39,9 +43,9 @@ public partial class MainWindow : Window
         _viewModel.OpenLogsWindowRequested += OnOpenLogsWindowRequested;
 
         Loaded += MainWindow_Loaded;
+        SourceInitialized += MainWindow_SourceInitialized;
         StateChanged += (_, _) =>
         {
-            ApplyMaximizedWorkArea();
             UpdateWindowToggleGlyph();
             UpdateWindowSurfaceClip();
         };
@@ -287,22 +291,85 @@ public partial class MainWindow : Window
         UpdateWindowToggleGlyph();
     }
 
-    /// <summary>
-    /// A borderless WPF window can otherwise maximize into the taskbar area.
-    /// Restrict it to Windows' usable work area so the bottom controls remain clickable.
-    /// </summary>
-    private void ApplyMaximizedWorkArea()
+    private void MainWindow_SourceInitialized(object? sender, EventArgs e)
     {
-        if (WindowState == WindowState.Maximized)
+        var handle = new WindowInteropHelper(this).Handle;
+        HwndSource.FromHwnd(handle)?.AddHook(WindowMessageHook);
+    }
+
+    /// <summary>
+    /// Makes a borderless window maximize exactly to the monitor work area. Unlike assigning
+    /// MaxWidth/MaxHeight, this preserves the native window bounds and leaves no empty strips.
+    /// </summary>
+    private static IntPtr WindowMessageHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (message != WmGetMinMaxInfo)
         {
-            var workArea = SystemParameters.WorkArea;
-            MaxWidth = workArea.Width;
-            MaxHeight = workArea.Height;
-            return;
+            return IntPtr.Zero;
         }
 
-        MaxWidth = double.PositiveInfinity;
-        MaxHeight = double.PositiveInfinity;
+        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
+        if (monitor == IntPtr.Zero)
+        {
+            return IntPtr.Zero;
+        }
+
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return IntPtr.Zero;
+        }
+
+        var minMaxInfo = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+        minMaxInfo.MaxPosition.X = monitorInfo.Work.Left - monitorInfo.Monitor.Left;
+        minMaxInfo.MaxPosition.Y = monitorInfo.Work.Top - monitorInfo.Monitor.Top;
+        minMaxInfo.MaxSize.X = monitorInfo.Work.Right - monitorInfo.Work.Left;
+        minMaxInfo.MaxSize.Y = monitorInfo.Work.Bottom - monitorInfo.Work.Top;
+        Marshal.StructureToPtr(minMaxInfo, lParam, false);
+        handled = true;
+        return IntPtr.Zero;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PointNative
+    {
+        public int X;
+        public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MinMaxInfo
+    {
+        public PointNative Reserved;
+        public PointNative MaxSize;
+        public PointNative MaxPosition;
+        public PointNative MinTrackSize;
+        public PointNative MaxTrackSize;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RectNative
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public RectNative Monitor;
+        public RectNative Work;
+        public uint Flags;
     }
 
     private void UpdateWindowToggleGlyph()
