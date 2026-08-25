@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
-using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
@@ -190,11 +189,15 @@ public class NetworkPairingService
             }
 
             var ips = await _networkService.GetLocalIPsAsync(config.VpnCompatibilityModeEnabled);
-            var advertiseIp = ips.FirstOrDefault(ip => IPAddress.TryParse(ip, out var address) && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+            var advertiseIp = ips.FirstOrDefault(ip => System.Net.IPAddress.TryParse(ip, out var address) && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
 
             _mdns.Stop();
             _mdns.Start(config, "pair", advertiseIp);
             Logger.Log($"[NetworkPairingService] Pairing advertisement refreshed ({reason}). Address: {advertiseIp ?? "none"}.");
+            if (!string.Equals(reason, "listener started", StringComparison.OrdinalIgnoreCase))
+            {
+                ActivityJournal.Record("network", "📶", "Network address refreshed", "Portal updated pairing discovery after a network change.");
+            }
             AdvertisementAddressChanged?.Invoke(advertiseIp);
         }
         finally
