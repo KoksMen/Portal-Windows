@@ -41,6 +41,7 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         StateChanged += (_, _) =>
         {
+            ApplyMaximizedWorkArea();
             UpdateWindowToggleGlyph();
             UpdateWindowSurfaceClip();
         };
@@ -284,6 +285,24 @@ public partial class MainWindow : Window
             ? WindowState.Normal
             : WindowState.Maximized;
         UpdateWindowToggleGlyph();
+    }
+
+    /// <summary>
+    /// A borderless WPF window can otherwise maximize into the taskbar area.
+    /// Restrict it to Windows' usable work area so the bottom controls remain clickable.
+    /// </summary>
+    private void ApplyMaximizedWorkArea()
+    {
+        if (WindowState == WindowState.Maximized)
+        {
+            var workArea = SystemParameters.WorkArea;
+            MaxWidth = workArea.Width;
+            MaxHeight = workArea.Height;
+            return;
+        }
+
+        MaxWidth = double.PositiveInfinity;
+        MaxHeight = double.PositiveInfinity;
     }
 
     private void UpdateWindowToggleGlyph()
