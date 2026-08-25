@@ -526,6 +526,7 @@ public partial class MainViewModel : ObservableObject
         _providerSetup = providerSetup;
         _certManager = certManager;
         _networkPairing = networkPairing;
+        _networkPairing.AdvertisementAddressChanged += OnPairingAdvertisementAddressChanged;
         _networkService = networkService;
         _qrCodeService = qrCodeService;
         _providerLocator = providerLocator;
@@ -2647,6 +2648,39 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private void OnPairingAdvertisementAddressChanged(string? advertisedIp)
+    {
+        if (Application.Current?.Dispatcher == null)
+        {
+            return;
+        }
+
+        _ = Application.Current.Dispatcher.InvokeAsync(() =>
+            _ = RefreshPairingNetworkAddressAsync(advertisedIp));
+    }
+
+    private async Task RefreshPairingNetworkAddressAsync(string? advertisedIp)
+    {
+        if (!StepPairingVis || _pairingContext.SelectedTransport != TransportType.Network)
+        {
+            return;
+        }
+
+        await UpdatePairingDisplayParamsAsync(_pairingContext.PairingCode);
+
+        if (!string.IsNullOrWhiteSpace(advertisedIp))
+        {
+            var advertisedOption = AvailableLocalIps.FirstOrDefault(option =>
+                string.Equals(option.IpAddress, advertisedIp, StringComparison.OrdinalIgnoreCase));
+            if (advertisedOption != null)
+            {
+                SelectedPairIp = advertisedOption;
+            }
+        }
+
+        WizPairInfo = "Network changed — QR code updated for the current connection.";
+    }
+
     private void RefreshNetworkQrPayload(int? providedCode = null, string? providedHostName = null)
     {
         int codeInt = providedCode ?? (int.TryParse(_pairingContext.PairingCode, out var parsedCode) ? parsedCode : 0);
@@ -3195,6 +3229,7 @@ public partial class MainViewModel : ObservableObject
 
     public void OnWindowClosing()
     {
+        _networkPairing.AdvertisementAddressChanged -= OnPairingAdvertisementAddressChanged;
         _pairingCts?.Cancel();
         _networkPairing.StopPairing();
         _btPairing?.Stop();
