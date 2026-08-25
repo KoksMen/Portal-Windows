@@ -69,6 +69,7 @@ public partial class MainViewModel : ObservableObject
     private DeviceModel? _certificateInfoDevice;
 
     private CancellationTokenSource? _pairingCts;
+    private string? _pairingStatusRaw;
     private CancellationTokenSource? _wizardSetupCts;
     private CancellationTokenSource? _busyOperationCts;
     private TaskCompletionSource<bool>? _busyResultTcs;
@@ -144,8 +145,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
-    public string AppVersion => "v1.2.1";
-    public string AppReleaseVersion => "1.2.1-Eve-Stable-Release";
+    public string AppVersion => "v1.3.0";
+    public string AppReleaseVersion => "1.3.0-Rin";
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.
@@ -855,7 +856,7 @@ public partial class MainViewModel : ObservableObject
                 ShowSetupPanel = !(IsServiceActive && _config.Devices.Any());
                 OnPropertyChanged(nameof(ShowConnectedPanel));
 
-                IpAddressText = "Your IP for client: " + (ips.FirstOrDefault() ?? Services.LocalizationService.T("Unknown"));
+                IpAddressText = Services.LocalizationService.T("Your IP for client: ") + (ips.FirstOrDefault() ?? Services.LocalizationService.T("Unknown"));
 
                 // Do not overwrite unsaved Settings edits while Settings screen is open.
                 if (ShowDashboard)
@@ -925,11 +926,14 @@ public partial class MainViewModel : ObservableObject
     {
         _config.UiLanguage = string.Equals(value, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
         _config.Save();
+        ApplyUiLanguage();
+    }
+
+    public void ApplyUiLanguage()
+    {
         LocalizationService.ApplyToMainWindow(_config.UiLanguage);
         RefreshLocalizedTexts();
     }
-
-    public void ApplyUiLanguage() => LocalizationService.ApplyToMainWindow(_config.UiLanguage);
 
     /// <summary>
     /// Recomputes every dynamic, language-dependent text after a language switch.
@@ -939,6 +943,16 @@ public partial class MainViewModel : ObservableObject
     {
         // Dashboard / status area (async: MainStatusText, SetupIssue*, ClientCountText, IpAddressText, ProviderInstallButtonText).
         _ = RefreshStatusAsync();
+        if (!string.IsNullOrEmpty(_pairingStatusRaw))
+            WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
+        if (StepPairingVis)
+        {
+            var remaining = TimeSpan.FromMinutes(2) - (DateTime.Now - _pairingStartTime);
+            WizExpiresInfo = remaining.TotalSeconds <= 0
+                ? Services.LocalizationService.T("Code Expired")
+                : BuildCodeExpiresText(remaining);
+        }
+        BusyOperationHintText = Services.LocalizationService.T("Action is in progress. Please wait and avoid interacting with Host until it finishes.");
 
         // Updates section.
         UpdateCurrentVersionText = BuildCurrentVersionText();
@@ -1197,7 +1211,7 @@ public partial class MainViewModel : ObservableObject
 
         CertificateInfoSummary = Services.LocalizationService.TF("Subject: {0}", cert.Subject);
         CertificateInfoDetails =
-            $"Thumbprint: {FormatCertificateHash(cert.Thumbprint)}{Environment.NewLine}" +
+            $"{Services.LocalizationService.T("Thumbprint: ")}{FormatCertificateHash(cert.Thumbprint)}{Environment.NewLine}" +
             $"{Services.LocalizationService.T("Valid from: ")}{cert.NotBefore:G}{Environment.NewLine}" +
             $"{Services.LocalizationService.T("Valid to: ")}{cert.NotAfter:G}";
     }
@@ -1349,6 +1363,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _busyOperationTitle = Services.LocalizationService.T("Working");
     [ObservableProperty] private string _busyOperationStatus = Services.LocalizationService.T("Please wait...");
+    [ObservableProperty] private string _busyOperationHintText = Services.LocalizationService.T("Action is in progress. Please wait and avoid interacting with Host until it finishes.");
     [ObservableProperty] private bool _isBusyOperationCancelable = true;
     [ObservableProperty] private bool _canCancelBusyOperation = true;
     [ObservableProperty] private string _busyCancelButtonText = Services.LocalizationService.T("Cancel action");
@@ -1586,7 +1601,7 @@ public partial class MainViewModel : ObservableObject
     private async Task FixFirewallAsync()
     {
         int port = _config.Port;
-        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), $"Re-add firewall rules for port {port}?", true);
+        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), Services.LocalizationService.TF("Re-add firewall rules for port {0}?", port), true);
         if (!confirmed)
         {
             return;
@@ -1594,7 +1609,7 @@ public partial class MainViewModel : ObservableObject
 
         var outcome = await RunBusyOperationAsync(
             Services.LocalizationService.T("Updating firewall rules"),
-            $"Rebuilding Portal firewall rules for port {port}...",
+            Services.LocalizationService.TF("Rebuilding Portal firewall rules for port {0}...", port),
             async cancellationToken =>
             {
                 await _firewall.RemoveFirewallRule(cancellationToken);
@@ -2636,17 +2651,17 @@ public partial class MainViewModel : ObservableObject
                     _pairingContext.TargetDomain = WizInputDomain;
                     _pairingContext.SelectedTransport = WizIsNetworkTransport ? Common.TransportType.Network : Common.TransportType.Bluetooth;
 
-                    var pairingResult = await RunPairingLoopAsync();
-
-                    if (_wizardSetupCts.IsCancellationRequested || !IsCurrentWizardSession(sessionId) || pairingResult == PairingStepResult.Cancelled)
+                    PairingStepResult pairingResult;
+                    do
                     {
-                        return;
-                    }
+                        pairingResult = await RunPairingLoopAsync();
 
-                    if (pairingResult == PairingStepResult.RetryCurrentTransport)
-                    {
-                        continue;
+                        if (_wizardSetupCts.IsCancellationRequested || !IsCurrentWizardSession(sessionId) || pairingResult == PairingStepResult.Cancelled)
+                        {
+                            return;
+                        }
                     }
+                    while (pairingResult == PairingStepResult.RetryCurrentTransport);
 
                     if (pairingResult == PairingStepResult.BackToTransport)
                     {
@@ -2720,9 +2735,10 @@ public partial class MainViewModel : ObservableObject
         _pairingStartTime = DateTime.Now;
         var transport = _pairingContext.SelectedTransport;
         var sessionId = Interlocked.Increment(ref _pairingSessionId);
-        WizPairInfo = transport == TransportType.Network
-            ? IsRussianUi ? "Служба привязки по сети запущена. Ожидание устройства..." : "Network pairing service started. Waiting for device..."
-            : IsRussianUi ? "Служба привязки по Bluetooth запущена. Ожидание устройства..." : "Bluetooth pairing service started. Waiting for device...";
+        _pairingStatusRaw = transport == TransportType.Network
+            ? "Network pairing service started. Waiting for device..."
+            : "Bluetooth pairing service started. Waiting for device...";
+        WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
 
         if (code != null) WizPairCode = $"{code.Substring(0, 3)} {code.Substring(3)}";
         WizExpiresInfo = BuildCodeExpiresText(TimeSpan.FromMinutes(2));
@@ -2820,8 +2836,33 @@ public partial class MainViewModel : ObservableObject
             if (!StepPairingVis) return;
             if (sessionId != _pairingSessionId) return;
             if (_pairingContext.SelectedTransport != expectedTransport) return;
-            WizPairInfo = status;
+            _pairingStatusRaw = status;
+            WizPairInfo = TranslatePairingStatus(status);
         });
+    }
+
+    private static string TranslatePairingStatus(string status)
+    {
+        var translated = Services.LocalizationService.T(status);
+        if (!string.Equals(translated, status, StringComparison.Ordinal)) return translated;
+
+        const string pairedPrefix = "Paired: ";
+        if (status.StartsWith(pairedPrefix, StringComparison.Ordinal))
+            return Services.LocalizationService.TF("Paired: {0}", status[pairedPrefix.Length..]);
+
+        const string connectedPrefix = "Connected: ";
+        const string verifyingSuffix = ". Verifying code...";
+        if (status.StartsWith(connectedPrefix, StringComparison.Ordinal) && status.EndsWith(verifyingSuffix, StringComparison.Ordinal))
+            return Services.LocalizationService.TF("Connected: {0}. Verifying code...", status[connectedPrefix.Length..^verifyingSuffix.Length]);
+
+        const string bluetoothErrorPrefix = "Bluetooth error: ";
+        if (status.StartsWith(bluetoothErrorPrefix, StringComparison.Ordinal))
+            return Services.LocalizationService.TF("Bluetooth error: {0}", status[bluetoothErrorPrefix.Length..]);
+
+        const string errorPrefix = "Error: ";
+        return status.StartsWith(errorPrefix, StringComparison.Ordinal)
+            ? Services.LocalizationService.TF("Error: {0}", status[errorPrefix.Length..])
+            : status;
     }
 
     private async Task UpdatePairingDisplayParamsAsync(string code)

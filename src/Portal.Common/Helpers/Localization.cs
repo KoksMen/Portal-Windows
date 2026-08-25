@@ -30,6 +30,7 @@ public static class Localization
     {
         // --- Settings / dashboard ---
         ["Interface language"] = "Язык интерфейса",
+        ["Portal Manager"] = "Менеджер Portal",
         ["Choose the language for the Portal interface. The selection is saved automatically."] = "Выберите язык интерфейса Portal. Выбор сохраняется автоматически.",
         ["Settings"] = "Настройки",
         ["← Back"] = "← Назад",
@@ -91,10 +92,12 @@ public static class Localization
         ,["⚠ Reset & Re-create All"] = "⚠ Сбросить и настроить заново"
         ,["✓ Service Active & Ready"] = "✓ Служба активна и готова"
         ,["✨ Recent Activity"] = "✨ Последняя активность"
+        ,["✨ Recent activity"] = "✨ Последняя активность"
         ,["✨  Recent Activity"] = "✨  Последняя активность"
         ,["⚙  Advanced Settings"] = "⚙  Расширенные настройки"
         ,["🌐 Network (Wi-Fi / LAN)"] = "🌐 Сеть (Wi‑Fi / LAN)"
         ,["Bluetooth"] = "Bluetooth"
+        ,["📶 Bluetooth"] = "📶 Bluetooth"
         ,["Pair over local network. Both devices must be on the same Wi-Fi/LAN."] = "Привязка по локальной сети. Оба устройства должны быть в одной сети Wi‑Fi/LAN."
         ,["Pair over Bluetooth. No Wi-Fi required. Devices must be in range."] = "Привязка по Bluetooth. Wi‑Fi не требуется. Устройства должны быть в зоне действия."
         ,["↻ Refresh Code"] = "↻ Обновить код"
@@ -165,6 +168,20 @@ public static class Localization
         ,["Month"] = "Месяц"
         ,["Year"] = "Год"
         ,["Notification"] = "Уведомление"
+        ,["Portal provider started"] = "Поставщик Portal запущен"
+        ,["New device paired"] = "Новое устройство привязано"
+        ,["Host is ready. Pairing, unlock and network recovery events will appear here."] = "Компьютер готов. Здесь будут отображаться события привязки, разблокировки и восстановления сети."
+        ,["Credential Provider is ready on the Windows lock screen."] = "Поставщик учётных данных готов на экране блокировки Windows."
+        ,["Network unlock service failed"] = "Сетевая служба разблокировки не запущена"
+        ,["Credential Provider could not start its Wi-Fi unlock service."] = "Поставщик учётных данных не смог запустить службу разблокировки по Wi‑Fi."
+        ,["Bluetooth unlock service failed"] = "Служба разблокировки Bluetooth не запущена"
+        ,["Credential Provider could not start its Bluetooth unlock service."] = "Поставщик учётных данных не смог запустить службу разблокировки Bluetooth."
+        ,["Unlock request paused"] = "Запрос разблокировки приостановлен"
+        ,["Too many recent failed requests. Please wait and try again."] = "Слишком много недавних неудачных запросов. Подождите и попробуйте снова."
+        ,["Unlock request rejected"] = "Запрос разблокировки отклонён"
+        ,["The device could not be verified."] = "Не удалось проверить устройство."
+        ,["Network address refreshed"] = "Сетевой адрес обновлён"
+        ,["Portal updated pairing discovery after a network change."] = "Portal обновил обнаружение для привязки после изменения сети."
         ,["YES"] = "ДА"
         ,["NO"] = "НЕТ"
 
@@ -231,6 +248,9 @@ public static class Localization
         ,["No setup actions required."] = "Действия по настройке не требуются."
         ,["{0} trusted devices"] = "Доверенных устройств: {0}"
         ,["Your IP for client: "] = "Ваш IP для клиента: "
+        ,["Thumbprint: "] = "Отпечаток: "
+        ,["Re-add firewall rules for port {0}?"] = "Повторно добавить правила брандмауэра для порта {0}?"
+        ,["Rebuilding Portal firewall rules for port {0}..."] = "Пересоздание правил брандмауэра Portal для порта {0}..."
         ,["Unknown"] = "Неизвестно"
         ,["Preparing setup wizard"] = "Подготовка мастера настройки"
         ,["Checking Host readiness before opening setup..."] = "Проверка готовности Host перед открытием настройки..."
@@ -407,6 +427,15 @@ public static class Localization
         ,["Code Expired"] = "Срок действия кода истёк"
         ,["Network pairing service started. Waiting for device..."] = "Служба привязки по сети запущена. Ожидание устройства..."
         ,["Bluetooth pairing service started. Waiting for device..."] = "Служба привязки по Bluetooth запущена. Ожидание устройства..."
+        ,["Device connecting via Bluetooth..."] = "Устройство подключается по Bluetooth..."
+        ,["Paired: {0}"] = "Привязано: {0}"
+        ,["Connected: {0}. Verifying code..."] = "Подключено: {0}. Проверка кода..."
+        ,["Invalid pairing code."] = "Неверный код привязки."
+        ,["Pairing rejected: account already linked."] = "Привязка отклонена: аккаунт уже привязан."
+        ,["Pairing rejected: account already linked on another transport."] = "Привязка отклонена: аккаунт уже привязан через другой канал."
+        ,["Unexpected message from device."] = "Неожиданное сообщение от устройства."
+        ,["Bluetooth error: {0}"] = "Ошибка Bluetooth: {0}"
+        ,["Error: {0}"] = "Ошибка: {0}"
         ,["Network changed — QR code updated for the current connection."] = "Сеть изменилась — QR-код обновлён для текущего подключения."
         ,["This account already has a paired device for {0} transport."] = "Для этого аккаунта уже есть привязанное устройство через канал «{0}»."
         ,["Starting Portal"] = "Запуск Portal"

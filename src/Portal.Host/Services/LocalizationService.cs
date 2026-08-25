@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Portal.Common.Helpers;
 using Localization = Portal.Common.Helpers.Localization;
 
@@ -21,6 +22,7 @@ public static class LocalizationService
         public string? Header { get; init; }
         public string? ToolTip { get; init; }
         public string? Tag { get; init; }
+        public string? Title { get; init; }
     }
 
     private static readonly ConditionalWeakTable<DependencyObject, OriginalValues> Originals = new();
@@ -52,7 +54,8 @@ public static class LocalizationService
         }
 
         Localization.SetCurrentLanguage(language);
-        Apply(window, IsRussian);
+        ApplyToOpenWindows();
+        ScheduleApplyToOpenWindows(window.Dispatcher);
     }
 
     /// <summary>Applies current language to any window (logs, toast, dialogs).</summary>
@@ -68,6 +71,32 @@ public static class LocalizationService
         }
 
         Apply(window, IsRussian);
+        ScheduleApply(window);
+    }
+
+    private static void ApplyToOpenWindows()
+    {
+        if (Application.Current == null)
+            return;
+
+        foreach (var window in Application.Current.Windows.OfType<Window>().ToArray())
+            Apply(window, IsRussian);
+    }
+
+    // Controls created from data templates can appear after the language handler
+    // returns, so apply once again after the dispatcher has materialized them.
+    private static void ScheduleApplyToOpenWindows(Dispatcher dispatcher)
+    {
+        dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(ApplyToOpenWindows));
+    }
+
+    private static void ScheduleApply(Window window)
+    {
+        window.Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+        {
+            if (window.IsLoaded)
+                Apply(window, IsRussian);
+        }));
     }
 
     private static void Apply(DependencyObject root, bool useRussian)
@@ -97,7 +126,8 @@ public static class LocalizationService
                 Content = element is ContentControl contentControl && contentControl.Content is string content && !BindingOperations.IsDataBound(contentControl, ContentControl.ContentProperty) ? content : null,
                 Header = element is HeaderedContentControl headered && headered.Header is string header && !BindingOperations.IsDataBound(headered, HeaderedContentControl.HeaderProperty) ? header : null,
                 ToolTip = element is FrameworkElement frameworkElement && frameworkElement.ToolTip is string toolTip ? toolTip : null,
-                Tag = element is FrameworkElement taggedElement && taggedElement.Tag is string tag ? tag : null
+                Tag = element is FrameworkElement taggedElement && taggedElement.Tag is string tag ? tag : null,
+                Title = element is Window window ? window.Title : null
             };
             Originals.Add(element, original);
         }
@@ -112,6 +142,8 @@ public static class LocalizationService
             targetElement.ToolTip = Translate(original.ToolTip, useRussian);
         if (element is FrameworkElement targetTaggedElement && original.Tag != null)
             targetTaggedElement.Tag = Translate(original.Tag, useRussian);
+        if (element is Window targetWindow && original.Title != null)
+            targetWindow.Title = Translate(original.Title, useRussian);
 
         var visualChildren = element is Visual || element is System.Windows.Media.Media3D.Visual3D
             ? VisualTreeHelper.GetChildrenCount(element)

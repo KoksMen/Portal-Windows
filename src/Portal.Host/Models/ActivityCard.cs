@@ -1,4 +1,5 @@
 using Portal.Common.Models;
+using Portal.Common.Helpers;
 
 namespace Portal.Host.Models;
 
@@ -49,16 +50,35 @@ public sealed class ActivityCard
     private static string Translate(string value, bool useRussian)
     {
         if (!useRussian) return value;
-        return value switch
-        {
-            "Portal started" => "Portal запущен",
-            "PC unlock approved" => "Разблокировка ПК подтверждена",
-            "Unlock request cancelled" => "Запрос разблокировки отменён",
-            "Unlock request declined" => "Запрос разблокировки отклонён",
-            "Host is ready. Pairing, unlock and network recovery events will appear here." => "Компьютер готов. Здесь будут отображаться привязка, разблокировки и восстановление сети.",
-            "The remote unlock request was cancelled." => "Удалённый запрос разблокировки отменён.",
-            "A paired device declined the remote unlock request." => "Привязанное устройство отклонило удалённый запрос разблокировки.",
-            _ => value
-        };
+
+        var translated = Localization.T(value);
+        if (!string.Equals(translated, value, StringComparison.Ordinal))
+            return translated;
+
+        const string bluetoothApprovalSuffix = " approved an unlock request over Bluetooth.";
+        if (value.EndsWith(bluetoothApprovalSuffix, StringComparison.Ordinal))
+            return $"Устройство {value[..^bluetoothApprovalSuffix.Length]} подтвердило запрос разблокировки по Bluetooth.";
+
+        const string wifiApprovalSuffix = " approved an unlock request over Wi-Fi.";
+        if (value.EndsWith(wifiApprovalSuffix, StringComparison.Ordinal))
+            return $"Устройство {value[..^wifiApprovalSuffix.Length]} подтвердило запрос разблокировки по Wi‑Fi.";
+
+        const string bothApprovalSuffix = " approved an unlock request over Wi-Fi or Bluetooth.";
+        if (value.EndsWith(bothApprovalSuffix, StringComparison.Ordinal))
+            return $"Устройство {value[..^bothApprovalSuffix.Length]} подтвердило запрос разблокировки по Wi‑Fi или Bluetooth.";
+
+        const string bluetoothReadySuffix = " is ready to unlock this PC via Bluetooth.";
+        if (value.EndsWith(bluetoothReadySuffix, StringComparison.Ordinal))
+            return $"Устройство {value[..^bluetoothReadySuffix.Length]} готово разблокировать этот ПК по Bluetooth.";
+
+        const string wifiReadySuffix = " is ready to unlock this PC via Wi-Fi.";
+        if (value.EndsWith(wifiReadySuffix, StringComparison.Ordinal))
+            return $"Устройство {value[..^wifiReadySuffix.Length]} готово разблокировать этот ПК по Wi‑Fi.";
+
+        const string disabledSuffix = " is disabled in Portal settings.";
+        if (value.EndsWith(disabledSuffix, StringComparison.Ordinal))
+            return $"Устройство {value[..^disabledSuffix.Length]} отключено в настройках Portal.";
+
+        return value;
     }
 }
