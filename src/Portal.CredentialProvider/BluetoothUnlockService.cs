@@ -314,6 +314,7 @@ public class BluetoothUnlockService : IDisposable
                 {
                     await BtProtocol.SendMessageAsync(stream,
                         new BtUnlockResponse { Success = true }, _cts?.Token ?? CancellationToken.None);
+                    ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{unlockDevice.Name} approved an unlock request over Bluetooth.", deviceName: unlockDevice.Name, transport: "Bluetooth");
                     UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
                 }
                 else
@@ -357,6 +358,7 @@ public class BluetoothUnlockService : IDisposable
                             {
                                 await BtProtocol.SendMessageAsync(stream,
                                     new BtUnlockResponse { Success = true }, _cts?.Token ?? CancellationToken.None);
+                                ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{unlockDevice.Name} approved an unlock request over Bluetooth.", deviceName: unlockDevice.Name, transport: "Bluetooth");
                                 UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
                             }
                             else

@@ -35,6 +35,9 @@ public class PortalWinConfig
     [JsonPropertyName("port")]
     public int Port { get; set; } = 29170;
 
+    [JsonPropertyName("uiLanguage")]
+    public string UiLanguage { get; set; } = "ru";
+
     [JsonPropertyName("unlockMode")]
     public UnlockMode UnlockMode { get; set; } = UnlockMode.Both;
 

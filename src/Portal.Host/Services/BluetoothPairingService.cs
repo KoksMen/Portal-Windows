@@ -206,6 +206,7 @@ public class BluetoothPairingService : IDisposable
 
             _config!.Devices.Add(device);
             _config.Save();
+            ActivityJournal.Record("pairing", "🤝", "New device paired", $"{device.Name} is ready to unlock this PC via Bluetooth.", deviceName: device.Name, transport: "Bluetooth");
 
             return device;
         }

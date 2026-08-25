@@ -25,6 +25,7 @@ public class UnlockRequestHandler
         if (_attemptTracker.IsBlocked(clientIp))
         {
             Logger.LogWarning($"[UnlockHandler] Rejected for {clientIp}: Too many failed attempts.");
+            ActivityJournal.Record("unlock", "⏳", "Unlock request paused", "Too many recent failed requests. Please wait and try again.", false);
             return Results.Json(new UnlockResponse(false, "Too many requests"), statusCode: 429);
         }
 
@@ -34,6 +35,7 @@ public class UnlockRequestHandler
         {
             Logger.LogWarning($"[UnlockHandler] Validation failed for {clientIp}: Missing device context.");
             _attemptTracker.RecordFailure(clientIp);
+            ActivityJournal.Record("unlock", "🛡️", "Unlock request rejected", "The device could not be verified.", false);
             return Results.Json(new UnlockResponse(false, "Unauthorized"), statusCode: 403);
         }
 
@@ -48,6 +50,7 @@ public class UnlockRequestHandler
         {
             Logger.LogWarning($"[UnlockHandler] Rejected unlock request from disabled device: {device.IdsSafe()}");
             _attemptTracker.RecordFailure(clientIp);
+            ActivityJournal.Record("unlock", "🔒", "Unlock request rejected", $"{device.Name} is disabled in Portal settings.", false, device.Name);
             return Results.Json(new UnlockResponse(false, "Client disabled"), statusCode: 403);
         }
 
@@ -62,6 +65,7 @@ public class UnlockRequestHandler
 
         _attemptTracker.RecordSuccess(clientIp);
         Logger.Log($"[UnlockHandler] Unlock APPROVED for user: {account.Username} from {device.Name}");
+        ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
         UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
 
         return Results.Ok(new UnlockResponse(true, null));

@@ -7,8 +7,8 @@
     Title="Portal Manager"
     Width="540"
     Height="760"
-    MinWidth="540"
-    MinHeight="760"
+    MinWidth="480"
+    MinHeight="560"
     AllowsTransparency="True"
     Background="Transparent"
     Closing="Window_Closing"
@@ -197,6 +197,279 @@
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                 <Setter TargetName="MainBorder" Property="BorderBrush" Value="#6b95f7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ActivityDatePicker" TargetType="DatePicker">
+            <Setter Property="Foreground" Value="#EEF3FF" />
+            <Setter Property="Background" Value="#101728" />
+            <Setter Property="BorderBrush" Value="#37589F" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="SelectedDateFormat" Value="Short" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePicker">
+                        <Grid x:Name="PART_Root">
+                            <Border
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                ClipToBounds="True">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="34" />
+                                    </Grid.ColumnDefinitions>
+                                    <DatePickerTextBox
+                                x:Name="PART_TextBox"
+                                Padding="8,6"
+                                VerticalContentAlignment="Center"
+                                Foreground="{TemplateBinding Foreground}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="0">
+                                <DatePickerTextBox.Style>
+                                    <Style TargetType="DatePickerTextBox">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="DatePickerTextBox">
+                                                    <Grid>
+                                                        <Border
+                                                            x:Name="InputBorder"
+                                                            Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}">
+                                                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalContentAlignment="Center" />
+                                                        </Border>
+                                                        <TextBlock
+                                                            x:Name="Placeholder"
+                                                            Margin="{TemplateBinding Padding}"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            IsHitTestVisible="False"
+                                                            Foreground="#9CB4D8"
+                                                            Text="Choose date"
+                                                            Visibility="Collapsed" />
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="Text" Value="">
+                                                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsKeyboardFocused" Value="True">
+                                                            <Setter TargetName="InputBorder" Property="BorderBrush" Value="#71A1FF" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DatePickerTextBox.Style>
+                                    </DatePickerTextBox>
+                                    <Button
+                                x:Name="PART_Button"
+                                Grid.Column="1"
+                                Focusable="False"
+                                Background="#19345E"
+                                BorderThickness="0"
+                                ToolTip="Choose date">
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" Foreground="#BFD7FF" Text="&#xE787;" FontFamily="Segoe MDL2 Assets" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom" StaysOpen="False">
+                                <Popup.Resources>
+                                    <Style x:Key="ActivityCalendarDayButton" TargetType="CalendarDayButton">
+                                        <Setter Property="Foreground" Value="#DDE9FF" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Setter Property="Padding" Value="3" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="CalendarDayButton">
+                                                    <Border x:Name="DayBorder" Margin="1" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsToday" Value="True">
+                                                            <Setter TargetName="DayBorder" Property="BorderBrush" Value="#6B95F7" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="DayBorder" Property="Background" Value="#3567CC" />
+                                                            <Setter TargetName="DayBorder" Property="BorderBrush" Value="#76A8FF" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsInactive" Value="True">
+                                                            <Setter Property="Foreground" Value="#6E82A4" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="DayBorder" Property="Background" Value="#1F3966" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style x:Key="ActivityCalendarButton" TargetType="CalendarButton">
+                                        <Setter Property="Foreground" Value="#DDE9FF" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="CalendarButton">
+                                                    <Border x:Name="CalendarButtonBorder" Margin="2" Padding="5" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="CalendarButtonBorder" Property="Background" Value="#1F3966" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style x:Key="ActivityCalendarNavigationButton" TargetType="Button">
+                                        <Setter Property="Foreground" Value="#CFE0FF" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="NavigationButtonBorder" Padding="6" Background="{TemplateBinding Background}" CornerRadius="7">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="NavigationButtonBorder" Property="Background" Value="#1F3966" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsPressed" Value="True">
+                                                            <Setter TargetName="NavigationButtonBorder" Property="Background" Value="#3567CC" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style x:Key="ActivityCalendarHeaderButton" TargetType="Button" BasedOn="{StaticResource ActivityCalendarNavigationButton}">
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                        <Setter Property="FontSize" Value="13" />
+                                    </Style>
+                                    <Style x:Key="ActivityCalendarItem" TargetType="CalendarItem">
+                                        <Setter Property="Background" Value="#101728" />
+                                        <Setter Property="Foreground" Value="#EEF3FF" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="CalendarItem">
+                                                    <Grid x:Name="PART_Root">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="42" />
+                                                            <RowDefinition Height="*" />
+                                                        </Grid.RowDefinitions>
+                                                        <Grid Grid.Row="0" Margin="4,4,4,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="34" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="34" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Button x:Name="PART_PreviousButton" Style="{StaticResource ActivityCalendarNavigationButton}" Content="‹" FontSize="22" />
+                                                            <Button x:Name="PART_HeaderButton" Grid.Column="1" Style="{StaticResource ActivityCalendarHeaderButton}" />
+                                                            <Button x:Name="PART_NextButton" Grid.Column="2" Style="{StaticResource ActivityCalendarNavigationButton}" Content="›" FontSize="22" />
+                                                        </Grid>
+                                                        <Grid x:Name="PART_MonthView" Grid.Row="1" Margin="4,0,4,4" KeyboardNavigation.TabNavigation="Once">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="26" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" />
+                                                            </Grid.RowDefinitions>
+                                                        </Grid>
+                                                        <Grid x:Name="PART_YearView" Grid.Row="1" Margin="4,0,4,4" Visibility="Hidden" KeyboardNavigation.TabNavigation="Once">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="*" /><RowDefinition Height="*" /><RowDefinition Height="*" />
+                                                            </Grid.RowDefinitions>
+                                                        </Grid>
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Year">
+                                                            <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden" />
+                                                            <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Decade">
+                                                            <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden" />
+                                                            <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </ControlTemplate.Triggers>
+                                                    <ControlTemplate.Resources>
+                                                        <DataTemplate x:Key="{x:Static CalendarItem.DayTitleTemplateResourceKey}">
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#91ADD9" Text="{Binding}" />
+                                                        </DataTemplate>
+                                                    </ControlTemplate.Resources>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style x:Key="ActivityCalendar" TargetType="Calendar">
+                                        <Setter Property="Background" Value="#101728" />
+                                        <Setter Property="Foreground" Value="#EEF3FF" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="CalendarDayButtonStyle" Value="{StaticResource ActivityCalendarDayButton}" />
+                                        <Setter Property="CalendarButtonStyle" Value="{StaticResource ActivityCalendarButton}" />
+                                        <Setter Property="CalendarItemStyle" Value="{StaticResource ActivityCalendarItem}" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Calendar">
+                                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
+                                                        <CalendarItem x:Name="PART_CalendarItem" Style="{TemplateBinding CalendarItemStyle}" />
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Popup.Resources>
+                                <Border Margin="0,6,0,0" Padding="8" Background="#101728" BorderBrush="#37589F" BorderThickness="1" CornerRadius="12">
+                                    <Calendar x:Name="PART_Calendar" Width="270" Style="{StaticResource ActivityCalendar}" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ActivityDateInput" TargetType="TextBox">
+            <Setter Property="Foreground" Value="#EEF3FF" />
+            <Setter Property="Background" Value="#101728" />
+            <Setter Property="BorderBrush" Value="#37589F" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,7" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="InputBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="#71A1FF" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="#5781D4" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -774,7 +1047,13 @@
             x:Name="WindowContentClipHost"
             ClipToBounds="True"
             SizeChanged="WindowContentClipHost_SizeChanged">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
         <Border
+            Grid.Row="0"
+            x:Name="TitleBarBorder"
             Height="56"
             VerticalAlignment="Top"
             Background="#0e1320"
@@ -876,7 +1155,7 @@
             </Grid>
         </Border>
 
-        <Grid Margin="0,56,0,0">
+        <Grid Grid.Row="1">
         <Ellipse
             Width="400"
             Height="400"
@@ -1007,7 +1286,17 @@
                 </TextBlock>
 
                 <Button
-                    Margin="0,30,0,0"
+                    Height="40"
+                    Margin="0,24,0,0"
+                    Background="#172743"
+                    BorderBrush="#35598E"
+                    Command="{Binding ShowActivityCommand}"
+                    Content="✨  Recent Activity"
+                    Foreground="#DCE9FF"
+                    Style="{StaticResource SecondaryButton}" />
+
+                <Button
+                    Margin="0,12,0,0"
                     Background="Transparent"
                     BorderThickness="0"
                     Command="{Binding ShowSettingsCommand}"
@@ -1074,6 +1363,28 @@
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="30,24,30,18">
+
+                    <Expander
+                        Header="Interface language"
+                        IsExpanded="True"
+                        Style="{StaticResource SettingsSectionExpander}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Choose the language for the Portal interface. The selection is saved automatically."
+                                TextWrapping="Wrap" />
+                            <ComboBox
+                                x:Name="LanguageSelector"
+                                SelectedValue="{Binding SelectedLanguageCode}"
+                                SelectedValuePath="Tag"
+                                Style="{StaticResource PortalComboBox}">
+                                <ComboBoxItem Content="Русский" Tag="ru" />
+                                <ComboBoxItem Content="English" Tag="en" />
+                            </ComboBox>
+                        </StackPanel>
+                    </Expander>
 
                     <Expander
                         Header="Connected Devices"
@@ -1676,7 +1987,7 @@
                                 Margin="0,8,0,0"
                                 FontSize="12"
                                 Foreground="#9fa8c4"
-                                Text="{Binding UpdateCurrentVersionText, StringFormat='Current version: {0}'}"
+                                Text="{Binding UpdateCurrentVersionText}"
                                 TextWrapping="Wrap" />
                             <TextBlock
                                 Margin="0,4,0,0"
@@ -2253,7 +2564,7 @@
                                     Cursor="Hand"
                                     FontSize="20"
                                     Foreground="#8888a0"
-                                    ToolTip="Copy Code / Копировать код" />
+                                    ToolTip="Copy Code" />
                             </StackPanel>
                         </Border>
                         <ProgressBar
@@ -2573,7 +2884,7 @@
                         Margin="0,12,0,0"
                         FontSize="11"
                         Foreground="{StaticResource TextMuted}"
-                        Text="Action is in progress. Please wait and avoid interacting with Host until it finishes."
+                        Text="{Binding BusyOperationHintText}"
                         TextAlignment="Center"
                         TextWrapping="Wrap">
                         <TextBlock.Style>
@@ -2856,12 +3167,182 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <Grid
+            Background="#D908101C"
+            Panel.ZIndex="35"
+            Visibility="{Binding ShowActivityDialog, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                MinWidth="360"
+                MaxWidth="620"
+                MaxHeight="680"
+                Margin="24"
+                Padding="22"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#10192B"
+                BorderBrush="#3B5E99"
+                BorderThickness="1"
+                CornerRadius="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock FontSize="22" FontWeight="Bold" Foreground="#F1F6FF" Text="✨ Recent activity" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="#9BB0D7" Text="{Binding ActivitySummaryText}" />
+                        </StackPanel>
+                        <Button
+                            Width="28"
+                            Height="28"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Command="{Binding CloseActivityCommand}"
+                            Content="×"
+                            FontSize="20"
+                            ToolTip="Close activity"
+                            Style="{StaticResource InfoIconButton}" />
+                    </Grid>
+                    <Border
+                        Grid.Row="1"
+                        Margin="0,16,0,12"
+                        Padding="11"
+                        Background="#14223A"
+                        BorderBrush="#29466F"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                        <TextBlock FontSize="11" Foreground="#BDD1F4" Text="Activity helps you understand pairing, unlocks and network recovery. It never includes passwords, IP addresses or certificate data." TextWrapping="Wrap" />
+                    </Border>
+                    <Border
+                        Grid.Row="2"
+                        Margin="0,0,0,12"
+                        Padding="10"
+                        Background="#0C1628"
+                        BorderBrush="#263E65"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="SHOW" />
+                                <ComboBox ItemsSource="{Binding ActivityFilterOptions}" SelectedItem="{Binding SelectedActivityFilter}" Style="{StaticResource PortalComboBox}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="ORDER" />
+                                <ComboBox ItemsSource="{Binding ActivitySortOptions}" SelectedItem="{Binding SelectedActivitySort}" Style="{StaticResource PortalComboBox}" />
+                            </StackPanel>
+                            <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="FROM DATE" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <TextBox Width="38" ToolTip="Day" Text="{Binding ActivityFromDay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
+                                    <TextBlock Margin="4,0" VerticalAlignment="Center" Foreground="#6F8FC5" Text="/" />
+                                    <TextBox Width="38" ToolTip="Month" Text="{Binding ActivityFromMonth, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
+                                    <TextBlock Margin="4,0" VerticalAlignment="Center" Foreground="#6F8FC5" Text="/" />
+                                    <TextBox Width="58" ToolTip="Year" Text="{Binding ActivityFromYear, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
+                                </StackPanel>
+                                <Button Grid.Column="4" Width="34" Height="34" Command="{Binding RefreshActivityCommand}" Content="↻" FontSize="17" ToolTip="Refresh activity" Style="{StaticResource InfoIconButton}" />
+                                <Button Grid.Column="6" MinWidth="72" Command="{Binding ClearActivityFiltersCommand}" Content="Reset" FontSize="11" Style="{StaticResource SecondaryButton}" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding RecentActivity}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="0,0,0,8"
+                                        Padding="12"
+                                        Background="{Binding BackgroundColor}"
+                                        BorderBrush="{Binding AccentColor}"
+                                        BorderThickness="1"
+                                        CornerRadius="12">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock VerticalAlignment="Top" FontFamily="Segoe UI Emoji" FontSize="19" Foreground="#DDEAFF" Text="{Binding Icon}" />
+                                            <StackPanel Grid.Column="1" Margin="2,0,8,0">
+                                                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#F2F6FF" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#B6C7E5" Text="{Binding Details}" TextWrapping="Wrap" />
+                                                <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                                                    <Border
+                                                        Margin="0,0,6,0"
+                                                        Padding="7,3"
+                                                        Background="#183760"
+                                                        BorderBrush="#3B70B5"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7"
+                                                        Visibility="{Binding HasDeviceBadge, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="#D8E9FF" Text="{Binding DeviceBadge}" />
+                                                    </Border>
+                                                    <Border
+                                                        Margin="0,0,6,0"
+                                                        Padding="7,3"
+                                                        Background="#173B2A"
+                                                        BorderBrush="#39825B"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7"
+                                                        Visibility="{Binding HasTransportBadge, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="#D9FFE7" Text="{Binding TransportBadge}" />
+                                                    </Border>
+                                                    <Border
+                                                        Padding="7,3"
+                                                        Background="#263047"
+                                                        BorderBrush="#53617E"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7">
+                                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="#DDE6FA" Text="{Binding TimeBadge}" />
+                                                    </Border>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Button
+                        Grid.Row="4"
+                        Width="110"
+                        Margin="0,18,0,0"
+                        HorizontalAlignment="Right"
+                        Command="{Binding CloseActivityCommand}"
+                        Content="Close"
+                        Style="{StaticResource SecondaryButton}" />
+                </Grid>
+            </Border>
+        </Grid>
         </Grid>
 
         <!--  NOTIFICATION OVERLAY  -->
         <Grid
             x:Name="NotificationOverlay"
             Background="#BF050510"
+            Grid.RowSpan="2"
             Panel.ZIndex="40"
             Visibility="Collapsed">
             <Border

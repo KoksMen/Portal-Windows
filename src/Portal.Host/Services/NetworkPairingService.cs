@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
+using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -16,6 +17,7 @@ namespace Portal.Host.Services;
 
 public class NetworkPairingService
 {
+    private static readonly TimeSpan NetworkChangeDebounce = TimeSpan.FromSeconds(3);
     private WebApplication? _app;
     private readonly MdnsAnnouncer _mdns = new();
     private readonly AttemptTracker _attemptTracker = new();
@@ -23,6 +25,13 @@ public class NetworkPairingService
     private PairingContext? _pairingContext;
     private Action<string>? _pairingStatusCallback;
     private TaskCompletionSource<PairingResult?>? _pairingTcs;
+    private readonly SemaphoreSlim _advertisementLock = new(1, 1);
+    private CancellationTokenSource? _networkChangeCts;
+    private PortalWinConfig? _listenerConfig;
+    private bool _isWatchingNetwork;
+
+    /// <summary>Raised after the pairing advertisement has switched to a different local address.</summary>
+    public event Action<string?>? AdvertisementAddressChanged;
 
     public NetworkPairingService(NetworkService networkService)
     {
@@ -64,14 +73,17 @@ public class NetworkPairingService
         await _app.StartAsync();
         Logger.Log($"[NetworkPairingService] Listening on {config.Port}");
 
-        var ips = await _networkService.GetLocalIPsAsync(config.VpnCompatibilityModeEnabled);
-        // Prefer an explicit IPv4 for mDNS advertise to avoid interface ambiguity in user session.
-        var advertiseIp = ips.FirstOrDefault(ip => System.Net.IPAddress.TryParse(ip, out var addr) && addr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
-        _mdns.Start(config, "pair", advertiseIp);
+        _listenerConfig = config;
+        await RefreshAdvertisementAsync("listener started", CancellationToken.None);
+        StartWatchingNetwork();
     }
 
     public async Task StopListener()
     {
+        // Mark the listener inactive before cancelling background refreshes so a racing
+        // network notification cannot re-advertise while Kestrel is stopping.
+        _listenerConfig = null;
+        StopWatchingNetwork();
         _mdns.Stop();
         if (_app != null)
         {
@@ -102,6 +114,96 @@ public class NetworkPairingService
     public string GeneratePairingCode()
     {
         return Random.Shared.Next(100000, 999999).ToString();
+    }
+
+    private void StartWatchingNetwork()
+    {
+        if (_isWatchingNetwork)
+        {
+            return;
+        }
+
+        NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
+        _isWatchingNetwork = true;
+        Logger.Log("[NetworkPairingService] Watching for network-address changes while pairing listener is active.");
+    }
+
+    private void StopWatchingNetwork()
+    {
+        if (!_isWatchingNetwork)
+        {
+            return;
+        }
+
+        NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
+        _isWatchingNetwork = false;
+        _networkChangeCts?.Cancel();
+        _networkChangeCts?.Dispose();
+        _networkChangeCts = null;
+    }
+
+    private void OnNetworkAddressChanged(object? sender, EventArgs args)
+    {
+        if (_app == null || _listenerConfig == null)
+        {
+            return;
+        }
+
+        var previous = Interlocked.Exchange(ref _networkChangeCts, new CancellationTokenSource());
+        previous?.Cancel();
+        previous?.Dispose();
+        var changeCts = _networkChangeCts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(NetworkChangeDebounce, changeCts.Token);
+                await RefreshAdvertisementAsync("network address changed", changeCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // A newer network change superseded this refresh, or the listener stopped.
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[NetworkPairingService] Failed to refresh pairing advertisement after network change", ex);
+            }
+        });
+    }
+
+    private async Task RefreshAdvertisementAsync(string reason, CancellationToken ct)
+    {
+        var config = _listenerConfig;
+        if (_app == null || config == null)
+        {
+            return;
+        }
+
+        await _advertisementLock.WaitAsync(ct);
+        try
+        {
+            if (_app == null || !ReferenceEquals(config, _listenerConfig))
+            {
+                return;
+            }
+
+            var ips = await _networkService.GetLocalIPsAsync(config.VpnCompatibilityModeEnabled);
+            var advertiseIp = ips.FirstOrDefault(ip => System.Net.IPAddress.TryParse(ip, out var address) && address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+
+            _mdns.Stop();
+            _mdns.Start(config, "pair", advertiseIp);
+            Logger.Log($"[NetworkPairingService] Pairing advertisement refreshed ({reason}). Address: {advertiseIp ?? "none"}.");
+            if (!string.Equals(reason, "listener started", StringComparison.OrdinalIgnoreCase))
+            {
+                ActivityJournal.Record("network", "📶", "Network address refreshed", "Portal updated pairing discovery after a network change.");
+            }
+            AdvertisementAddressChanged?.Invoke(advertiseIp);
+        }
+        finally
+        {
+            _advertisementLock.Release();
+        }
     }
 
     private IResult HandlePairRequest(PairRequest request, HttpContext context, PortalWinConfig config)
@@ -193,6 +295,7 @@ public class NetworkPairingService
             }
 
             Logger.Log($"Pairing successful! Device: {device.Name} ({clientId})");
+            ActivityJournal.Record("pairing", "🤝", "New device paired", $"{device.Name} is ready to unlock this PC via Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
             _pairingStatusCallback?.Invoke($"Pairing successful! Device: {device.Name}");
             _pairingTcs?.TrySetResult(new PairingResult { Device = device, Success = true });
             _pairingContext = null;

@@ -43,7 +43,7 @@ public class NetworkIpOption
 
 public class FaqCategoryGroup
 {
-    public string Title { get; set; } = "General";
+    public string Title { get; set; } = Services.LocalizationService.T("General");
     public ObservableCollection<FaqArticle> Articles { get; } = new();
     public bool IsExpanded { get; set; }
 }
@@ -66,8 +66,10 @@ public partial class MainViewModel : ObservableObject
     private BluetoothPairingService? _btPairing;
     private PortalWinConfig _config;
     private X509Certificate2? _hostCert;
+    private DeviceModel? _certificateInfoDevice;
 
     private CancellationTokenSource? _pairingCts;
+    private string? _pairingStatusRaw;
     private CancellationTokenSource? _wizardSetupCts;
     private CancellationTokenSource? _busyOperationCts;
     private TaskCompletionSource<bool>? _busyResultTcs;
@@ -101,12 +103,12 @@ public partial class MainViewModel : ObservableObject
     }
 
     // --- Observable Properties (Dashboard/Status) ---
-    [ObservableProperty] private string _mainStatusText = "Loading...";
+    [ObservableProperty] private string _mainStatusText = Services.LocalizationService.T("Loading...");
     [ObservableProperty] private bool _isServiceActive;
     [ObservableProperty] private bool _hasSetupIssues;
-    [ObservableProperty] private string _setupIssueTitle = "Setup required";
+    [ObservableProperty] private string _setupIssueTitle = Services.LocalizationService.T("Setup required");
     [ObservableProperty] private string _setupIssueHint = "";
-    [ObservableProperty] private string _providerInstallButtonText = "Install";
+    [ObservableProperty] private string _providerInstallButtonText = Services.LocalizationService.T("Install");
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanStartWizardButton))]
     private bool _isStatusReady;
@@ -117,17 +119,34 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isFirewallOk;
     [ObservableProperty] private bool _isCertOk;
 
-    [ObservableProperty] private string _clientCountText = "0 trusted devices";
-    [ObservableProperty] private string _ipAddressText = "IP: Unknown";
+    [ObservableProperty] private string _clientCountText = Services.LocalizationService.TF("{0} trusted devices", 0);
+    [ObservableProperty] private string _ipAddressText = Services.LocalizationService.T("IP: Unknown");
 
     [ObservableProperty] private bool _showSetupPanel = true;
     public bool ShowConnectedPanel => !ShowSetupPanel;
 
     public ObservableCollection<DeviceModel> Devices { get; } = new();
+    public ObservableCollection<ActivityCard> RecentActivity { get; } = new();
+    public ObservableCollection<string> ActivityFilterOptions { get; } = new()
+    {
+        "All events", "Unlocks", "Pairing", "Network", "System", "Problems"
+    };
+    public ObservableCollection<string> ActivitySortOptions { get; } = new()
+    {
+        "Newest first", "Oldest first"
+    };
+    [ObservableProperty] private string _activitySummaryText = Services.LocalizationService.T("No recent activity yet.");
+    [ObservableProperty] private string _selectedActivityFilter = "All events";
+    [ObservableProperty] private string _selectedActivitySort = "Newest first";
+    [ObservableProperty] private string _selectedLanguageCode = "ru";
+    [ObservableProperty] private DateTime? _activityFromDate = DateTime.Today;
+    [ObservableProperty] private int _activityFromDay = DateTime.Today.Day;
+    [ObservableProperty] private int _activityFromMonth = DateTime.Today.Month;
+    [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
-    public string AppVersion => "v1.2.1";
-    public string AppReleaseVersion => "1.2.1-Eve-Stable-Release";
+    public string AppVersion => "v1.3.0";
+    public string AppReleaseVersion => "1.3.0-Rin";
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.
@@ -164,6 +183,7 @@ public partial class MainViewModel : ObservableObject
     public bool ShowSettingsPanel => !ShowDashboard;
 
     [ObservableProperty] private bool _showAboutDialog;
+    [ObservableProperty] private bool _showActivityDialog;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFaqOverlayVisible))]
@@ -179,28 +199,28 @@ public partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SelectedFaqTagsText))]
     [NotifyPropertyChangedFor(nameof(SelectedFaqUpdatedAtText))]
     [ObservableProperty] private FaqArticle? _selectedFaqArticle;
-    [ObservableProperty] private string _faqLastUpdatedText = "Local FAQ is ready to load.";
-    [ObservableProperty] private string _faqSourceText = "Source: local file";
+    [ObservableProperty] private string _faqLastUpdatedText = Services.LocalizationService.T("Local FAQ is ready to load.");
+    [ObservableProperty] private string _faqSourceText = Services.LocalizationService.T("Source: local file");
     [ObservableProperty] private bool _isRefreshingFaq;
-    [ObservableProperty] private string _faqRefreshButtonText = "Update Wiki";
+    [ObservableProperty] private string _faqRefreshButtonText = Services.LocalizationService.T("Update Wiki");
     public ObservableCollection<string> FaqCategories { get; } = new();
     public ObservableCollection<FaqArticle> FaqArticles { get; } = new();
     public ObservableCollection<FaqArticle> FilteredFaqArticles { get; } = new();
     public ObservableCollection<FaqCategoryGroup> FilteredFaqGroups { get; } = new();
 
-    [ObservableProperty] private string _updateStatusTitle = "Updates are idle.";
-    [ObservableProperty] private string _updateStatusMessage = "Check for Updates to query the latest release from GitHub.";
+    [ObservableProperty] private string _updateStatusTitle = Services.LocalizationService.T("Updates are idle.");
+    [ObservableProperty] private string _updateStatusMessage = Services.LocalizationService.T("Check for Updates to query the latest release from GitHub.");
     [ObservableProperty] private string _updateCurrentVersionText = string.Empty;
     [ObservableProperty] private string _updateSourceText = $"Source: {UpdateService.BuiltInSourceLabel}";
-    [ObservableProperty] private string _updateAvailableVersionText = "No update detected";
+    [ObservableProperty] private string _updateAvailableVersionText = Services.LocalizationService.T("No update detected");
     [ObservableProperty] private string _updateLastCheckedText = "Not checked yet";
     [ObservableProperty] private string _updateLastInstalledText = "Last update: not installed yet";
     [ObservableProperty] private string _updateRepositoryText = string.Empty;
     [ObservableProperty] private string _updateTokenText = string.Empty;
     [ObservableProperty] private bool _isAutoUpdateChecksEnabled = true;
-    [ObservableProperty] private string _updateFileName = "No package selected";
+    [ObservableProperty] private string _updateFileName = Services.LocalizationService.T("No package selected");
     [ObservableProperty] private string _updateTransferText = "0 MB / 0 MB";
-    [ObservableProperty] private string _updateSpeedText = "Speed: --";
+    [ObservableProperty] private string _updateSpeedText = Services.LocalizationService.T("Speed: --");
     [NotifyPropertyChangedFor(nameof(ShowUpdateTransferBlock))]
     [ObservableProperty] private AppUpdateStage _updateCurrentStage = AppUpdateStage.Idle;
     [NotifyPropertyChangedFor(nameof(ShowDeterminateProgressBar))]
@@ -219,21 +239,21 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isUpdateAvailable;
     [ObservableProperty] private string _updateBannerText = "";
     [ObservableProperty] private bool _hasUpdateBanner;
-    [ObservableProperty] private string _installUpdateButtonText = "Install Update";
+    [ObservableProperty] private string _installUpdateButtonText = Services.LocalizationService.T("Install Update");
     [ObservableProperty] private bool _showUpdateWizard;
     [ObservableProperty] private bool _showUpdateToast;
-    [ObservableProperty] private string _updateToastTitle = "Update available";
+    [ObservableProperty] private string _updateToastTitle = Services.LocalizationService.T("Update available");
     [ObservableProperty] private string _updateToastMessage = "";
 
     private AppUpdateManifest? _availableUpdateManifest;
     private readonly System.Windows.Threading.DispatcherTimer _updateToastTimer;
     private int _aboutVersionTapCount;
     public string SelectedFaqTagsText => SelectedFaqArticle == null || SelectedFaqArticle.Tags.Count == 0
-        ? "Tags: local, help"
-        : $"Tags: {string.Join(", ", SelectedFaqArticle.Tags)}";
+        ? Services.LocalizationService.T("Tags: local, help")
+        : Services.LocalizationService.T("Tags: ") + string.Join(", ", SelectedFaqArticle.Tags);
     public string SelectedFaqUpdatedAtText => SelectedFaqArticle == null
-        ? "Updated: --"
-        : $"Updated: {SelectedFaqArticle.UpdatedAt.ToLocalTime():yyyy-MM-dd HH:mm}";
+        ? Services.LocalizationService.T("Updated: --")
+        : Services.LocalizationService.T("Updated: ") + SelectedFaqArticle.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
     public bool CanInstallUpdate => IsUpdateAvailable && !IsUpdateOperationInProgress && _availableUpdateManifest != null;
     public bool ShowFaqSection => AreExperimentalFeaturesEnabled;
     public bool ShowDiagnosticsSection => IsDiagnosticsUnlocked;
@@ -244,8 +264,8 @@ public partial class MainViewModel : ObservableObject
     public bool ShowDeterminateProgressBar => IsUpdateProgressPrimed && !IsUpdateProgressIndeterminate;
     public bool ShowUpdateTransferBlock => IsUpdateOperationInProgress && UpdateCurrentStage == AppUpdateStage.Downloading;
     public string UpdateProgressHintText => IsUpdateOperationInProgress
-        ? "Update Wizard is running the current stage. Please wait."
-        : "Details are shown here only during install.";
+        ? Services.LocalizationService.T("Update Wizard is running the current stage. Please wait.")
+        : Services.LocalizationService.T("Details are shown here only during install.");
 
     partial void OnFaqSearchTextChanged(string value)
     {
@@ -323,11 +343,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _settingsDllPath = "";
     [ObservableProperty] private string _settingsHostRequestTimeoutMinutes = "2";
     [ObservableProperty] private bool _isVpnCompatibilityModeEnabled = true;
-    [ObservableProperty] private string _restoreBackupFileText = "No backup file selected";
+    [ObservableProperty] private string _restoreBackupFileText = Services.LocalizationService.T("No backup file selected");
     [ObservableProperty] private bool _showCreateBackupDialog;
     [ObservableProperty] private bool _showRestoreBackupDialog;
     [ObservableProperty] private bool _showCertificateInfoDialog;
-    [ObservableProperty] private string _certificateInfoTitle = "Certificate Information";
+    [ObservableProperty] private string _certificateInfoTitle = Services.LocalizationService.T("Certificate Information");
     [ObservableProperty] private string _certificateInfoSummary = string.Empty;
     [ObservableProperty] private string _certificateInfoDetails = string.Empty;
     [ObservableProperty] private string _certificateInfoHash = string.Empty;
@@ -364,8 +384,8 @@ public partial class MainViewModel : ObservableObject
 
     public bool IsNotWorkingSettings => !IsWorkingSettings;
 
-    [ObservableProperty] private string _saveConfigBtnText = "Save Configuration";
-    [ObservableProperty] private string _uninstallBtnText = "Uninstall Everything";
+    [ObservableProperty] private string _saveConfigBtnText = Services.LocalizationService.T("Save Configuration");
+    [ObservableProperty] private string _uninstallBtnText = Services.LocalizationService.T("Uninstall Everything");
     [ObservableProperty] private bool _isDuplicateAccountProtectionEnabled = true;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanUseCrossTransportProtection))]
@@ -399,7 +419,7 @@ public partial class MainViewModel : ObservableObject
 
     // --- Observable Properties (Wizard) ---
     [ObservableProperty] private bool _showWizard = false;
-    [ObservableProperty] private string _wizStatusText = "Initializing...";
+    [ObservableProperty] private string _wizStatusText = Services.LocalizationService.T("Initializing...");
     [ObservableProperty] private string _wizErrorText = "";
     [ObservableProperty] private bool _wizIsIndeterminate = false;
 
@@ -461,9 +481,9 @@ public partial class MainViewModel : ObservableObject
 
     // Pairing Step Info
     [ObservableProperty] private string _wizPairCode = "--- ---";
-    [ObservableProperty] private string _wizExpiresInfo = "Code expires in 2:00";
+    [ObservableProperty] private string _wizExpiresInfo = Services.LocalizationService.TF("Code expires in {0}", TimeSpan.FromMinutes(2));
     [ObservableProperty] private bool _wizIsExpiresRed = false;
-    [ObservableProperty] private string _wizPairInfo = "Waiting...";
+    [ObservableProperty] private string _wizPairInfo = Services.LocalizationService.T("Waiting...");
 
     [ObservableProperty] private bool _wizShowNetworkInfo = true;
     public bool WizShowBluetoothInfo => !WizShowNetworkInfo;
@@ -526,6 +546,7 @@ public partial class MainViewModel : ObservableObject
         _providerSetup = providerSetup;
         _certManager = certManager;
         _networkPairing = networkPairing;
+        _networkPairing.AdvertisementAddressChanged += OnPairingAdvertisementAddressChanged;
         _networkService = networkService;
         _qrCodeService = qrCodeService;
         _providerLocator = providerLocator;
@@ -545,8 +566,12 @@ public partial class MainViewModel : ObservableObject
         };
 
         _config = PortalWinConfig.Load();
+        Services.LocalizationService.SetCurrentLanguage(_config.UiLanguage);
         LoadConfigToUi();
-        UpdateCurrentVersionText = AppVersion;
+        SelectedLanguageCode = string.Equals(_config.UiLanguage, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
+        UpdateActivityLanguageOptions();
+        RefreshActivityJournal();
+        UpdateCurrentVersionText = BuildCurrentVersionText();
         _ = LoadAboutAvatarsAsync();
     }
 
@@ -554,8 +579,8 @@ public partial class MainViewModel : ObservableObject
     {
         Logger.Log("[MainViewModel] Initializing...");
         await RunBusyOperationAsync(
-            "Starting Portal",
-            "Running initial Host checks...",
+            IsRussianUi ? "Запуск Portal" : "Starting Portal",
+            IsRussianUi ? "Выполняется начальная проверка компьютера..." : "Running initial Host checks...",
             _ => RefreshStatusAsync(),
             minimumDisplayDuration: TimeSpan.FromSeconds(0.9),
             canCancel: false);
@@ -576,16 +601,16 @@ public partial class MainViewModel : ObservableObject
         UpdateBannerText = lastResult.Success
             ? lastResult.Summary
             : lastResult.RollbackAttempted
-                ? $"{lastResult.Summary} {lastResult.Details} Rollback: {(lastResult.RollbackSucceeded ? "completed." : "failed.")}".Trim()
+                ? $"{lastResult.Summary} {lastResult.Details} Rollback: {(lastResult.RollbackSucceeded ? Services.LocalizationService.T("Rollback: completed.") : Services.LocalizationService.T("Rollback: failed."))}".Trim()
                 : $"{lastResult.Summary} {lastResult.Details}".Trim();
-        UpdateStatusTitle = lastResult.Success ? "Last update completed" : "Last update failed";
+        UpdateStatusTitle = lastResult.Success ? Services.LocalizationService.T("Last update completed") : Services.LocalizationService.T("Last update failed");
         UpdateStatusMessage = lastResult.Details;
         if (lastResult.Success)
         {
-            UpdateAvailableVersionText = $"Installed version: {lastResult.TargetVersion}";
+            UpdateAvailableVersionText = Services.LocalizationService.TF("Installed version: {0}", lastResult.TargetVersion);
             _config.LastInstalledUpdateUtc = lastResult.CompletedAtUtc;
             _config.Save();
-            UpdateLastInstalledText = $"Last update: {lastResult.CompletedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+            UpdateLastInstalledText = BuildLastUpdateText(lastResult.CompletedAtUtc);
         }
 
         _updateService.ClearLastUpdateResult();
@@ -597,13 +622,13 @@ public partial class MainViewModel : ObservableObject
         SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
         IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
         AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
-        UpdateSourceText = $"Source: {UpdateService.BuiltInSourceLabel}";
+        UpdateSourceText = IsRussianUi ? $"Источник: {UpdateService.BuiltInSourceLabel}" : $"Source: {UpdateService.BuiltInSourceLabel}";
         UpdateLastCheckedText = _config.LastUpdateCheckUtc.HasValue
-            ? $"Last checked: {_config.LastUpdateCheckUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}"
-            : "Not checked yet";
+            ? BuildLastCheckedText(_config.LastUpdateCheckUtc.Value)
+            : IsRussianUi ? "Ещё не проверялось" : "Not checked yet";
         UpdateLastInstalledText = _config.LastInstalledUpdateUtc.HasValue
-            ? $"Last update: {_config.LastInstalledUpdateUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}"
-            : "Last update: not installed yet";
+            ? BuildLastUpdateText(_config.LastInstalledUpdateUtc.Value)
+            : IsRussianUi ? "Обновление ещё не устанавливалось" : "Last update: not installed yet";
         UpdateRepositoryText = _config.UpdateRepository;
         UpdateTokenText = string.Empty;
         IsAutoUpdateChecksEnabled = _config.AutoUpdateChecksEnabled;
@@ -660,7 +685,7 @@ public partial class MainViewModel : ObservableObject
             IsBusyOperationResultVisible = false;
             BusyOperationTitle = actionTitle;
             BusyOperationStatus = actionStatus;
-            BusyCancelButtonText = "Cancel action";
+            BusyCancelButtonText = Services.LocalizationService.T("Cancel action");
             IsBusyOperationCancelable = canCancel;
             CanCancelBusyOperation = canCancel;
             BusyResultButtonText = "OK";
@@ -681,7 +706,7 @@ public partial class MainViewModel : ObservableObject
         {
             IsBusyOperationActive = false;
             IsBusyOperationResultVisible = false;
-            BusyCancelButtonText = "Cancel action";
+            BusyCancelButtonText = Services.LocalizationService.T("Cancel action");
             IsBusyOperationCancelable = true;
             CanCancelBusyOperation = true;
         }, System.Windows.Threading.DispatcherPriority.Send);
@@ -707,7 +732,7 @@ public partial class MainViewModel : ObservableObject
             BusyOperationTitle = title;
             BusyOperationStatus = message;
             BusyResultButtonText = buttonText;
-            BusyCancelButtonText = "Cancel action";
+            BusyCancelButtonText = Services.LocalizationService.T("Cancel action");
             IsBusyOperationCancelable = false;
             CanCancelBusyOperation = false;
             IsBusyOperationActive = false;
@@ -802,10 +827,10 @@ public partial class MainViewModel : ObservableObject
                 IsFirewallOk = isFirewallOk;
                 IsCertOk = isCertOk;
                 IsServiceActive = providerHealth.IsHealthy;
-                ProviderInstallButtonText = providerHealth.IsHealthy ? "Reinstall" : "Install";
+                ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install";
 
                 MainStatusText = IsServiceActive
-                    ? "✓ Service Active & Ready"
+                    ? IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready"
                     : $"⚠ {(providerHealth.FailureReasons.FirstOrDefault() ?? "Service Not Installed")}";
 
                 var setupIssues = new List<string>();
@@ -821,13 +846,17 @@ public partial class MainViewModel : ObservableObject
                     ? "Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate."
                     : "No setup actions required.";
 
-                ClientCountText = $"{_config.Devices.Count} trusted devices";
+                ClientCountText = Services.LocalizationService.TF("{0} trusted devices", _config.Devices.Count);
                 RefreshDevicesList();
+
+                // Re-apply captions so elements realized after startup
+                // (device list templates, style setter statuses) get translated too.
+                Services.LocalizationService.ApplyToMainWindow(_config.UiLanguage);
 
                 ShowSetupPanel = !(IsServiceActive && _config.Devices.Any());
                 OnPropertyChanged(nameof(ShowConnectedPanel));
 
-                IpAddressText = "Your IP for client: " + (ips.FirstOrDefault() ?? "Unknown");
+                IpAddressText = Services.LocalizationService.T("Your IP for client: ") + (ips.FirstOrDefault() ?? Services.LocalizationService.T("Unknown"));
 
                 // Do not overwrite unsaved Settings edits while Settings screen is open.
                 if (ShowDashboard)
@@ -855,6 +884,183 @@ public partial class MainViewModel : ObservableObject
         foreach (var d in _config.Devices) Devices.Add(d);
     }
 
+    private void RefreshActivityJournal()
+    {
+        var entries = ActivityJournal.ReadLatest()
+            .Where(entry => MatchesActivityFilter(entry))
+            .Where(entry => !ActivityFromDate.HasValue || entry.OccurredAtUtc.ToLocalTime().Date >= ActivityFromDate.Value.Date);
+
+        entries = SelectedActivitySort is "Oldest first" or "Сначала старые"
+            ? entries.OrderBy(entry => entry.OccurredAtUtc)
+            : entries.OrderByDescending(entry => entry.OccurredAtUtc);
+
+        var visibleEntries = entries.ToList();
+        RecentActivity.Clear();
+        foreach (var entry in visibleEntries)
+        {
+            RecentActivity.Add(ActivityCard.FromEntry(entry, SelectedLanguageCode != "en"));
+        }
+
+        var isRussian = SelectedLanguageCode != "en";
+        ActivitySummaryText = visibleEntries.Count == 0
+            ? isRussian ? "Нет событий по выбранным фильтрам." : "No events match the selected filters."
+            : isRussian ? $"Событий: {visibleEntries.Count} • хранятся 7 дней" : $"{visibleEntries.Count} events • retained for 7 days";
+    }
+
+    private bool MatchesActivityFilter(ActivityEntry entry)
+    {
+        return SelectedActivityFilter switch
+        {
+            "Unlocks" or "Разблокировки" => entry.Category == "unlock",
+            "Pairing" or "Привязка" => entry.Category == "pairing",
+            "Network" or "Сеть" => entry.Category == "network",
+            "System" or "Система" => entry.Category == "system",
+            "Problems" or "Проблемы" => !entry.IsSuccess,
+            _ => true
+        };
+    }
+
+    partial void OnSelectedActivityFilterChanged(string value) => RefreshActivityJournal();
+    partial void OnSelectedActivitySortChanged(string value) => RefreshActivityJournal();
+    partial void OnSelectedLanguageCodeChanged(string value)
+    {
+        _config.UiLanguage = string.Equals(value, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
+        _config.Save();
+        ApplyUiLanguage();
+    }
+
+    public void ApplyUiLanguage()
+    {
+        LocalizationService.ApplyToMainWindow(_config.UiLanguage);
+        RefreshLocalizedTexts();
+    }
+
+    /// <summary>
+    /// Recomputes every dynamic, language-dependent text after a language switch.
+    /// Static XAML captions are handled by LocalizationService; this covers VM-bound strings.
+    /// </summary>
+    private void RefreshLocalizedTexts()
+    {
+        // Dashboard / status area (async: MainStatusText, SetupIssue*, ClientCountText, IpAddressText, ProviderInstallButtonText).
+        _ = RefreshStatusAsync();
+        if (!string.IsNullOrEmpty(_pairingStatusRaw))
+            WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
+        if (StepPairingVis)
+        {
+            var remaining = TimeSpan.FromMinutes(2) - (DateTime.Now - _pairingStartTime);
+            WizExpiresInfo = remaining.TotalSeconds <= 0
+                ? Services.LocalizationService.T("Code Expired")
+                : BuildCodeExpiresText(remaining);
+        }
+        BusyOperationHintText = Services.LocalizationService.T("Action is in progress. Please wait and avoid interacting with Host until it finishes.");
+
+        // Updates section.
+        UpdateCurrentVersionText = BuildCurrentVersionText();
+        UpdateSourceText = Services.LocalizationService.T("Source: ") + UpdateService.BuiltInSourceLabel;
+        UpdateLastCheckedText = _config.LastUpdateCheckUtc.HasValue
+            ? BuildLastCheckedText(_config.LastUpdateCheckUtc.Value)
+            : Services.LocalizationService.T("Not checked yet");
+        UpdateLastInstalledText = _config.LastInstalledUpdateUtc.HasValue
+            ? BuildLastUpdateText(_config.LastInstalledUpdateUtc.Value)
+            : Services.LocalizationService.T("Last update: not installed yet");
+        if (!IsUpdateOperationInProgress && !HasUpdateBanner && !IsUpdateAvailable)
+        {
+            UpdateStatusTitle = Services.LocalizationService.T("Updates are idle.");
+            UpdateStatusMessage = Services.LocalizationService.T("Check for Updates to query the latest release from GitHub.");
+            UpdateAvailableVersionText = Services.LocalizationService.T("No update detected");
+        }
+
+        if (!IsUpdateOperationInProgress)
+        {
+            InstallUpdateButtonText = Services.LocalizationService.T("Install Update");
+        }
+
+        if (string.IsNullOrEmpty(UpdateFileName))
+        {
+            UpdateFileName = Services.LocalizationService.T("No package selected");
+        }
+
+        OnPropertyChanged(nameof(SelectedFaqTagsText));
+        OnPropertyChanged(nameof(SelectedFaqUpdatedAtText));
+        OnPropertyChanged(nameof(UpdateProgressHintText));
+
+        // Certificate info dialog (if open).
+        if (ShowCertificateInfoDialog)
+        {
+            if (_certificateInfoDevice != null)
+            {
+                ApplyDeviceCertificateInfoTexts();
+            }
+            else
+            {
+                ApplyHostCertificateInfoTexts(CertificateService.LoadCertificate());
+            }
+        }
+
+        // Activity section (filter/sort options, summary and cards are language-dependent).
+        UpdateActivityLanguageOptions();
+    }
+
+    private void UpdateActivityLanguageOptions()
+    {
+        var filters = new[]
+        {
+            Services.LocalizationService.T("All events"), Services.LocalizationService.T("Unlocks"),
+            Services.LocalizationService.T("Pairing"), Services.LocalizationService.T("Network"),
+            Services.LocalizationService.T("System"), Services.LocalizationService.T("Problems")
+        };
+        var sorts = new[]
+        {
+            Services.LocalizationService.T("Newest first"), Services.LocalizationService.T("Oldest first")
+        };
+
+        var previousFilterIndex = ActivityFilterOptions.IndexOf(SelectedActivityFilter);
+        var previousSortIndex = ActivitySortOptions.IndexOf(SelectedActivitySort);
+
+        ActivityFilterOptions.Clear();
+        foreach (var filter in filters) ActivityFilterOptions.Add(filter);
+        ActivitySortOptions.Clear();
+        foreach (var sort in sorts) ActivitySortOptions.Add(sort);
+
+        SelectedActivityFilter = previousFilterIndex >= 0 ? filters[previousFilterIndex] : filters[0];
+        SelectedActivitySort = previousSortIndex >= 0 ? sorts[previousSortIndex] : sorts[0];
+        SaveConfigBtnText = Services.LocalizationService.T("Save Configuration");
+        RefreshActivityJournal();
+    }
+
+    private bool IsRussianUi => !string.Equals(SelectedLanguageCode, "en", StringComparison.OrdinalIgnoreCase);
+    private string BuildCurrentVersionText() => IsRussianUi ? $"Текущая версия: {AppVersion}" : $"Current version: {AppVersion}";
+    private string BuildLastCheckedText(DateTime value) => IsRussianUi ? $"Последняя проверка: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}" : $"Last checked: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+    private string BuildLastUpdateText(DateTime value) => IsRussianUi ? $"Последнее обновление: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}" : $"Last update: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+    private string BuildCodeExpiresText(TimeSpan remaining) => IsRussianUi ? $"Срок действия кода: {remaining:m\\:ss}" : $"Code expires in {remaining:m\\:ss}";
+    partial void OnActivityFromDateChanged(DateTime? value)
+    {
+        if (value.HasValue)
+        {
+            if (ActivityFromDay != value.Value.Day) ActivityFromDay = value.Value.Day;
+            if (ActivityFromMonth != value.Value.Month) ActivityFromMonth = value.Value.Month;
+            if (ActivityFromYear != value.Value.Year) ActivityFromYear = value.Value.Year;
+        }
+
+        RefreshActivityJournal();
+    }
+
+    partial void OnActivityFromDayChanged(int value) => UpdateActivityFromDateParts();
+    partial void OnActivityFromMonthChanged(int value) => UpdateActivityFromDateParts();
+    partial void OnActivityFromYearChanged(int value) => UpdateActivityFromDateParts();
+
+    private void UpdateActivityFromDateParts()
+    {
+        if (ActivityFromYear is < 2000 or > 9999 || ActivityFromMonth is < 1 or > 12)
+            return;
+
+        var maxDay = DateTime.DaysInMonth(ActivityFromYear, ActivityFromMonth);
+        if (ActivityFromDay < 1 || ActivityFromDay > maxDay)
+            return;
+
+        ActivityFromDate = new DateTime(ActivityFromYear, ActivityFromMonth, ActivityFromDay);
+    }
+
     // --- Commands (Dashboard & General) ---
 
     [RelayCommand]
@@ -864,8 +1070,8 @@ public partial class MainViewModel : ObservableObject
         var infrastructureReady = false;
 
         var outcome = await RunBusyOperationAsync(
-            "Preparing setup wizard",
-            "Checking Host readiness before opening setup...",
+            Services.LocalizationService.T("Preparing setup wizard"),
+            Services.LocalizationService.T("Checking Host readiness before opening setup..."),
             async cancellationToken =>
             {
                 providerDllPath = _providerLocator.FindProviderDll(SettingsDllPath) ?? "";
@@ -889,6 +1095,27 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private async Task AddDeviceAsync() => await StartWizardFlow(true);
+
+    [RelayCommand]
+    private void RefreshActivity() => RefreshActivityJournal();
+
+    [RelayCommand]
+    private void ClearActivityFilters()
+    {
+        SelectedActivityFilter = "All events";
+        SelectedActivitySort = "Newest first";
+        ActivityFromDate = DateTime.Today;
+    }
+
+    [RelayCommand]
+    private void ShowActivity()
+    {
+        RefreshActivityJournal();
+        ShowActivityDialog = true;
+    }
+
+    [RelayCommand]
+    private void CloseActivity() => ShowActivityDialog = false;
 
     [RelayCommand]
     private void ShowSettings()
@@ -925,12 +1152,8 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        CertificateInfoTitle = $"{device.Name} certificate";
-        CertificateInfoSummary = $"Client: {device.Name}";
-        CertificateInfoDetails = $"Client ID: {device.ClientId}";
-        CertificateInfoHash = string.IsNullOrWhiteSpace(device.CertHash)
-            ? "Certificate hash is not available for this client."
-            : FormatCertificateHash(device.CertHash);
+        _certificateInfoDevice = device;
+        ApplyDeviceCertificateInfoTexts();
         ShowCertificateInfoDialog = true;
     }
 
@@ -940,21 +1163,15 @@ public partial class MainViewModel : ObservableObject
         using var cert = CertificateService.LoadCertificate();
         if (cert == null)
         {
-            CertificateInfoTitle = "Host certificate";
-            CertificateInfoSummary = "Host certificate is not available.";
-            CertificateInfoDetails = "Generate or restore the certificate first.";
-            CertificateInfoHash = "Hash is unavailable.";
+            _certificateInfoDevice = null;
+            ApplyHostCertificateInfoTexts(cert);
             ShowCertificateInfoDialog = true;
             return;
         }
 
         var certHash = CertificateService.GetCertHash(cert);
-        CertificateInfoTitle = "Host certificate";
-        CertificateInfoSummary = $"Subject: {cert.Subject}";
-        CertificateInfoDetails =
-            $"Thumbprint: {FormatCertificateHash(cert.Thumbprint)}{Environment.NewLine}" +
-            $"Valid from: {cert.NotBefore:G}{Environment.NewLine}" +
-            $"Valid to: {cert.NotAfter:G}";
+        _certificateInfoDevice = null;
+        ApplyHostCertificateInfoTexts(cert);
         CertificateInfoHash = FormatCertificateHash(certHash);
         ShowCertificateInfoDialog = true;
     }
@@ -963,6 +1180,40 @@ public partial class MainViewModel : ObservableObject
     private void CloseCertificateInfo()
     {
         ShowCertificateInfoDialog = false;
+    }
+
+    private void ApplyDeviceCertificateInfoTexts()
+    {
+        var device = _certificateInfoDevice;
+        if (device == null)
+        {
+            return;
+        }
+
+        CertificateInfoTitle = Services.LocalizationService.TF("{0} certificate", device.Name);
+        CertificateInfoSummary = Services.LocalizationService.TF("Client: {0}", device.Name);
+        CertificateInfoDetails = Services.LocalizationService.TF("Client ID: {0}", device.ClientId);
+        CertificateInfoHash = string.IsNullOrWhiteSpace(device.CertHash)
+            ? Services.LocalizationService.T("Certificate hash is not available for this client.")
+            : FormatCertificateHash(device.CertHash);
+    }
+
+    private void ApplyHostCertificateInfoTexts(System.Security.Cryptography.X509Certificates.X509Certificate2? cert)
+    {
+        CertificateInfoTitle = Services.LocalizationService.T("Host certificate");
+        if (cert == null)
+        {
+            CertificateInfoSummary = Services.LocalizationService.T("Host certificate is not available.");
+            CertificateInfoDetails = Services.LocalizationService.T("Generate or restore the certificate first.");
+            CertificateInfoHash = Services.LocalizationService.T("Hash is unavailable.");
+            return;
+        }
+
+        CertificateInfoSummary = Services.LocalizationService.TF("Subject: {0}", cert.Subject);
+        CertificateInfoDetails =
+            $"{Services.LocalizationService.T("Thumbprint: ")}{FormatCertificateHash(cert.Thumbprint)}{Environment.NewLine}" +
+            $"{Services.LocalizationService.T("Valid from: ")}{cert.NotBefore:G}{Environment.NewLine}" +
+            $"{Services.LocalizationService.T("Valid to: ")}{cert.NotAfter:G}";
     }
 
     private static string FormatCertificateHash(string? value)
@@ -1025,7 +1276,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             Logger.LogError("OpenExternalLink", ex);
-            await _dialogService.ShowNotificationAsync("Link open failed", ex.Message);
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Link open failed"), ex.Message);
         }
     }
 
@@ -1069,8 +1320,8 @@ public partial class MainViewModel : ObservableObject
         }
 
         var confirmed = await _dialogService.ShowNotificationAsync(
-            "Cancel current action?",
-            "Cancelling now may leave Portal partially configured and can require manual recovery or reinstall. Continue?",
+            IsRussianUi ? "Отменить текущую операцию?" : "Cancel current action?",
+            IsRussianUi ? "Отмена может оставить Portal в частично настроенном состоянии и потребовать ручного восстановления или переустановки. Продолжить?" : "Cancelling now may leave Portal partially configured and can require manual recovery or reinstall. Continue?",
             true);
 
         if (!confirmed)
@@ -1079,8 +1330,8 @@ public partial class MainViewModel : ObservableObject
         }
 
         CanCancelBusyOperation = false;
-        BusyCancelButtonText = "Cancelling...";
-        UpdateBusyOperationStatus("Stopping current action. Please wait...");
+        BusyCancelButtonText = Services.LocalizationService.T("Cancelling...");
+        UpdateBusyOperationStatus(Services.LocalizationService.T("Stopping current action. Please wait..."));
         _busyOperationCts.Cancel();
     }
 
@@ -1089,8 +1340,8 @@ public partial class MainViewModel : ObservableObject
     {
         IsBusyOperationActive = false;
         IsBusyOperationResultVisible = false;
-        BusyOperationTitle = "Working";
-        BusyOperationStatus = "Please wait...";
+        BusyOperationTitle = Services.LocalizationService.T("Working");
+        BusyOperationStatus = Services.LocalizationService.T("Please wait...");
         IsBusyOperationCancelable = true;
         CanCancelBusyOperation = true;
         BusyResultButtonText = "OK";
@@ -1110,17 +1361,18 @@ public partial class MainViewModel : ObservableObject
 
     public bool IsBusyOverlayVisible => IsBusyOperationActive || IsBusyOperationResultVisible;
 
-    [ObservableProperty] private string _busyOperationTitle = "Working";
-    [ObservableProperty] private string _busyOperationStatus = "Please wait...";
+    [ObservableProperty] private string _busyOperationTitle = Services.LocalizationService.T("Working");
+    [ObservableProperty] private string _busyOperationStatus = Services.LocalizationService.T("Please wait...");
+    [ObservableProperty] private string _busyOperationHintText = Services.LocalizationService.T("Action is in progress. Please wait and avoid interacting with Host until it finishes.");
     [ObservableProperty] private bool _isBusyOperationCancelable = true;
     [ObservableProperty] private bool _canCancelBusyOperation = true;
-    [ObservableProperty] private string _busyCancelButtonText = "Cancel action";
+    [ObservableProperty] private string _busyCancelButtonText = Services.LocalizationService.T("Cancel action");
     [ObservableProperty] private string _busyResultButtonText = "OK";
 
     [RelayCommand]
     private async Task RemoveDeviceAsync(string clientId)
     {
-        var confirmed = await _dialogService.ShowNotificationAsync("Confirm", "Delete this device?", true);
+        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), "Delete this device?", true);
         if (!confirmed)
         {
             return;
@@ -1128,7 +1380,7 @@ public partial class MainViewModel : ObservableObject
 
         var deviceName = _config.FindDeviceByClientId(clientId)?.Name ?? "device";
         var outcome = await RunBusyOperationAsync(
-            "Deleting trusted device",
+            Services.LocalizationService.T("Deleting trusted device"),
             $"Removing '{deviceName}' from the trusted devices list...",
             async cancellationToken =>
             {
@@ -1153,11 +1405,11 @@ public partial class MainViewModel : ObservableObject
         if (outcome == BusyOperationOutcome.Completed)
         {
             RefreshDevicesList();
-            await ShowBusyResultAsync("Device deleted", $"'{deviceName}' was removed from trusted devices.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Device deleted"), $"'{deviceName}' was removed from trusted devices.");
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
-            await ShowBusyResultAsync("Deletion cancelled", "Device deletion was cancelled. Please verify the device list before continuing.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Deletion cancelled"), Services.LocalizationService.T("Device deletion was cancelled. Please verify the device list before continuing."));
         }
     }
 
@@ -1213,7 +1465,7 @@ public partial class MainViewModel : ObservableObject
         WizDeviceName = device.Name;
         WizInputPass = ""; // don't show existing password securely
         WizShowDeviceNameEdit = true;
-        WizCredsNextText = "Save Changes";
+        WizCredsNextText = Services.LocalizationService.T("Save Changes");
 
         ShowDashboard = true; // This hides Settings Panel
         ShowWizard = true;
@@ -1233,12 +1485,12 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task SaveSettingsAsync()
     {
-        SaveConfigBtnText = "Saving Configuration...";
+        SaveConfigBtnText = Services.LocalizationService.T("Saving Configuration...");
         try
         {
             var outcome = await RunBusyOperationAsync(
-                "Saving configuration",
-                "Writing Portal settings...",
+                Services.LocalizationService.T("Saving configuration"),
+                Services.LocalizationService.T("Writing Portal settings..."),
                 async cancellationToken =>
                 {
                     int port = int.TryParse(SettingsPort, out var parsedPort) ? parsedPort : 29170;
@@ -1252,7 +1504,7 @@ public partial class MainViewModel : ObservableObject
                     if (IsTriggerOnClickAndStartup) trigger = HostRequestTrigger.OnClickAndStartup;
                     if (IsTriggerOnClickAndAnyLockScreen) trigger = HostRequestTrigger.OnClickAndAnyLockScreen;
 
-                    UpdateBusyOperationStatus("Saving configuration to disk...");
+                    UpdateBusyOperationStatus(Services.LocalizationService.T("Saving configuration to disk..."));
                     await Task.Run(() =>
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -1276,11 +1528,11 @@ public partial class MainViewModel : ObservableObject
             {
                 SettingsPort = _config.Port.ToString();
                 SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
-                await ShowBusyResultAsync("Configuration saved", "Host configuration was saved. Firewall rules were not changed automatically.");
+                await ShowBusyResultAsync(Services.LocalizationService.T("Configuration saved"), Services.LocalizationService.T("Host configuration was saved. Firewall rules were not changed automatically."));
             }
             else if (outcome == BusyOperationOutcome.Cancelled)
             {
-                await ShowBusyResultAsync("Saving cancelled", "Saving was cancelled. Some settings may already be written, so please review Host status before proceeding.");
+                await ShowBusyResultAsync(Services.LocalizationService.T("Saving cancelled"), Services.LocalizationService.T("Saving was cancelled. Some settings may already be written, so please review Host status before proceeding."));
             }
         }
         catch (Exception ex)
@@ -1296,26 +1548,26 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task UninstallAsync()
     {
-        var confirmed = await _dialogService.ShowNotificationAsync("Confirm", "Uninstall Portal service completely?", true);
+        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), "Uninstall Portal service completely?", true);
         if (!confirmed)
         {
             return;
         }
 
-        UninstallBtnText = "Uninstalling...";
+        UninstallBtnText = Services.LocalizationService.T("Uninstalling...");
         try
         {
             string dllPath = _providerLocator.FindProviderDll(SettingsDllPath) ?? "";
             var outcome = await RunBusyOperationAsync(
-                "Uninstalling Portal",
-                "Removing firewall rules, certificate, and Credential Provider...",
+                Services.LocalizationService.T("Uninstalling Portal"),
+                Services.LocalizationService.T("Removing firewall rules, certificate, and Credential Provider..."),
                 async cancellationToken =>
                 {
-                    UpdateBusyOperationStatus("Removing Windows Firewall rules...");
+                    UpdateBusyOperationStatus(Services.LocalizationService.T("Removing Windows Firewall rules..."));
                     await _firewall.RemoveFirewallRule(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    UpdateBusyOperationStatus("Removing host certificate...");
+                    UpdateBusyOperationStatus(Services.LocalizationService.T("Removing host certificate..."));
                     await Task.Run(() =>
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -1323,7 +1575,7 @@ public partial class MainViewModel : ObservableObject
                     }, cancellationToken);
 
                     cancellationToken.ThrowIfCancellationRequested();
-                    UpdateBusyOperationStatus("Unregistering Credential Provider...");
+                    UpdateBusyOperationStatus(Services.LocalizationService.T("Unregistering Credential Provider..."));
                     await _providerSetup.UninstallProviderAsync(dllPath, cancellationToken);
                 },
                 keepOverlayForResult: true);
@@ -1332,11 +1584,11 @@ public partial class MainViewModel : ObservableObject
 
             if (outcome == BusyOperationOutcome.Completed)
             {
-                await ShowBusyResultAsync("Uninstall complete", "Portal was uninstalled successfully.");
+                await ShowBusyResultAsync(Services.LocalizationService.T("Uninstall complete"), Services.LocalizationService.T("Portal was uninstalled successfully."));
             }
             else if (outcome == BusyOperationOutcome.Cancelled)
             {
-                await ShowBusyResultAsync("Uninstall cancelled", "Uninstall was cancelled. Please verify system health before using Portal again.");
+                await ShowBusyResultAsync(Services.LocalizationService.T("Uninstall cancelled"), Services.LocalizationService.T("Uninstall was cancelled. Please verify system health before using Portal again."));
             }
         }
         finally
@@ -1349,15 +1601,15 @@ public partial class MainViewModel : ObservableObject
     private async Task FixFirewallAsync()
     {
         int port = _config.Port;
-        var confirmed = await _dialogService.ShowNotificationAsync("Confirm", $"Re-add firewall rules for port {port}?", true);
+        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), Services.LocalizationService.TF("Re-add firewall rules for port {0}?", port), true);
         if (!confirmed)
         {
             return;
         }
 
         var outcome = await RunBusyOperationAsync(
-            "Updating firewall rules",
-            $"Rebuilding Portal firewall rules for port {port}...",
+            Services.LocalizationService.T("Updating firewall rules"),
+            Services.LocalizationService.TF("Rebuilding Portal firewall rules for port {0}...", port),
             async cancellationToken =>
             {
                 await _firewall.RemoveFirewallRule(cancellationToken);
@@ -1369,37 +1621,37 @@ public partial class MainViewModel : ObservableObject
         await RefreshStatusAsync();
         if (outcome == BusyOperationOutcome.Completed)
         {
-            await ShowBusyResultAsync("Firewall updated", "Firewall rules were updated.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Firewall updated"), Services.LocalizationService.T("Firewall rules were updated."));
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
-            await ShowBusyResultAsync("Firewall update cancelled", "Firewall update was cancelled. Rules may be partially applied.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Firewall update cancelled"), Services.LocalizationService.T("Firewall update was cancelled. Rules may be partially applied."));
         }
     }
 
     [RelayCommand]
     private async Task RemoveFirewallRulesAsync()
     {
-        var confirmed = await _dialogService.ShowNotificationAsync("Confirm", "Delete all Portal firewall rules?", true);
+        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), "Delete all Portal firewall rules?", true);
         if (!confirmed)
         {
             return;
         }
 
         var outcome = await RunBusyOperationAsync(
-            "Deleting firewall rules",
-            "Removing all Portal firewall rules from Windows Firewall...",
+            Services.LocalizationService.T("Deleting firewall rules"),
+            Services.LocalizationService.T("Removing all Portal firewall rules from Windows Firewall..."),
             cancellationToken => _firewall.RemoveFirewallRule(cancellationToken),
             keepOverlayForResult: true);
 
         await RefreshStatusAsync();
         if (outcome == BusyOperationOutcome.Completed)
         {
-            await ShowBusyResultAsync("Firewall rules deleted", "All Portal firewall rules were removed.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Firewall rules deleted"), Services.LocalizationService.T("All Portal firewall rules were removed."));
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
-            await ShowBusyResultAsync("Deletion cancelled", "Firewall rule deletion was cancelled. Please re-check firewall status.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Deletion cancelled"), Services.LocalizationService.T("Firewall rule deletion was cancelled. Please re-check firewall status."));
         }
     }
 
@@ -1407,7 +1659,7 @@ public partial class MainViewModel : ObservableObject
     private async Task FixCertAsync()
     {
         var confirmed = await _dialogService.ShowNotificationAsync(
-            "Confirm",
+            Services.LocalizationService.T("Confirm"),
             "Regenerate SSL certificate?\n\nAll currently trusted clients will become invalid and will need to be paired again.",
             true);
         if (!confirmed)
@@ -1416,8 +1668,8 @@ public partial class MainViewModel : ObservableObject
         }
 
         var outcome = await RunBusyOperationAsync(
-            "Regenerating SSL certificate",
-            "Creating a new host certificate. Clients will need to re-pair afterwards...",
+            Services.LocalizationService.T("Regenerating SSL certificate"),
+            Services.LocalizationService.T("Creating a new host certificate. Clients will need to re-pair afterwards..."),
             async cancellationToken =>
             {
                 await Task.Run(() =>
@@ -1435,8 +1687,8 @@ public partial class MainViewModel : ObservableObject
         if (outcome == BusyOperationOutcome.Completed)
         {
             await ShowBusyResultAsync(
-                "Certificate regenerated",
-                "SSL certificate was regenerated successfully. Existing trusted clients are now invalid and must be re-paired.");
+                Services.LocalizationService.T("Certificate regenerated"),
+                Services.LocalizationService.T("SSL certificate was regenerated successfully. Existing trusted clients are now invalid and must be re-paired."));
 
             var invalidClientsCount = _config.Devices.Count;
             if (invalidClientsCount > 0)
@@ -1449,8 +1701,8 @@ public partial class MainViewModel : ObservableObject
                 if (deleteAllClients)
                 {
                     var deleteOutcome = await RunBusyOperationAsync(
-                        "Deleting invalid clients",
-                        "Removing trusted clients that no longer match the regenerated certificate...",
+                        Services.LocalizationService.T("Deleting invalid clients"),
+                        Services.LocalizationService.T("Removing trusted clients that no longer match the regenerated certificate..."),
                         async cancellationToken =>
                         {
                             await Task.Run(() =>
@@ -1467,21 +1719,21 @@ public partial class MainViewModel : ObservableObject
                     if (deleteOutcome == BusyOperationOutcome.Completed)
                     {
                         await ShowBusyResultAsync(
-                            "Clients deleted",
-                            "All invalid trusted clients were removed. Re-pair devices to continue using unlock.");
+                            Services.LocalizationService.T("Clients deleted"),
+                            Services.LocalizationService.T("All invalid trusted clients were removed. Re-pair devices to continue using unlock."));
                     }
                     else if (deleteOutcome == BusyOperationOutcome.Cancelled)
                     {
                         await ShowBusyResultAsync(
-                            "Deletion cancelled",
-                            "Invalid clients were kept. You can remove them later from Connected Devices.");
+                            Services.LocalizationService.T("Deletion cancelled"),
+                            Services.LocalizationService.T("Invalid clients were kept. You can remove them later from Connected Devices."));
                     }
                 }
             }
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
-            await ShowBusyResultAsync("Certificate action cancelled", "Certificate regeneration was cancelled. Host certificate state should be verified.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Certificate action cancelled"), Services.LocalizationService.T("Certificate regeneration was cancelled. Host certificate state should be verified."));
         }
     }
 
@@ -1489,7 +1741,7 @@ public partial class MainViewModel : ObservableObject
     private async Task InstallProviderAsync()
     {
         var dllPath = _providerLocator.FindProviderDll(SettingsDllPath);
-        if (string.IsNullOrEmpty(dllPath)) { await _dialogService.ShowNotificationAsync("Error", "DLL not found"); return; }
+        if (string.IsNullOrEmpty(dllPath)) { await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("DLL not found")); return; }
 
         try
         {
@@ -1497,20 +1749,20 @@ public partial class MainViewModel : ObservableObject
             var hasExistingRegistration = healthBefore.CredentialProviderGuidsOk || healthBefore.ComRegistrationOk;
 
             var outcome = await RunBusyOperationAsync(
-                hasExistingRegistration ? "Reinstalling Credential Provider" : "Installing Credential Provider",
+                hasExistingRegistration ? Services.LocalizationService.T("Reinstalling Credential Provider") : Services.LocalizationService.T("Installing Credential Provider"),
                 hasExistingRegistration
-                    ? "Removing old provider registration before reinstall..."
-                    : "Registering Credential Provider...",
+                    ? Services.LocalizationService.T("Removing old provider registration before reinstall...")
+                    : Services.LocalizationService.T("Registering Credential Provider..."),
                 async cancellationToken =>
                 {
                     if (hasExistingRegistration)
                     {
-                        UpdateBusyOperationStatus("Removing old Credential Provider registration...");
+                        UpdateBusyOperationStatus(Services.LocalizationService.T("Removing old Credential Provider registration..."));
                         await _providerSetup.UninstallProviderAsync(dllPath, cancellationToken);
                         cancellationToken.ThrowIfCancellationRequested();
                     }
 
-                    UpdateBusyOperationStatus("Registering Credential Provider...");
+                    UpdateBusyOperationStatus(Services.LocalizationService.T("Registering Credential Provider..."));
                     await _providerSetup.InstallProviderAsync(dllPath, cancellationToken);
                 },
                 minimumDisplayDuration: TimeSpan.FromSeconds(1.2),
@@ -1521,14 +1773,14 @@ public partial class MainViewModel : ObservableObject
             if (outcome == BusyOperationOutcome.Completed)
             {
                 await ShowBusyResultAsync(
-                    hasExistingRegistration ? "Provider reinstalled" : "Provider installed",
+                    hasExistingRegistration ? Services.LocalizationService.T("Provider reinstalled") : Services.LocalizationService.T("Provider installed"),
                     hasExistingRegistration
-                    ? "Provider reinstalled successfully."
-                    : "Provider installed successfully.");
+                    ? Services.LocalizationService.T("Provider reinstalled successfully.")
+                    : Services.LocalizationService.T("Provider installed successfully."));
             }
             else if (outcome == BusyOperationOutcome.Cancelled)
             {
-                await ShowBusyResultAsync("Provider action cancelled", "Provider installation was cancelled. Please verify provider health before continuing.");
+                await ShowBusyResultAsync(Services.LocalizationService.T("Provider action cancelled"), Services.LocalizationService.T("Provider installation was cancelled. Please verify provider health before continuing."));
             }
         }
         catch (Exception ex)
@@ -1542,11 +1794,11 @@ public partial class MainViewModel : ObservableObject
     private async Task UninstallProviderAsync()
     {
         var dllPath = _providerLocator.FindProviderDll(SettingsDllPath);
-        if (string.IsNullOrEmpty(dllPath)) { await _dialogService.ShowNotificationAsync("Error", "DLL not found"); return; }
+        if (string.IsNullOrEmpty(dllPath)) { await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("DLL not found")); return; }
 
         var outcome = await RunBusyOperationAsync(
-            "Uninstalling Credential Provider",
-            "Removing Credential Provider registration...",
+            Services.LocalizationService.T("Uninstalling Credential Provider"),
+            Services.LocalizationService.T("Removing Credential Provider registration..."),
             cancellationToken => _providerSetup.UninstallProviderAsync(dllPath, cancellationToken),
             minimumDisplayDuration: TimeSpan.FromSeconds(1.2),
             keepOverlayForResult: true);
@@ -1554,18 +1806,18 @@ public partial class MainViewModel : ObservableObject
         await RefreshStatusAsync();
         if (outcome == BusyOperationOutcome.Completed)
         {
-            await ShowBusyResultAsync("Provider uninstalled", "Credential Provider was uninstalled.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Provider uninstalled"), Services.LocalizationService.T("Credential Provider was uninstalled."));
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
-            await ShowBusyResultAsync("Provider action cancelled", "Provider uninstall was cancelled. Please verify provider health.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Provider action cancelled"), Services.LocalizationService.T("Provider uninstall was cancelled. Please verify provider health."));
         }
     }
 
     [RelayCommand]
     private async Task ResetAllAsync()
     {
-        var confirmed = await _dialogService.ShowNotificationAsync("Confirm Reset", "This will reset all settings, remove all devices, and certificates. Continue?", true);
+        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm Reset"), "This will reset all settings, remove all devices, and certificates. Continue?", true);
         if (!confirmed)
         {
             return;
@@ -1573,15 +1825,15 @@ public partial class MainViewModel : ObservableObject
 
         string dllPath = _providerLocator.FindProviderDll(SettingsDllPath) ?? "";
         var outcome = await RunBusyOperationAsync(
-            "Resetting Portal",
-            "Removing devices, certificates, firewall rules, and provider registration...",
+            Services.LocalizationService.T("Resetting Portal"),
+            Services.LocalizationService.T("Removing devices, certificates, firewall rules, and provider registration..."),
             async cancellationToken =>
             {
-                UpdateBusyOperationStatus("Removing Windows Firewall rules...");
+                UpdateBusyOperationStatus(Services.LocalizationService.T("Removing Windows Firewall rules..."));
                 await _firewall.RemoveFirewallRule(cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                UpdateBusyOperationStatus("Removing host certificate...");
+                UpdateBusyOperationStatus(Services.LocalizationService.T("Removing host certificate..."));
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -1589,11 +1841,11 @@ public partial class MainViewModel : ObservableObject
                 }, cancellationToken);
 
                 cancellationToken.ThrowIfCancellationRequested();
-                UpdateBusyOperationStatus("Unregistering Credential Provider...");
+                UpdateBusyOperationStatus(Services.LocalizationService.T("Unregistering Credential Provider..."));
                 await _providerSetup.UninstallProviderAsync(dllPath, cancellationToken);
 
                 cancellationToken.ThrowIfCancellationRequested();
-                UpdateBusyOperationStatus("Clearing paired devices and saving clean configuration...");
+                UpdateBusyOperationStatus(Services.LocalizationService.T("Clearing paired devices and saving clean configuration..."));
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -1606,11 +1858,11 @@ public partial class MainViewModel : ObservableObject
         await RefreshStatusAsync();
         if (outcome == BusyOperationOutcome.Completed)
         {
-            await ShowBusyResultAsync("Reset complete", "Portal was reset successfully.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Reset complete"), Services.LocalizationService.T("Portal was reset successfully."));
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
-            await ShowBusyResultAsync("Reset cancelled", "Reset was cancelled. Please review current Host health before continuing.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Reset cancelled"), Services.LocalizationService.T("Reset was cancelled. Please review current Host health before continuing."));
         }
     }
 
@@ -1626,7 +1878,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (payload == null)
         {
-            await _dialogService.ShowNotificationAsync("Backup error", "Password is required to create encrypted backup.");
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Backup error"), Services.LocalizationService.T("Password is required to create encrypted backup."));
             return;
         }
 
@@ -1635,32 +1887,32 @@ public partial class MainViewModel : ObservableObject
         {
             if (payload.Password.Length == 0 || payload.ConfirmPassword.Length == 0)
             {
-                await _dialogService.ShowNotificationAsync("Backup error", "Please fill in both password fields.");
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Backup error"), Services.LocalizationService.T("Please fill in both password fields."));
                 return;
             }
 
             if (!SecureStringsEqual(payload.Password, payload.ConfirmPassword))
             {
-                await _dialogService.ShowNotificationAsync("Backup error", "Passwords do not match.");
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Backup error"), Services.LocalizationService.T("Passwords do not match."));
                 return;
             }
 
             if (payload.Password.Length < 8)
             {
-                await _dialogService.ShowNotificationAsync("Backup error", "Use password length of at least 8 characters.");
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Backup error"), Services.LocalizationService.T("Use password length of at least 8 characters."));
                 return;
             }
 
             if (_config.Devices.Count == 0)
             {
-                await _dialogService.ShowNotificationAsync("Backup", "No trusted devices to back up.");
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Backup"), Services.LocalizationService.T(Services.LocalizationService.T("No trusted devices to back up.")));
                 return;
             }
 
             if (!File.Exists(CertificateService.DefaultCertPath))
             {
                 await _dialogService.ShowNotificationAsync(
-                    "Backup error",
+                    Services.LocalizationService.T("Backup error"),
                     $"Server certificate is missing: {CertificateService.DefaultCertPath}\nGenerate/fix certificate first, then retry backup.");
                 return;
             }
@@ -1668,7 +1920,7 @@ public partial class MainViewModel : ObservableObject
             var defaultName = $"Portal-Backup-{DateTime.Now:yyyyMMdd-HHmmss}{EncryptedBackupService.BackupFileExtension}";
             var saveDialog = new SaveFileDialog
             {
-                Title = "Save encrypted backup",
+                Title = Services.LocalizationService.T("Save encrypted backup"),
                 FileName = defaultName,
                 DefaultExt = EncryptedBackupService.BackupFileExtension,
                 AddExtension = true,
@@ -1686,11 +1938,11 @@ public partial class MainViewModel : ObservableObject
             serverCertificatePfx = await File.ReadAllBytesAsync(CertificateService.DefaultCertPath);
             ShowCreateBackupDialog = false;
             var outcome = await RunBusyOperationAsync(
-                "Creating encrypted backup",
-                "Encrypting trusted devices and server certificate with AES-256...",
+                Services.LocalizationService.T("Creating encrypted backup"),
+                Services.LocalizationService.T("Encrypting trusted devices and server certificate with AES-256..."),
                 async cancellationToken =>
                 {
-                    UpdateBusyOperationStatus("Deriving key and encrypting data...");
+                    UpdateBusyOperationStatus(Services.LocalizationService.T("Deriving key and encrypting data..."));
                     await _encryptedBackupService.CreateDeviceBackupAsync(
                         saveDialog.FileName,
                         _config,
@@ -1705,17 +1957,17 @@ public partial class MainViewModel : ObservableObject
             if (outcome == BusyOperationOutcome.Completed)
             {
                 ShowCreateBackupDialog = false;
-                await ShowBusyResultAsync("Backup created", $"Encrypted backup was saved to:\n{saveDialog.FileName}");
+                await ShowBusyResultAsync(Services.LocalizationService.T("Backup created"), $"Encrypted backup was saved to:\n{saveDialog.FileName}");
             }
             else if (outcome == BusyOperationOutcome.Cancelled)
             {
                 ShowCreateBackupDialog = false;
-                await ShowBusyResultAsync("Backup cancelled", "Encrypted backup creation was cancelled.");
+                await ShowBusyResultAsync(Services.LocalizationService.T("Backup cancelled"), Services.LocalizationService.T("Encrypted backup creation was cancelled."));
             }
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowNotificationAsync("Backup error", $"Failed to create backup: {ex.Message}");
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Backup error"), $"Failed to create backup: {ex.Message}");
         }
         finally
         {
@@ -1732,7 +1984,7 @@ public partial class MainViewModel : ObservableObject
     {
         var openDialog = new OpenFileDialog
         {
-            Title = "Select encrypted backup",
+            Title = Services.LocalizationService.T("Select encrypted backup"),
             DefaultExt = EncryptedBackupService.BackupFileExtension,
             Filter = EncryptedBackupService.BackupFileFilter,
             CheckFileExists = true,
@@ -1754,7 +2006,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (payload == null)
         {
-            await _dialogService.ShowNotificationAsync("Restore error", "Backup file and password are required.");
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Restore error"), Services.LocalizationService.T("Backup file and password are required."));
             return;
         }
 
@@ -1762,13 +2014,13 @@ public partial class MainViewModel : ObservableObject
         {
             if (payload.Password.Length == 0)
             {
-                await _dialogService.ShowNotificationAsync("Restore error", "Please enter backup password.");
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Restore error"), Services.LocalizationService.T("Please enter backup password."));
                 return;
             }
 
             if (!File.Exists(payload.FilePath))
             {
-                await _dialogService.ShowNotificationAsync("Restore error", $"Backup file not found:\n{payload.FilePath}");
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Restore error"), $"Backup file not found:\n{payload.FilePath}");
                 return;
             }
 
@@ -1778,21 +2030,21 @@ public partial class MainViewModel : ObservableObject
             {
                 ShowRestoreBackupDialog = false;
                 var outcome = await RunBusyOperationAsync(
-                    "Restoring from backup",
-                    "Scanning backup package and preparing restore...",
+                    Services.LocalizationService.T("Restoring from backup"),
+                    Services.LocalizationService.T("Scanning backup package and preparing restore..."),
                     async cancellationToken =>
                     {
-                        UpdateBusyOperationStatus("Scanning backup file...");
+                        UpdateBusyOperationStatus(Services.LocalizationService.T("Scanning backup file..."));
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        UpdateBusyOperationStatus("Decrypting backup...");
+                        UpdateBusyOperationStatus(Services.LocalizationService.T("Decrypting backup..."));
                         restoredData = await _encryptedBackupService.RestoreDeviceBackupAsync(
                             payload.FilePath,
                             payload.Password,
                             cancellationToken);
 
                         cancellationToken.ThrowIfCancellationRequested();
-                        UpdateBusyOperationStatus("Comparing with current state...");
+                        UpdateBusyOperationStatus(Services.LocalizationService.T("Comparing with current state..."));
                         var currentConfigJson = JsonSerializer.Serialize(_config);
                         var restoredConfigForCompare = restoredData.Config;
                         restoredConfigForCompare.Devices = restoredData.Devices;
@@ -1815,13 +2067,13 @@ public partial class MainViewModel : ObservableObject
 
                         if (sameState)
                         {
-                            UpdateBusyOperationStatus("No changes detected in backup.");
+                            UpdateBusyOperationStatus(Services.LocalizationService.T("No changes detected in backup."));
                             restoreSkippedAsNoChanges = true;
                             return;
                         }
 
                         cancellationToken.ThrowIfCancellationRequested();
-                        UpdateBusyOperationStatus("Restoring server certificate...");
+                        UpdateBusyOperationStatus(Services.LocalizationService.T("Restoring server certificate..."));
                         await Task.Run(() =>
                         {
                             var certDir = Path.GetDirectoryName(CertificateService.DefaultCertPath);
@@ -1838,7 +2090,7 @@ public partial class MainViewModel : ObservableObject
                         }, cancellationToken);
 
                         cancellationToken.ThrowIfCancellationRequested();
-                        UpdateBusyOperationStatus("Applying config and trusted devices...");
+                        UpdateBusyOperationStatus(Services.LocalizationService.T("Applying config and trusted devices..."));
                         await Task.Run(() =>
                         {
                             var restoredConfig = restoredData.Config;
@@ -1856,22 +2108,22 @@ public partial class MainViewModel : ObservableObject
                     if (restoreSkippedAsNoChanges)
                     {
                         await ShowBusyResultAsync(
-                            "Already up to date",
-                            "Backup matches current configuration, devices and certificate. No changes were applied.");
+                            Services.LocalizationService.T("Already up to date"),
+                            Services.LocalizationService.T("Backup matches current configuration, devices and certificate. No changes were applied."));
                     }
                     else
                     {
                         LoadConfigToUi();
                         await RefreshStatusAsync();
                         await ShowBusyResultAsync(
-                            "Backup restored",
-                            "Configuration, trusted devices and host certificate were restored.");
+                            Services.LocalizationService.T("Backup restored"),
+                            Services.LocalizationService.T("Configuration, trusted devices and host certificate were restored."));
                     }
                 }
                 else if (outcome == BusyOperationOutcome.Cancelled)
                 {
                     ShowRestoreBackupDialog = false;
-                    await ShowBusyResultAsync("Restore cancelled", "Restore operation was cancelled.");
+                    await ShowBusyResultAsync(Services.LocalizationService.T("Restore cancelled"), Services.LocalizationService.T("Restore operation was cancelled."));
                 }
             }
             finally
@@ -1881,11 +2133,11 @@ public partial class MainViewModel : ObservableObject
         }
         catch (CryptographicException)
         {
-            await _dialogService.ShowNotificationAsync("Restore error", "Wrong password or corrupted backup file.");
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Restore error"), Services.LocalizationService.T("Wrong password or corrupted backup file."));
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowNotificationAsync("Restore error", $"Failed to restore backup: {ex.Message}");
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Restore error"), $"Failed to restore backup: {ex.Message}");
         }
         finally
         {
@@ -1938,7 +2190,7 @@ public partial class MainViewModel : ObservableObject
 
     private void ShowUpdateAvailabilityToast(string message)
     {
-        UpdateToastTitle = "New update available";
+        UpdateToastTitle = Services.LocalizationService.T("New update available");
         UpdateToastMessage = message;
         ShowUpdateToast = true;
         _updateToastTimer.Stop();
@@ -1955,8 +2207,8 @@ public partial class MainViewModel : ObservableObject
             if (string.IsNullOrWhiteSpace(normalizedRepository))
             {
                 await _dialogService.ShowNotificationAsync(
-                    "Invalid repository",
-                    "Use owner/repo or https://github.com/owner/repo");
+                    Services.LocalizationService.T("Invalid repository"),
+                    Services.LocalizationService.T("Use owner/repo or https://github.com/owner/repo"));
                 return;
             }
         }
@@ -1968,9 +2220,9 @@ public partial class MainViewModel : ObservableObject
         UpdateTokenText = string.Empty;
 
         await _dialogService.ShowNotificationAsync(
-            "Update source saved",
+            Services.LocalizationService.T("Update source saved"),
             string.IsNullOrWhiteSpace(_config.UpdateRepository)
-                ? "Using built-in repository. Private token updated."
+                ? Services.LocalizationService.T("Using built-in repository. Private token updated.")
                 : $"Using repository: {_config.UpdateRepository}");
     }
 
@@ -2028,28 +2280,28 @@ public partial class MainViewModel : ObservableObject
         IsUpdateProgressPrimed = false;
         UpdateCurrentStage = AppUpdateStage.Idle;
         UpdateTransferText = "--";
-        UpdateSpeedText = "Speed: --";
+        UpdateSpeedText = Services.LocalizationService.T("Speed: --");
 
         switch (result.Status)
         {
             case AppUpdateAvailabilityStatus.UpdateAvailable:
                 _availableUpdateManifest = result.Manifest;
                 IsUpdateAvailable = result.Manifest != null;
-                UpdateStatusTitle = "GitHub update available";
+                UpdateStatusTitle = Services.LocalizationService.T("GitHub update available");
                 UpdateStatusMessage = result.Message;
                 UpdateSourceText = !string.IsNullOrWhiteSpace(result.Manifest?.SourceRepository)
                     ? $"Source: GitHub Releases - {result.Manifest.SourceRepository}"
                     : $"Source: {UpdateService.BuiltInSourceLabel}";
-                UpdateAvailableVersionText = result.Manifest != null ? $"Available version: v{result.Manifest.Version.TrimStart('v', 'V')}" : "Available version: unknown";
+                UpdateAvailableVersionText = result.Manifest != null ? $"Available version: v{result.Manifest.Version.TrimStart('v', 'V')}" : Services.LocalizationService.T("Available version: unknown");
                 UpdateFileName = string.IsNullOrWhiteSpace(result.Manifest?.PackageFileName)
-                    ? "Package file is not specified in release"
+                    ? Services.LocalizationService.T("Package file is not specified in release")
                     : result.Manifest!.PackageFileName;
                 UpdateTransferText = result.Manifest?.PackageSizeBytes is > 0
                     ? $"Size: {FormatBytes(result.Manifest.PackageSizeBytes.Value)}"
-                    : "Size: unknown";
+                    : Services.LocalizationService.T("Size: unknown");
                 UpdateSpeedText = result.Manifest?.RequiresProviderReinstall == true
-                    ? "Post-install: Credential Provider reinstall"
-                    : "Post-install: restart Host";
+                    ? Services.LocalizationService.T("Post-install: Credential Provider reinstall")
+                    : Services.LocalizationService.T("Post-install: restart Host");
                 break;
 
             case AppUpdateAvailabilityStatus.NoUpdate:
@@ -2057,12 +2309,12 @@ public partial class MainViewModel : ObservableObject
                 _availableUpdateManifest = null;
                 if (!isAutomatic)
                 {
-                    UpdateStatusTitle = "You are up to date";
+                    UpdateStatusTitle = Services.LocalizationService.T("You are up to date");
                     UpdateStatusMessage = result.Message;
-                    UpdateAvailableVersionText = "No update detected";
-                    UpdateFileName = "No package selected";
+                    UpdateAvailableVersionText = Services.LocalizationService.T("No update detected");
+                    UpdateFileName = Services.LocalizationService.T("No package selected");
                     UpdateTransferText = "--";
-                    UpdateSpeedText = "Speed: --";
+                    UpdateSpeedText = Services.LocalizationService.T("Speed: --");
                 }
                 break;
 
@@ -2071,12 +2323,12 @@ public partial class MainViewModel : ObservableObject
                 _availableUpdateManifest = null;
                 if (!isAutomatic)
                 {
-                    UpdateStatusTitle = "Update source unavailable";
+                    UpdateStatusTitle = Services.LocalizationService.T("Update source unavailable");
                     UpdateStatusMessage = result.Message;
-                    UpdateAvailableVersionText = "No update source available";
-                    UpdateFileName = "GitHub source unavailable";
+                    UpdateAvailableVersionText = Services.LocalizationService.T("No update source available");
+                    UpdateFileName = Services.LocalizationService.T("GitHub source unavailable");
                     UpdateTransferText = "--";
-                    UpdateSpeedText = "Speed: --";
+                    UpdateSpeedText = Services.LocalizationService.T("Speed: --");
                 }
                 break;
         }
@@ -2092,7 +2344,7 @@ public partial class MainViewModel : ObservableObject
         IsUpdateProgressPrimed = false;
         UpdateCurrentStage = AppUpdateStage.Idle;
         UpdateTransferText = "--";
-        UpdateSpeedText = "Speed: --";
+        UpdateSpeedText = Services.LocalizationService.T("Speed: --");
     }
 
     [RelayCommand]
@@ -2109,13 +2361,13 @@ public partial class MainViewModel : ObservableObject
         UpdateCurrentStage = AppUpdateStage.Checking;
         IsUpdateAvailable = false;
         _availableUpdateManifest = null;
-        InstallUpdateButtonText = "Install Update";
-        UpdateStatusTitle = "Checking for updates";
-        UpdateStatusMessage = "Contacting GitHub Releases and comparing versions...";
+        InstallUpdateButtonText = Services.LocalizationService.T("Install Update");
+        UpdateStatusTitle = Services.LocalizationService.T("Checking for updates");
+        UpdateStatusMessage = Services.LocalizationService.T("Contacting GitHub Releases and comparing versions...");
         UpdateLastCheckedText = $"Checking started at {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
-        UpdateFileName = "Manifest";
+        UpdateFileName = Services.LocalizationService.T("Manifest");
         UpdateTransferText = "--";
-        UpdateSpeedText = "Speed: --";
+        UpdateSpeedText = Services.LocalizationService.T("Speed: --");
         UpdateProgressPercent = 0;
         HasUpdateBanner = false;
 
@@ -2136,12 +2388,12 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             Logger.LogError("[MainViewModel] Failed to check updates.", ex);
-            UpdateStatusTitle = "GitHub update check failed";
+            UpdateStatusTitle = Services.LocalizationService.T("GitHub update check failed");
             UpdateStatusMessage = ex.Message;
-            UpdateAvailableVersionText = "Update check failed";
-            UpdateFileName = "GitHub release error";
+            UpdateAvailableVersionText = Services.LocalizationService.T("Update check failed");
+            UpdateFileName = Services.LocalizationService.T("GitHub release error");
             UpdateTransferText = "--";
-            UpdateSpeedText = "Speed: --";
+            UpdateSpeedText = Services.LocalizationService.T("Speed: --");
             suggestSourceSetup = ex.Message.Contains("401", StringComparison.OrdinalIgnoreCase)
                                  || ex.Message.Contains("403", StringComparison.OrdinalIgnoreCase)
                                  || ex.Message.Contains("404", StringComparison.OrdinalIgnoreCase);
@@ -2156,23 +2408,23 @@ public partial class MainViewModel : ObservableObject
         {
             if (suggestSourceSetup)
             {
-                await _dialogService.ShowNotificationAsync("Update check failed", "GitHub Releases is unavailable or the built-in Portal-Windows repository could not be reached. Retry later.");
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Update check failed"), "GitHub Releases is unavailable or the built-in Portal-Windows repository could not be reached. Retry later.");
                 return;
             }
 
-            await _dialogService.ShowNotificationAsync("Update check failed", UpdateStatusMessage);
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Update check failed"), UpdateStatusMessage);
             return;
         }
 
         if (result.Status != AppUpdateAvailabilityStatus.UpdateAvailable || result.Manifest == null)
         {
-            await _dialogService.ShowNotificationAsync("No updates", "Current version is up to date.");
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("No updates"), Services.LocalizationService.T("Current version is up to date."));
             return;
         }
 
         var availableVersion = result.Manifest.Version.TrimStart('v', 'V');
         var installNow = await _dialogService.ShowNotificationAsync(
-            "Update found",
+            Services.LocalizationService.T("Update found"),
             $"Version v{availableVersion} is available. Install now?",
             true);
 
@@ -2200,10 +2452,10 @@ public partial class MainViewModel : ObservableObject
         IsUpdateProgressIndeterminate = true;
         IsUpdateProgressPrimed = false;
         UpdateCurrentStage = AppUpdateStage.Checking;
-        InstallUpdateButtonText = "Installing Update...";
+        InstallUpdateButtonText = Services.LocalizationService.T("Installing Update...");
         UpdateProgressPercent = 0;
-        UpdateStatusTitle = "Installing GitHub update";
-        UpdateStatusMessage = "Preparing download from GitHub Releases...";
+        UpdateStatusTitle = Services.LocalizationService.T("Installing GitHub update");
+        UpdateStatusMessage = Services.LocalizationService.T("Preparing download from GitHub Releases...");
         HasUpdateBanner = false;
 
         var progress = new Progress<AppUpdateProgressSnapshot>(snapshot =>
@@ -2213,13 +2465,13 @@ public partial class MainViewModel : ObservableObject
             IsUpdateProgressIndeterminate = snapshot.Stage != AppUpdateStage.Downloading || !snapshot.TotalBytes.HasValue || snapshot.TotalBytes <= 0;
             UpdateStatusTitle = snapshot.StageText;
             UpdateStatusMessage = snapshot.StatusText;
-            UpdateFileName = string.IsNullOrWhiteSpace(snapshot.FileName) ? "Package" : snapshot.FileName;
+            UpdateFileName = string.IsNullOrWhiteSpace(snapshot.FileName) ? Services.LocalizationService.T("Package") : snapshot.FileName;
             UpdateTransferText = snapshot.TotalBytes.HasValue && snapshot.TotalBytes > 0
                 ? $"{FormatBytes(snapshot.BytesReceived)} / {FormatBytes(snapshot.TotalBytes.Value)}"
                 : $"{FormatBytes(snapshot.BytesReceived)} downloaded";
             UpdateSpeedText = snapshot.BytesPerSecond.HasValue
                 ? $"Speed: {FormatBytes((long)snapshot.BytesPerSecond.Value)}/s"
-                : "Speed: --";
+                : Services.LocalizationService.T("Speed: --");
             UpdateProgressPercent = snapshot.TotalBytes.HasValue && snapshot.TotalBytes.Value > 0
                 ? Math.Round(snapshot.BytesReceived * 100d / snapshot.TotalBytes.Value, 1)
                 : 0;
@@ -2228,8 +2480,8 @@ public partial class MainViewModel : ObservableObject
         try
         {
             await _updateService.PrepareAndLaunchUpdateAsync(_availableUpdateManifest, _config, progress);
-            UpdateStatusTitle = "Installation";
-            UpdateStatusMessage = "Portal-Windows is handing off the prepared package to Updater and will close now.";
+            UpdateStatusTitle = Services.LocalizationService.T("Installation");
+            UpdateStatusMessage = Services.LocalizationService.T("Portal-Windows is handing off the prepared package to Updater and will close now.");
             UpdateAvailableVersionText = $"Installing version: v{_availableUpdateManifest.Version.TrimStart('v', 'V')}";
             await Task.Delay(600);
             Application.Current.Shutdown();
@@ -2237,7 +2489,7 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             Logger.LogError("[MainViewModel] Failed to install update.", ex);
-            UpdateStatusTitle = "Update installation failed";
+            UpdateStatusTitle = Services.LocalizationService.T("Update installation failed");
             UpdateStatusMessage = ex.Message;
             HasUpdateBanner = true;
             UpdateBannerText = $"Update failed: {ex.Message}";
@@ -2248,7 +2500,7 @@ public partial class MainViewModel : ObservableObject
             IsUpdateProgressIndeterminate = false;
             IsUpdateOperationInProgress = false;
             UpdateCurrentStage = AppUpdateStage.Idle;
-            InstallUpdateButtonText = "Install Update";
+            InstallUpdateButtonText = Services.LocalizationService.T("Install Update");
             InstallUpdateCommand.NotifyCanExecuteChanged();
         }
     }
@@ -2300,7 +2552,7 @@ public partial class MainViewModel : ObservableObject
         _wizardSetupCts = new CancellationTokenSource();
         ShowWizard = true;
         SetShowStep("StepProgress");
-        WizStatusText = "Initializing setup...";
+        WizStatusText = Services.LocalizationService.T("Initializing setup...");
         WizIsIndeterminate = true;
         _newlyPairedDevice = null;
 
@@ -2309,7 +2561,7 @@ public partial class MainViewModel : ObservableObject
 
         if (!isAddingDevice && (string.IsNullOrEmpty(dllPath) || !File.Exists(dllPath)))
         {
-            SetShowError("DLL file not found. Please build the CredentialProvider project.");
+            SetShowError(Services.LocalizationService.T("DLL file not found. Please build the CredentialProvider project."));
             return;
         }
 
@@ -2322,15 +2574,15 @@ public partial class MainViewModel : ObservableObject
             {
                 await Task.Run(async () =>
                 {
-                    Application.Current.Dispatcher.Invoke(() => WizStatusText = "Step 1/4: Verifying Firewall...");
+                    Application.Current.Dispatcher.Invoke(() => WizStatusText = Services.LocalizationService.T("Step 1/4: Verifying Firewall..."));
                     var firewallOk = await _firewall.CheckFirewallRule(port, _wizardSetupCts.Token);
                     if (!firewallOk)
                     {
-                        Application.Current.Dispatcher.Invoke(() => WizStatusText = "Step 1/4: Configuring Firewall...");
+                        Application.Current.Dispatcher.Invoke(() => WizStatusText = Services.LocalizationService.T("Step 1/4: Configuring Firewall..."));
                         await _firewall.AddFirewallRule(port, _wizardSetupCts.Token);
                     }
 
-                    Application.Current.Dispatcher.Invoke(() => WizStatusText = "Step 2/4: Checking Certificate...");
+                    Application.Current.Dispatcher.Invoke(() => WizStatusText = Services.LocalizationService.T("Step 2/4: Checking Certificate..."));
                     if (!_certManager.CheckCertificate())
                     {
                         _hostCert = _certManager.CreateOrLoadCertificate(_config);
@@ -2344,7 +2596,7 @@ public partial class MainViewModel : ObservableObject
                     var providerHealth = _providerSetup.CheckProviderHealth(dllPath);
                     if (!providerHealth.IsHealthy)
                     {
-                        Application.Current.Dispatcher.Invoke(() => WizStatusText = "Step 3/4: Installing Provider...");
+                        Application.Current.Dispatcher.Invoke(() => WizStatusText = Services.LocalizationService.T("Step 3/4: Installing Provider..."));
                         await _providerSetup.InstallProviderAsync(dllPath, _wizardSetupCts.Token);
                     }
                 });
@@ -2357,7 +2609,7 @@ public partial class MainViewModel : ObservableObject
 
             if (_wizardSetupCts.IsCancellationRequested || !IsCurrentWizardSession(sessionId)) return;
 
-            WizStatusText = "Checking credentials...";
+            WizStatusText = Services.LocalizationService.T("Checking credentials...");
             LoadAvailableLocalAccounts();
             var currentDomain = Environment.UserDomainName;
             var currentUser = Environment.UserName;
@@ -2399,17 +2651,17 @@ public partial class MainViewModel : ObservableObject
                     _pairingContext.TargetDomain = WizInputDomain;
                     _pairingContext.SelectedTransport = WizIsNetworkTransport ? Common.TransportType.Network : Common.TransportType.Bluetooth;
 
-                    var pairingResult = await RunPairingLoopAsync();
-
-                    if (_wizardSetupCts.IsCancellationRequested || !IsCurrentWizardSession(sessionId) || pairingResult == PairingStepResult.Cancelled)
+                    PairingStepResult pairingResult;
+                    do
                     {
-                        return;
-                    }
+                        pairingResult = await RunPairingLoopAsync();
 
-                    if (pairingResult == PairingStepResult.RetryCurrentTransport)
-                    {
-                        continue;
+                        if (_wizardSetupCts.IsCancellationRequested || !IsCurrentWizardSession(sessionId) || pairingResult == PairingStepResult.Cancelled)
+                        {
+                            return;
+                        }
                     }
+                    while (pairingResult == PairingStepResult.RetryCurrentTransport);
 
                     if (pairingResult == PairingStepResult.BackToTransport)
                     {
@@ -2440,7 +2692,7 @@ public partial class MainViewModel : ObservableObject
             SetShowStep("StepProgress");
             await Task.Run(() =>
             {
-                Application.Current.Dispatcher.Invoke(() => WizStatusText = "Finalizing configuration...");
+                Application.Current.Dispatcher.Invoke(() => WizStatusText = Services.LocalizationService.T("Finalizing configuration..."));
                 _config.Save();
             });
 
@@ -2451,7 +2703,7 @@ public partial class MainViewModel : ObservableObject
 
             if (_newlyPairedDevice != null)
             {
-                WizStatusText = "Device connected!";
+                WizStatusText = Services.LocalizationService.T("Device connected!");
                 WizDeviceName = _newlyPairedDevice.Name;
                 SetShowStep("StepNameDevice");
             }
@@ -2483,12 +2735,13 @@ public partial class MainViewModel : ObservableObject
         _pairingStartTime = DateTime.Now;
         var transport = _pairingContext.SelectedTransport;
         var sessionId = Interlocked.Increment(ref _pairingSessionId);
-        WizPairInfo = transport == TransportType.Network
+        _pairingStatusRaw = transport == TransportType.Network
             ? "Network pairing service started. Waiting for device..."
             : "Bluetooth pairing service started. Waiting for device...";
+        WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
 
         if (code != null) WizPairCode = $"{code.Substring(0, 3)} {code.Substring(3)}";
-        WizExpiresInfo = "Code expires in 2:00";
+        WizExpiresInfo = BuildCodeExpiresText(TimeSpan.FromMinutes(2));
         WizIsExpiresRed = false;
 
         _expirationTimer?.Stop();
@@ -2498,11 +2751,11 @@ public partial class MainViewModel : ObservableObject
             var remaining = TimeSpan.FromMinutes(2) - (DateTime.Now - _pairingStartTime);
             if (remaining.TotalSeconds <= 0)
             {
-                WizExpiresInfo = "Code Expired";
+                WizExpiresInfo = IsRussianUi ? "Срок действия кода истёк" : "Code Expired";
                 WizIsExpiresRed = true;
                 _expirationTimer.Stop();
             }
-            else WizExpiresInfo = $"Code expires in {remaining:m\\:ss}";
+            else WizExpiresInfo = BuildCodeExpiresText(remaining);
         };
         _expirationTimer.Start();
 
@@ -2533,7 +2786,7 @@ public partial class MainViewModel : ObservableObject
                         _config = PortalWinConfig.Load();
                     }
                 }
-                catch (Exception ex) { if (!token.IsCancellationRequested) Logger.LogError("BT Pairing failed", ex); }
+                catch (Exception ex) { if (!token.IsCancellationRequested) Logger.LogError(Services.LocalizationService.T("BT Pairing failed"), ex); }
                 finally { Application.Current.Dispatcher.Invoke(() => _expirationTimer?.Stop()); }
             });
         }
@@ -2553,7 +2806,7 @@ public partial class MainViewModel : ObservableObject
                         _config = PortalWinConfig.Load();
                     }
                 }
-                catch (Exception ex) { if (!token.IsCancellationRequested) Logger.LogError("Pairing failed", ex); }
+                catch (Exception ex) { if (!token.IsCancellationRequested) Logger.LogError(Services.LocalizationService.T("Pairing failed"), ex); }
                 finally { Application.Current.Dispatcher.Invoke(() => _expirationTimer?.Stop()); }
             });
         }
@@ -2583,8 +2836,33 @@ public partial class MainViewModel : ObservableObject
             if (!StepPairingVis) return;
             if (sessionId != _pairingSessionId) return;
             if (_pairingContext.SelectedTransport != expectedTransport) return;
-            WizPairInfo = status;
+            _pairingStatusRaw = status;
+            WizPairInfo = TranslatePairingStatus(status);
         });
+    }
+
+    private static string TranslatePairingStatus(string status)
+    {
+        var translated = Services.LocalizationService.T(status);
+        if (!string.Equals(translated, status, StringComparison.Ordinal)) return translated;
+
+        const string pairedPrefix = "Paired: ";
+        if (status.StartsWith(pairedPrefix, StringComparison.Ordinal))
+            return Services.LocalizationService.TF("Paired: {0}", status[pairedPrefix.Length..]);
+
+        const string connectedPrefix = "Connected: ";
+        const string verifyingSuffix = ". Verifying code...";
+        if (status.StartsWith(connectedPrefix, StringComparison.Ordinal) && status.EndsWith(verifyingSuffix, StringComparison.Ordinal))
+            return Services.LocalizationService.TF("Connected: {0}. Verifying code...", status[connectedPrefix.Length..^verifyingSuffix.Length]);
+
+        const string bluetoothErrorPrefix = "Bluetooth error: ";
+        if (status.StartsWith(bluetoothErrorPrefix, StringComparison.Ordinal))
+            return Services.LocalizationService.TF("Bluetooth error: {0}", status[bluetoothErrorPrefix.Length..]);
+
+        const string errorPrefix = "Error: ";
+        return status.StartsWith(errorPrefix, StringComparison.Ordinal)
+            ? Services.LocalizationService.TF("Error: {0}", status[errorPrefix.Length..])
+            : status;
     }
 
     private async Task UpdatePairingDisplayParamsAsync(string code)
@@ -2598,7 +2876,7 @@ public partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(WizShowBluetoothInfo));
 
             var btAddress = await _bluetoothService.GetLocalBluetoothAddressAsync();
-            WizBtAddress = btAddress ?? "No BT Adapter";
+            WizBtAddress = btAddress ?? Services.LocalizationService.T("No BT Adapter");
 
             var qrData = new
             {
@@ -2631,8 +2909,8 @@ public partial class MainViewModel : ObservableObject
             {
                 AvailableLocalIps.Add(new NetworkIpOption
                 {
-                    InterfaceName = "Unknown",
-                    IpAddress = "Unknown"
+                    InterfaceName = Services.LocalizationService.T("Unknown"),
+                    IpAddress = Services.LocalizationService.T("Unknown")
                 });
             }
 
@@ -2645,6 +2923,39 @@ public partial class MainViewModel : ObservableObject
             WizPortOnly = SettingsPort;
             RefreshNetworkQrPayload(codeInt, hostName);
         }
+    }
+
+    private void OnPairingAdvertisementAddressChanged(string? advertisedIp)
+    {
+        if (Application.Current?.Dispatcher == null)
+        {
+            return;
+        }
+
+        _ = Application.Current.Dispatcher.InvokeAsync(() =>
+            _ = RefreshPairingNetworkAddressAsync(advertisedIp));
+    }
+
+    private async Task RefreshPairingNetworkAddressAsync(string? advertisedIp)
+    {
+        if (!StepPairingVis || _pairingContext.SelectedTransport != TransportType.Network)
+        {
+            return;
+        }
+
+        await UpdatePairingDisplayParamsAsync(_pairingContext.PairingCode);
+
+        if (!string.IsNullOrWhiteSpace(advertisedIp))
+        {
+            var advertisedOption = AvailableLocalIps.FirstOrDefault(option =>
+                string.Equals(option.IpAddress, advertisedIp, StringComparison.OrdinalIgnoreCase));
+            if (advertisedOption != null)
+            {
+                SelectedPairIp = advertisedOption;
+            }
+        }
+
+        WizPairInfo = IsRussianUi ? "Сеть изменилась — QR-код обновлён для текущего подключения." : "Network changed — QR code updated for the current connection.";
     }
 
     private void RefreshNetworkQrPayload(int? providedCode = null, string? providedHostName = null)
@@ -2813,7 +3124,7 @@ public partial class MainViewModel : ObservableObject
         {
             if (submittedPassword == null && (!string.IsNullOrEmpty(_editingClientId) || !_pairingContext.HasTargetPassword))
             {
-                _dialogService.ShowNotificationAsync("Error", "Please enter password.");
+                _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
                 return;
             }
 
@@ -2824,18 +3135,18 @@ public partial class MainViewModel : ObservableObject
                 {
                     if (SelectedLocalAccount == null)
                     {
-                        _dialogService.ShowNotificationAsync("Error", "Please select account.");
+                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
                         return;
                     }
 
                     if (IsAccountAlreadyPairedForTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, device.TransportType, _editingClientId))
                     {
-                        _dialogService.ShowNotificationAsync("Error", "This Windows account is already linked to another device.");
+                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("This Windows account is already linked to another device."));
                         return;
                     }
                     if (IsAccountAlreadyPairedOnOtherTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, device.TransportType, _editingClientId))
                     {
-                        _dialogService.ShowNotificationAsync("Error", "This account already has pairing on another transport.");
+                        _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on another transport.");
                         return;
                     }
 
@@ -2848,7 +3159,7 @@ public partial class MainViewModel : ObservableObject
 
                     if (submittedPassword == null)
                     {
-                        _dialogService.ShowNotificationAsync("Error", "Please enter password.");
+                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
                         return;
                     }
 
@@ -2860,7 +3171,7 @@ public partial class MainViewModel : ObservableObject
                     account.SetPassword(submittedPassword);
                     _config.Save();
                     RefreshDevicesList();
-                    _dialogService.ShowNotificationAsync("Success", "Account updated successfully.");
+                    _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Success"), Services.LocalizationService.T("Account updated successfully."));
                 }
 
                 _editingClientId = null;
@@ -2872,7 +3183,7 @@ public partial class MainViewModel : ObservableObject
 
             if (SelectedLocalAccount == null)
             {
-                _dialogService.ShowNotificationAsync("Error", "Please select account.");
+                _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
                 return;
             }
 
@@ -2897,20 +3208,20 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedLocalAccount == null)
         {
-            _dialogService.ShowNotificationAsync("Error", "Please select account.");
+            _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
             return;
         }
 
         var selectedTransport = WizIsNetworkTransport ? TransportType.Network : TransportType.Bluetooth;
         if (IsAccountAlreadyPairedForTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, selectedTransport))
         {
-            var transportLabel = selectedTransport == TransportType.Network ? "Network" : "Bluetooth";
-            _dialogService.ShowNotificationAsync("Error", $"This account already has a paired device for {transportLabel} transport.");
+            var transportLabel = selectedTransport == TransportType.Network ? "Network" : Services.LocalizationService.T("Bluetooth");
+            _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? $"Для этого аккаунта уже есть привязанное устройство через канал «{transportLabel}»." : $"This account already has a paired device for {transportLabel} transport.");
             return;
         }
         if (IsAccountAlreadyPairedOnOtherTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, selectedTransport))
         {
-            _dialogService.ShowNotificationAsync("Error", "This account already has pairing on the other transport.");
+            _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on the other transport.");
             return;
         }
 
@@ -3040,13 +3351,13 @@ public partial class MainViewModel : ObservableObject
         }
 
         IsRefreshingFaq = true;
-        FaqRefreshButtonText = "Updating...";
+        FaqRefreshButtonText = Services.LocalizationService.T("Updating...");
 
         try
         {
             if (showBusyState)
             {
-                FaqLastUpdatedText = "Reloading local FAQ source...";
+                FaqLastUpdatedText = Services.LocalizationService.T("Reloading local FAQ source...");
             }
 
             var document = await _faqContentService.RefreshAsync();
@@ -3078,15 +3389,15 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Logger.LogError("FAQ Load Error", ex);
-            FaqLastUpdatedText = "Failed to reload local FAQ source.";
-            FaqSourceText = "Source: local file";
-            await _dialogService.ShowNotificationAsync("FAQ update failed", ex.Message);
+            Logger.LogError(Services.LocalizationService.T("FAQ Load Error"), ex);
+            FaqLastUpdatedText = Services.LocalizationService.T("Failed to reload local FAQ source.");
+            FaqSourceText = Services.LocalizationService.T("Source: local file");
+            await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("FAQ update failed"), ex.Message);
         }
         finally
         {
             IsRefreshingFaq = false;
-            FaqRefreshButtonText = "Update Wiki";
+            FaqRefreshButtonText = Services.LocalizationService.T("Update Wiki");
         }
     }
 
@@ -3195,6 +3506,7 @@ public partial class MainViewModel : ObservableObject
 
     public void OnWindowClosing()
     {
+        _networkPairing.AdvertisementAddressChanged -= OnPairingAdvertisementAddressChanged;
         _pairingCts?.Cancel();
         _networkPairing.StopPairing();
         _btPairing?.Stop();

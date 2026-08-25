@@ -1,5 +1,6 @@
 using Lithnet.CredentialProvider;
 using Portal.Common;
+using Portal.Common.Helpers;
 using Portal.CredentialProvider;
 using Portal.CredentialProvider.Services;
 using System.Threading.Tasks;
@@ -47,7 +48,7 @@ public abstract class PortalWinTileBase : CredentialTile2
 
             if (_versionLabel != null)
             {
-                _versionLabel.Label = $"Ver: {GetProjectVersionText()}";
+                _versionLabel.Label = Localization.T("Ver: ") + GetProjectVersionText();
             }
 
             if (_showDetailsButton != null)
@@ -77,9 +78,7 @@ public abstract class PortalWinTileBase : CredentialTile2
 
     internal void UpdateStatus(string text)
     {
-        _lastStatusRaw = string.IsNullOrWhiteSpace(text) ? "Waiting for remote command." : text.Trim();
-
-        if (_providerBase is PortalWinProvider provider)
+        _lastStatusRaw = string.IsNullOrWhiteSpace(text) ? "Waiting for remote command." : text.Trim();        if (_providerBase is PortalWinProvider provider)
         {
             UpdateStatus(provider.BuildStatusHeadlineForState(_lastStatusRaw), provider.BuildStatusDetailsForState(_lastStatusRaw));
             return;
@@ -94,7 +93,7 @@ public abstract class PortalWinTileBase : CredentialTile2
         {
             try
             {
-                _statusLabel.Label = string.IsNullOrWhiteSpace(headline) ? "PortalWin status unavailable" : headline.Trim();
+                _statusLabel.Label = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.Trim();
             }
             catch
             {
@@ -105,7 +104,7 @@ public abstract class PortalWinTileBase : CredentialTile2
         {
             try
             {
-                _statusDetailsLabel.Label = string.IsNullOrWhiteSpace(details) ? "Status unknown" : details.Trim();
+                _statusDetailsLabel.Label = string.IsNullOrWhiteSpace(details) ? Localization.T("Status unknown") : details.Trim();
             }
             catch
             {

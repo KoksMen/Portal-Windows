@@ -434,6 +434,13 @@ public class PortalWinTile : PortalWinTileBase
                         {
                             approvalCompleted = true;
                             Logger.Log($"[Tile] unlock_request_approved elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
+                            ActivityJournal.Record(
+                                "unlock",
+                                "✨",
+                                "PC unlock approved",
+                                $"{device.Name} approved an unlock request over {GetTransportLabel(device)}.",
+                                deviceName: device.Name,
+                                transport: GetTransportLabel(device));
                             HandleApproval(config, device);
                             cts.Cancel();
                             return;
@@ -449,6 +456,7 @@ public class PortalWinTile : PortalWinTileBase
                 if (anyRejection && !approvalCompleted)
                 {
                     Logger.LogWarning($"[Tile] unlock_request_denied elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
+                    ActivityJournal.Record("unlock", "🚫", "Unlock request declined", "A paired device declined the remote unlock request.", false);
                     UpdateStatus("Denied by device.");
                 }
                 else if (cts.IsCancellationRequested && !approvalCompleted)
@@ -458,6 +466,12 @@ public class PortalWinTile : PortalWinTileBase
                         ? "timeout"
                         : "cancelled";
                     Logger.LogWarning($"[Tile] unlock_request_cancelled reason={reason} elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
+                    ActivityJournal.Record(
+                        "unlock",
+                        reason == "timeout" ? "⌛" : "↩️",
+                        reason == "timeout" ? "Unlock request timed out" : "Unlock request cancelled",
+                        reason == "timeout" ? "No paired device responded before the request expired." : "The remote unlock request was cancelled.",
+                        false);
                     UpdateStatus("Request cancelled or timed out.");
                 }
             }
@@ -735,6 +749,16 @@ public class PortalWinTile : PortalWinTileBase
         }
 
         ShowRequestButton();
+    }
+
+    private static string GetTransportLabel(Portal.Common.Models.DeviceModel device)
+    {
+        return device.TransportType switch
+        {
+            TransportType.Network => "Wi-Fi",
+            TransportType.Bluetooth => "Bluetooth",
+            _ => "Wi-Fi or Bluetooth"
+        };
     }
 
     private void ShowRequestButton()
