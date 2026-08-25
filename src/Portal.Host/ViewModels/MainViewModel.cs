@@ -136,8 +136,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _activitySummaryText = "No recent activity yet.";
     [ObservableProperty] private string _selectedActivityFilter = "All events";
     [ObservableProperty] private string _selectedActivitySort = "Newest first";
-    [ObservableProperty] private DateTime? _activityFromDate;
-    [ObservableProperty] private string _activityFromDateText = string.Empty;
+    [ObservableProperty] private DateTime? _activityFromDate = DateTime.Today;
+    [ObservableProperty] private int _activityFromDay = DateTime.Today.Day;
+    [ObservableProperty] private int _activityFromMonth = DateTime.Today.Month;
+    [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
     public string AppVersion => "v1.2.1";
@@ -911,23 +913,30 @@ public partial class MainViewModel : ObservableObject
     partial void OnSelectedActivitySortChanged(string value) => RefreshActivityJournal();
     partial void OnActivityFromDateChanged(DateTime? value)
     {
-        var displayValue = value?.ToString("yyyy-MM-dd") ?? string.Empty;
-        if (!string.Equals(ActivityFromDateText, displayValue, StringComparison.Ordinal))
-            ActivityFromDateText = displayValue;
+        if (value.HasValue)
+        {
+            if (ActivityFromDay != value.Value.Day) ActivityFromDay = value.Value.Day;
+            if (ActivityFromMonth != value.Value.Month) ActivityFromMonth = value.Value.Month;
+            if (ActivityFromYear != value.Value.Year) ActivityFromYear = value.Value.Year;
+        }
 
         RefreshActivityJournal();
     }
 
-    partial void OnActivityFromDateTextChanged(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            ActivityFromDate = null;
-            return;
-        }
+    partial void OnActivityFromDayChanged(int value) => UpdateActivityFromDateParts();
+    partial void OnActivityFromMonthChanged(int value) => UpdateActivityFromDateParts();
+    partial void OnActivityFromYearChanged(int value) => UpdateActivityFromDateParts();
 
-        if (DateTime.TryParse(value, out var selectedDate))
-            ActivityFromDate = selectedDate.Date;
+    private void UpdateActivityFromDateParts()
+    {
+        if (ActivityFromYear is < 2000 or > 9999 || ActivityFromMonth is < 1 or > 12)
+            return;
+
+        var maxDay = DateTime.DaysInMonth(ActivityFromYear, ActivityFromMonth);
+        if (ActivityFromDay < 1 || ActivityFromDay > maxDay)
+            return;
+
+        ActivityFromDate = new DateTime(ActivityFromYear, ActivityFromMonth, ActivityFromDay);
     }
 
     // --- Commands (Dashboard & General) ---
@@ -973,7 +982,7 @@ public partial class MainViewModel : ObservableObject
     {
         SelectedActivityFilter = "All events";
         SelectedActivitySort = "Newest first";
-        ActivityFromDate = null;
+        ActivityFromDate = DateTime.Today;
     }
 
     [RelayCommand]

@@ -453,10 +453,11 @@
             <Setter Property="Background" Value="#101728" />
             <Setter Property="BorderBrush" Value="#37589F" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="Padding" Value="8,7" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontFamily" Value="Consolas" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -3223,10 +3224,13 @@
                             </StackPanel>
                             <StackPanel Grid.Column="4">
                                 <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="FROM DATE" />
-                                <TextBox
-                                    ToolTip="Enter a date in YYYY-MM-DD format"
-                                    Text="{Binding ActivityFromDateText, UpdateSourceTrigger=PropertyChanged}"
-                                    Style="{StaticResource ActivityDateInput}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox Width="38" ToolTip="Day" Text="{Binding ActivityFromDay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
+                                    <TextBlock Margin="4,0" VerticalAlignment="Center" Foreground="#6F8FC5" Text="/" />
+                                    <TextBox Width="38" ToolTip="Month" Text="{Binding ActivityFromMonth, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
+                                    <TextBlock Margin="4,0" VerticalAlignment="Center" Foreground="#6F8FC5" Text="/" />
+                                    <TextBox Width="58" ToolTip="Year" Text="{Binding ActivityFromYear, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
+                                </StackPanel>
                             </StackPanel>
                             <Button
                                 Grid.Column="6"
