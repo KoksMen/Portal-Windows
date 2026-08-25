@@ -2564,7 +2564,7 @@
                                     Cursor="Hand"
                                     FontSize="20"
                                     Foreground="#8888a0"
-                                    ToolTip="Copy Code / Копировать код" />
+                                    ToolTip="Copy Code" />
                             </StackPanel>
                         </Border>
                         <ProgressBar

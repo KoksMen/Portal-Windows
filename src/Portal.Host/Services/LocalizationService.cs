@@ -23,8 +23,14 @@ public static class LocalizationService
 
     private static readonly ConditionalWeakTable<DependencyObject, OriginalValues> Originals = new();
 
+    /// <summary>Currently applied UI language ("ru" or "en"). Defaults to Russian.</summary>
+    public static string CurrentLanguage { get; private set; } = "ru";
+
+    public static bool IsRussian => !string.Equals(CurrentLanguage, "en", StringComparison.OrdinalIgnoreCase);
+
     private static readonly IReadOnlyDictionary<string, string> Russian = new Dictionary<string, string>(StringComparer.Ordinal)
     {
+        // --- Settings / dashboard ---
         ["Interface language"] = "Язык интерфейса",
         ["Choose the language for the Portal interface. The selection is saved automatically."] = "Выберите язык интерфейса Portal. Выбор сохраняется автоматически.",
         ["Settings"] = "Настройки",
@@ -54,8 +60,10 @@ public static class LocalizationService
         ["Check update"] = "Проверить обновления",
         ["Enable automatic update checks"] = "Автоматически проверять обновления",
         ["Save Configuration"] = "Сохранить настройки",
+        ["Save Changes"] = "Сохранить изменения",
         ["Enabled"] = "Включено",
         ["Install"] = "Установить",
+        ["Reinstall"] = "Переустановить",
         ["Uninstall"] = "Удалить",
         ["Fix / Update"] = "Исправить / обновить",
         ["Delete Rules"] = "Удалить правила",
@@ -85,13 +93,13 @@ public static class LocalizationService
         ,["⚠ Reset & Re-create All"] = "⚠ Сбросить и настроить заново"
         ,["✓ Service Active & Ready"] = "✓ Служба активна и готова"
         ,["✨ Recent Activity"] = "✨ Последняя активность"
+        ,["✨  Recent Activity"] = "✨  Последняя активность"
         ,["⚙  Advanced Settings"] = "⚙  Расширенные настройки"
         ,["🌐 Network (Wi-Fi / LAN)"] = "🌐 Сеть (Wi‑Fi / LAN)"
         ,["Bluetooth"] = "Bluetooth"
         ,["Pair over local network. Both devices must be on the same Wi-Fi/LAN."] = "Привязка по локальной сети. Оба устройства должны быть в одной сети Wi‑Fi/LAN."
         ,["Pair over Bluetooth. No Wi-Fi required. Devices must be in range."] = "Привязка по Bluetooth. Wi‑Fi не требуется. Устройства должны быть в зоне действия."
         ,["↻ Refresh Code"] = "↻ Обновить код"
-        ,["✨ Recent activity"] = "✨ Последняя активность"
         ,["Remote Unlock System"] = "Система удалённой разблокировки"
         ,["Request on button click AND automatically at PC startup (first logon after boot)."] = "Запрос отправляется по нажатию и автоматически при запуске ПК (при первом входе после загрузки)."
         ,["Request on button click AND automatically whenever the lock screen appears (startup, Win+L, etc.)."] = "Запрос отправляется по нажатию и автоматически при каждом появлении экрана блокировки (запуск, Win+L и т. д.)."
@@ -128,6 +136,7 @@ public static class LocalizationService
         ,["Required for Windows to unlock."] = "Нужно Windows для разблокировки."
         ,["Choose Windows Account"] = "Выберите учётную запись Windows"
         ,["Password"] = "Пароль"
+        ,["Repeat password"] = "Повторите пароль"
         ,["Device Name"] = "Имя устройства"
         ,["Back"] = "Назад"
         ,["Cancel"] = "Отмена"
@@ -160,7 +169,294 @@ public static class LocalizationService
         ,["Notification"] = "Уведомление"
         ,["YES"] = "ДА"
         ,["NO"] = "НЕТ"
+
+        // --- Missing XAML captions ---
+        ,["⚠ Setup Required"] = "⚠ Требуется настройка"
+        ,["Choose date"] = "Выбрать дату"
+        ,["Copy Code"] = "Копировать код"
+        ,["Copy IP"] = "Копировать IP"
+        ,["Copy Port"] = "Копировать порт"
+        ,["Copy Bluetooth address"] = "Копировать Bluetooth-адрес"
+        ,["Enter backup encryption password"] = "Введите пароль шифрования копии"
+        ,["Enter backup password"] = "Введите пароль копии"
+        ,["Message goes here..."] = "Здесь будет сообщение..."
+        ,["OK"] = "OK"
+
+        // --- Logs window ---
+        ,["Logs Viewer"] = "Просмотр журналов"
+        ,["Host Logs"] = "Журнал Portal.Host"
+        ,["Provider Logs"] = "Журнал провайдера"
+        ,["Refresh"] = "Обновить"
+        ,["Portal Logs"] = "Журналы Portal"
+
+        // --- Toast ---
+        ,["Open"] = "Открыть"
+
+        // --- Dynamic VM strings ---
+        ,["General"] = "Общее"
+        ,["Loading..."] = "Загрузка..."
+        ,["Setup required"] = "Требуется настройка"
+        ,["IP: Unknown"] = "IP: неизвестен"
+        ,["No recent activity yet."] = "Недавних событий пока нет."
+        ,["Local FAQ is ready to load."] = "Локальный FAQ готов к загрузке."
+        ,["Source: local file"] = "Источник: локальный файл"
+        ,["Update Wiki"] = "Обновить Wiki"
+        ,["Updates are idle."] = "Обновления неактивны."
+        ,["Check for Updates to query the latest release from GitHub."] = "Нажмите «Проверить обновления», чтобы запросить последний релиз с GitHub."
+        ,["No update detected"] = "Обновлений не обнаружено"
+        ,["Not checked yet"] = "Ещё не проверялось"
+        ,["Last update: not installed yet"] = "Обновление ещё не устанавливалось"
+        ,["No package selected"] = "Пакет не выбран"
+        ,["Speed: --"] = "Скорость: --"
+        ,["Install Update"] = "Установить обновление"
+        ,["Update available"] = "Доступно обновление"
+        ,["Tags: local, help"] = "Теги: локально, справка"
+        ,["Updated: --"] = "Обновлено: --"
+        ,["Cancel action"] = "Отменить действие"
+        ,["Service Not Installed"] = "Служба не установлена"
+        ,["Credential Provider is not installed or is damaged."] = "Поставщик учётных данных не установлен или повреждён."
+        ,["Firewall rules are missing."] = "Отсутствуют правила брандмауэра."
+        ,["Host SSL certificate is missing."] = "Отсутствует SSL-сертификат компьютера."
+        ,["All core components are configured."] = "Все ключевые компоненты настроены."
+        ,["Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate."] = "Нажмите «ЗАПУСТИТЬ / АКТИВИРОВАТЬ» для автоисправления. При необходимости: Расширенные настройки -> Состояние системы -> Переустановить провайдер / Исправить брандмауэр / Пересоздать сертификат."
+        ,["No setup actions required."] = "Действия по настройке не требуются."
+        ,["{0} trusted devices"] = "Доверенных устройств: {0}"
+        ,["Your IP for client: "] = "Ваш IP для клиента: "
+        ,["Unknown"] = "Неизвестно"
+        ,["Preparing setup wizard"] = "Подготовка мастера настройки"
+        ,["Checking Host readiness before opening setup..."] = "Проверка готовности Host перед открытием настройки..."
+        ,["Certificate hash is not available for this client."] = "Хеш сертификата недоступен для этого клиента."
+        ,["Link open failed"] = "Не удалось открыть ссылку"
+        ,["Cancelling..."] = "Отмена..."
+        ,["Stopping current action. Please wait..."] = "Остановка текущего действия. Подождите..."
+        ,["Working"] = "Работаем"
+        ,["Please wait..."] = "Пожалуйста, подождите..."
+        ,["Confirm"] = "Подтвердите"
+        ,["Deleting trusted device"] = "Удаление доверенного устройства"
+        ,["Device deleted"] = "Устройство удалено"
+        ,["Deletion cancelled"] = "Удаление отменено"
+        ,["Device deletion was cancelled. Please verify the device list before continuing."] = "Удаление устройства отменено. Проверьте список устройств перед продолжением."
+        ,["Saving Configuration..."] = "Сохранение настроек..."
+        ,["Saving configuration"] = "Сохранение настроек"
+        ,["Writing Portal settings..."] = "Запись настроек Portal..."
+        ,["Saving configuration to disk..."] = "Сохранение настроек на диск..."
+        ,["Configuration saved"] = "Настройки сохранены"
+        ,["Host configuration was saved. Firewall rules were not changed automatically."] = "Конфигурация Host сохранена. Правила брандмауэра не изменялись автоматически."
+        ,["Saving cancelled"] = "Сохранение отменено"
+        ,["Saving was cancelled. Some settings may already be written, so please review Host status before proceeding."] = "Сохранение отменено. Часть настроек могла быть уже записана — проверьте состояние Host перед продолжением."
+        ,["Uninstalling..."] = "Удаление..."
+        ,["Uninstalling Portal"] = "Удаление Portal"
+        ,["Removing firewall rules, certificate, and Credential Provider..."] = "Удаление правил брандмауэра, сертификата и поставщика учётных данных..."
+        ,["Removing Windows Firewall rules..."] = "Удаление правил брандмауэра Windows..."
+        ,["Removing host certificate..."] = "Удаление сертификата компьютера..."
+        ,["Unregistering Credential Provider..."] = "Разрегистрация поставщика учётных данных..."
+        ,["Uninstall complete"] = "Удаление завершено"
+        ,["Portal was uninstalled successfully."] = "Portal успешно удалён."
+        ,["Uninstall cancelled"] = "Удаление отменено"
+        ,["Uninstall was cancelled. Please verify system health before using Portal again."] = "Удаление отменено. Проверьте состояние системы перед повторным использованием Portal."
+        ,["Updating firewall rules"] = "Обновление правил брандмауэра"
+        ,["Firewall updated"] = "Брандмауэр обновлён"
+        ,["Firewall rules were updated."] = "Правила брандмауэра обновлены."
+        ,["Firewall update cancelled"] = "Обновление брандмауэра отменено"
+        ,["Firewall update was cancelled. Rules may be partially applied."] = "Обновление брандмауэра отменено. Правила могли примениться частично."
+        ,["Deleting firewall rules"] = "Удаление правил брандмауэра"
+        ,["Removing all Portal firewall rules from Windows Firewall..."] = "Удаление всех правил Portal из брандмауэра Windows..."
+        ,["Firewall rules deleted"] = "Правила брандмауэра удалены"
+        ,["All Portal firewall rules were removed."] = "Все правила брандмауэра Portal удалены."
+        ,["Firewall rule deletion was cancelled. Please re-check firewall status."] = "Удаление правил брандмауэра отменено. Проверьте состояние брандмауэра заново."
+        ,["Regenerating SSL certificate"] = "Пересоздание SSL-сертификата"
+        ,["Creating a new host certificate. Clients will need to re-pair afterwards..."] = "Создание нового сертификата компьютера. Клиентам потребуется повторная привязка..."
+        ,["Certificate regenerated"] = "Сертификат пересоздан"
+        ,["SSL certificate was regenerated successfully. Existing trusted clients are now invalid and must be re-paired."] = "SSL-сертификат успешно пересоздан. Существующие доверенные клиенты больше недействительны и требуют повторной привязки."
+        ,["Deleting invalid clients"] = "Удаление недействительных клиентов"
+        ,["Removing trusted clients that no longer match the regenerated certificate..."] = "Удаление доверенных клиентов, не соответствующих новому сертификату..."
+        ,["Clients deleted"] = "Клиенты удалены"
+        ,["All invalid trusted clients were removed. Re-pair devices to continue using unlock."] = "Все недействительные клиенты удалены. Выполните привязку устройств заново, чтобы продолжить использование разблокировки."
+        ,["Invalid clients were kept. You can remove them later from Connected Devices."] = "Недействительные клиенты оставлены. Их можно удалить позже в разделе «Подключённые устройства»."
+        ,["Certificate action cancelled"] = "Действие с сертификатом отменено"
+        ,["Certificate regeneration was cancelled. Host certificate state should be verified."] = "Пересоздание сертификата отменено. Проверьте состояние сертификата компьютера."
+        ,["DLL not found"] = "DLL не найден"
+        ,["Reinstalling Credential Provider"] = "Переустановка поставщика учётных данных"
+        ,["Installing Credential Provider"] = "Установка поставщика учётных данных"
+        ,["Removing old provider registration before reinstall..."] = "Удаление старой регистрации провайдера перед переустановкой..."
+        ,["Registering Credential Provider..."] = "Регистрация поставщика учётных данных..."
+        ,["Removing old Credential Provider registration..."] = "Удаление старой регистрации поставщика учётных данных..."
+        ,["Provider reinstalled"] = "Провайдер переустановлен"
+        ,["Provider installed"] = "Провайдер установлен"
+        ,["Provider reinstalled successfully."] = "Провайдер успешно переустановлен."
+        ,["Provider installed successfully."] = "Провайдер успешно установлен."
+        ,["Provider action cancelled"] = "Действие с провайдером отменено"
+        ,["Provider installation was cancelled. Please verify provider health before continuing."] = "Установка провайдера отменена. Проверьте его состояние перед продолжением."
+        ,["Uninstalling Credential Provider"] = "Удаление поставщика учётных данных"
+        ,["Removing Credential Provider registration..."] = "Удаление регистрации поставщика учётных данных..."
+        ,["Provider uninstalled"] = "Провайдер удалён"
+        ,["Credential Provider was uninstalled."] = "Поставщик учётных данных удалён."
+        ,["Provider uninstall was cancelled. Please verify provider health."] = "Удаление провайдера отменено. Проверьте его состояние."
+        ,["Confirm Reset"] = "Подтвердите сброс"
+        ,["Resetting Portal"] = "Сброс Portal"
+        ,["Removing devices, certificates, firewall rules, and provider registration..."] = "Удаление устройств, сертификатов, правил брандмауэра и регистрации провайдера..."
+        ,["Clearing paired devices and saving clean configuration..."] = "Очистка привязанных устройств и сохранение чистой конфигурации..."
+        ,["Reset complete"] = "Сброс завершён"
+        ,["Portal was reset successfully."] = "Portal успешно сброшен."
+        ,["Reset cancelled"] = "Сброс отменён"
+        ,["Reset was cancelled. Please review current Host health before continuing."] = "Сброс отменён. Проверьте текущее состояние Host перед продолжением."
+        ,["Backup error"] = "Ошибка копии"
+        ,["Password is required to create encrypted backup."] = "Для создания зашифрованной копии требуется пароль."
+        ,["Please fill in both password fields."] = "Заполните оба поля пароля."
+        ,["Passwords do not match."] = "Пароли не совпадают."
+        ,["Use password length of at least 8 characters."] = "Используйте пароль длиной не менее 8 символов."
+        ,["No trusted devices to back up."] = "Нет доверенных устройств для резервного копирования."
+        ,["Save encrypted backup"] = "Сохранить зашифрованную копию"
+        ,["Creating encrypted backup"] = "Создание зашифрованной копии"
+        ,["Encrypting trusted devices and server certificate with AES-256..."] = "Шифрование доверенных устройств и сертификата сервера (AES-256)..."
+        ,["Deriving key and encrypting data..."] = "Генерация ключа и шифрование данных..."
+        ,["Backup created"] = "Копия создана"
+        ,["Backup cancelled"] = "Создание копии отменено"
+        ,["Encrypted backup creation was cancelled."] = "Создание зашифрованной копии отменено."
+        ,["Select encrypted backup"] = "Выберите зашифрованную копию"
+        ,["Restore error"] = "Ошибка восстановления"
+        ,["Backup file and password are required."] = "Укажите файл копии и пароль."
+        ,["Please enter backup password."] = "Введите пароль копии."
+        ,["Restoring from backup"] = "Восстановление из копии"
+        ,["Scanning backup package and preparing restore..."] = "Сканирование пакета копии и подготовка восстановления..."
+        ,["Scanning backup file..."] = "Сканирование файла копии..."
+        ,["Decrypting backup..."] = "Расшифровка копии..."
+        ,["Comparing with current state..."] = "Сравнение с текущим состоянием..."
+        ,["No changes detected in backup."] = "Изменений в копии не обнаружено."
+        ,["Restoring server certificate..."] = "Восстановление сертификата сервера..."
+        ,["Applying config and trusted devices..."] = "Применение конфигурации и доверенных устройств..."
+        ,["Already up to date"] = "Актуально"
+        ,["Backup matches current configuration, devices and certificate. No changes were applied."] = "Копия совпадает с текущей конфигурацией, устройствами и сертификатом. Изменения не применялись."
+        ,["Backup restored"] = "Копия восстановлена"
+        ,["Configuration, trusted devices and host certificate were restored."] = "Конфигурация, доверенные устройства и сертификат компьютера восстановлены."
+        ,["Restore cancelled"] = "Восстановление отменено"
+        ,["Restore operation was cancelled."] = "Операция восстановления отменена."
+        ,["Wrong password or corrupted backup file."] = "Неверный пароль или повреждённый файл копии."
+        ,["New update available"] = "Доступно новое обновление"
+        ,["Invalid repository"] = "Неверный репозиторий"
+        ,["Use owner/repo or https://github.com/owner/repo"] = "Используйте owner/repo или https://github.com/owner/repo"
+        ,["Update source saved"] = "Источник обновлений сохранён"
+        ,["Using built-in repository. Private token updated."] = "Используется встроенный репозиторий. Приватный токен обновлён."
+        ,["GitHub update available"] = "Обновление на GitHub доступно"
+        ,["Available version: unknown"] = "Доступная версия: неизвестна"
+        ,["Package file is not specified in release"] = "Файл пакета не указан в релизе"
+        ,["Size: unknown"] = "Размер: неизвестен"
+        ,["Post-install: Credential Provider reinstall"] = "После установки: переустановка поставщика учётных данных"
+        ,["Post-install: restart Host"] = "После установки: перезапуск Host"
+        ,["You are up to date"] = "У вас последняя версия"
+        ,["Update source unavailable"] = "Источник обновлений недоступен"
+        ,["No update source available"] = "Нет доступного источника обновлений"
+        ,["GitHub source unavailable"] = "Источник GitHub недоступен"
+        ,["Checking for updates"] = "Проверка обновлений"
+        ,["Contacting GitHub Releases and comparing versions..."] = "Обращение к GitHub Releases и сравнение версий..."
+        ,["Manifest"] = "Манифест"
+        ,["GitHub update check failed"] = "Ошибка проверки обновлений GitHub"
+        ,["Update check failed"] = "Ошибка проверки обновлений"
+        ,["GitHub release error"] = "Ошибка релиза GitHub"
+        ,["GitHub Releases is unavailable or the built-in Portal-Windows repository could not be reached. Retry later."] = "GitHub Releases недоступен или не удалось подключиться к встроенному репозиторию Portal-Windows. Повторите позже."
+        ,["No updates"] = "Нет обновлений"
+        ,["Current version is up to date."] = "Текущая версия актуальна."
+        ,["Update found"] = "Обновление найдено"
+        ,["Installing Update..."] = "Установка обновления..."
+        ,["Installing GitHub update"] = "Установка обновления с GitHub"
+        ,["Preparing download from GitHub Releases..."] = "Подготовка загрузки с GitHub Releases..."
+        ,["Package"] = "Пакет"
+        ,["Installation"] = "Установка"
+        ,["Portal-Windows is handing off the prepared package to Updater and will close now."] = "Portal-Windows передаёт подготовленный пакет Updater'у и сейчас закроется."
+        ,["Update installation failed"] = "Ошибка установки обновления"
+        ,["Initializing setup..."] = "Инициализация настройки..."
+        ,["DLL file not found. Please build the CredentialProvider project."] = "Файл DLL не найден. Соберите проект CredentialProvider."
+        ,["Step 1/4: Verifying Firewall..."] = "Шаг 1/4: Проверка брандмауэра..."
+        ,["Step 1/4: Configuring Firewall..."] = "Шаг 1/4: Настройка брандмауэра..."
+        ,["Step 2/4: Checking Certificate..."] = "Шаг 2/4: Проверка сертификата..."
+        ,["Step 3/4: Installing Provider..."] = "Шаг 3/4: Установка провайдера..."
+        ,["Checking credentials..."] = "Проверка учётных данных..."
+        ,["Finalizing configuration..."] = "Завершение конфигурации..."
+        ,["Device connected!"] = "Устройство подключено!"
+        ,["BT Pairing failed"] = "Ошибка Bluetooth-привязки"
+        ,["Pairing failed"] = "Привязка не удалась"
+        ,["No BT Adapter"] = "Нет Bluetooth-адаптера"
+        ,["Please enter password."] = "Введите пароль."
+        ,["Please select account."] = "Выберите аккаунт."
+        ,["This Windows account is already linked to another device."] = "Эта учётная запись Windows уже привязана к другому устройству."
+        ,["Success"] = "Успешно"
+        ,["Account updated successfully."] = "Аккаунт успешно обновлён."
+        ,["Updating..."] = "Обновление..."
+        ,["Reloading local FAQ source..."] = "Перезагрузка локального источника FAQ..."
+        ,["FAQ Load Error"] = "Ошибка загрузки FAQ"
+        ,["Failed to reload local FAQ source."] = "Не удалось перезагрузить локальный источник FAQ."
+        ,["FAQ update failed"] = "Ошибка обновления FAQ"
+        ,["Last update completed"] = "Последнее обновление завершено"
+        ,["Last update failed"] = "Последнее обновление завершилось ошибкой"
+        ,["Installed version: "] = "Установленная версия: "
+        ,["Rollback: completed."] = "Откат: выполнен."
+        ,["Rollback: failed."] = "Откат: не удался."
+        ,["Current version: "] = "Текущая версия: "
+        ,["Last checked: "] = "Последняя проверка: "
+        ,["Last update: "] = "Последнее обновление: "
+        ,["Code expires in "] = "Срок действия кода: "
+        ,["Code Expired"] = "Срок действия кода истёк"
+        ,["Network pairing service started. Waiting for device..."] = "Служба привязки по сети запущена. Ожидание устройства..."
+        ,["Bluetooth pairing service started. Waiting for device..."] = "Служба привязки по Bluetooth запущена. Ожидание устройства..."
+        ,["Network changed — QR code updated for the current connection."] = "Сеть изменилась — QR-код обновлён для текущего подключения."
+        ,["Error"] = "Ошибка"
+        ,["This account already has pairing on another transport."] = "Для этого аккаунта уже есть привязка через другой канал."
+        ,["This account already has pairing on the other transport."] = "Для этого аккаунта уже есть привязка через другой канал."
+        ,["This account already has a paired device for {0} transport."] = "Для этого аккаунта уже есть привязанное устройство через канал «{0}»."
+        ,["Network"] = "Сеть"
+        ,["Cancel current action?"] = "Отменить текущее действие?"
+        ,["Cancelling now may leave Portal partially configured and can require manual recovery or reinstall. Continue?"] = "Отмена может оставить Portal частично настроенным и потребовать ручного восстановления или переустановки. Продолжить?"
+        ,["{0} certificate"] = "Сертификат {0}"
+        ,["Client: "] = "Клиент: "
+        ,["Client ID: "] = "ID клиента: "
+        ,["Host certificate"] = "Сертификат компьютера"
+        ,["Host certificate is not available."] = "Сертификат компьютера недоступен."
+        ,["Generate or restore the certificate first."] = "Сначала создайте или восстановите сертификат."
+        ,["Hash is unavailable."] = "Хеш недоступен."
+        ,["Subject: "] = "Владелец: "
+        ,["Starting Portal"] = "Запуск Portal"
+        ,["Running initial Host checks..."] = "Выполняется начальная проверка компьютера..."
+        ,["Source: "] = "Источник: "
+        ,["Tags: "] = "Теги: "
+        ,["Updated: "] = "Обновлено: "
+        ,["Valid from: "] = "Действителен с: "
+        ,["Valid to: "] = "Действителен до: "
+        ,["Client ID: {0}"] = "ID клиента: {0}"
+        ,["Client: {0}"] = "Клиент: {0}"
+        ,["Subject: {0}"] = "Владелец: {0}"
+        ,["{0} certificate"] = "Сертификат {0}"
+        ,["Code expires in {0}"] = "Срок действия кода: {0}"
+        ,["Current version: {0}"] = "Текущая версия: {0}"
+        ,["Installed version: {0}"] = "Установленная версия: {0}"
+        ,["Last checked: {0}"] = "Последняя проверка: {0}"
+        ,["Last update: {0}"] = "Последнее обновление: {0}"
+        ,["Unlocks"] = "Разблокировки"
+        ,["Pairing"] = "Привязка"
+        ,["System"] = "Система"
+        ,["Problems"] = "Проблемы"
+        ,["Downloading update"] = "Загрузка обновления"
+        ,["Details are shown here only during install."] = "Подробности отображаются здесь только во время установки."
+        ,["Update Wizard is running the current stage. Please wait."] = "Мастер обновления выполняет текущий этап. Подождите."
+        ,["failed"] = "не удалось"
+        ,["Version v{0} is available. Click to open Update Wizard."] = "Доступна версия v{0}. Нажмите, чтобы открыть мастер обновления."
+        ,["Waiting..."] = "Ожидание..."
+        ,["Certificate Information"] = "Сведения о сертификате"
+        ,["No backup file selected"] = "Файл копии не выбран"
+        ,["unknown"] = "неизвестно"
+        ,["Initializing..."] = "Инициализация..."
     };
+
+    /// <summary>Translates an English UI string into the currently selected language.</summary>
+    public static string T(string english)
+        => IsRussian && Russian.TryGetValue(english, out var translated) ? translated : english;
+
+    /// <summary>Sets the current language without touching any UI (used before windows are shown).</summary>
+    public static void SetCurrentLanguage(string language)
+        => CurrentLanguage = string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
+
+    /// <summary>Translates a format template first, then formats it with arguments.</summary>
+    public static string TF(string template, params object[] args)
+        => string.Format(T(template), args);
 
     public static void ApplyToMainWindow(string language)
     {
@@ -173,7 +469,23 @@ public static class LocalizationService
             return;
         }
 
-        Apply(window, string.Equals(language, "ru", StringComparison.OrdinalIgnoreCase));
+        CurrentLanguage = string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
+        Apply(window, IsRussian);
+    }
+
+    /// <summary>Applies current language to any window (logs, toast, dialogs).</summary>
+    public static void ApplyToWindow(Window window)
+    {
+        if (window == null)
+            return;
+
+        if (!window.Dispatcher.CheckAccess())
+        {
+            window.Dispatcher.BeginInvoke(() => ApplyToWindow(window));
+            return;
+        }
+
+        Apply(window, IsRussian);
     }
 
     private static void Apply(DependencyObject root, bool useRussian)

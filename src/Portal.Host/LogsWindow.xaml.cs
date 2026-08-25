@@ -21,6 +21,8 @@ public partial class LogsWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Services.LocalizationService.ApplyToWindow(this);
+        Title = Services.LocalizationService.T("Portal Logs");
         _viewModel.Start();
     }
 

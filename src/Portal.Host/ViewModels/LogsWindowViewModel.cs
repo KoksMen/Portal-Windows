@@ -109,13 +109,13 @@ public partial class LogsWindowViewModel : ObservableObject
                 ref _providerSeenSignatures,
                 text => ProviderLogsText = text);
 
-            LogsUpdatedAtText = $"Updated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+            LogsUpdatedAtText = Services.LocalizationService.T("Updated: ") + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
         catch (Exception ex)
         {
             HostLogsText = $"Failed to load host logs: {ex.Message}";
             ProviderLogsText = $"Failed to load provider logs: {ex.Message}";
-            LogsUpdatedAtText = "Updated: failed";
+            LogsUpdatedAtText = Services.LocalizationService.T("Updated: ") + Services.LocalizationService.T("failed");
         }
         finally
         {
