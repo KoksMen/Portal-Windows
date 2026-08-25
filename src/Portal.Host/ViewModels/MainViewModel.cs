@@ -137,6 +137,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _selectedActivityFilter = "All events";
     [ObservableProperty] private string _selectedActivitySort = "Newest first";
     [ObservableProperty] private DateTime? _activityFromDate;
+    [ObservableProperty] private string _activityFromDateText = string.Empty;
 
     // --- App Info ---
     public string AppVersion => "v1.2.1";
@@ -908,7 +909,26 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedActivityFilterChanged(string value) => RefreshActivityJournal();
     partial void OnSelectedActivitySortChanged(string value) => RefreshActivityJournal();
-    partial void OnActivityFromDateChanged(DateTime? value) => RefreshActivityJournal();
+    partial void OnActivityFromDateChanged(DateTime? value)
+    {
+        var displayValue = value?.ToString("yyyy-MM-dd") ?? string.Empty;
+        if (!string.Equals(ActivityFromDateText, displayValue, StringComparison.Ordinal))
+            ActivityFromDateText = displayValue;
+
+        RefreshActivityJournal();
+    }
+
+    partial void OnActivityFromDateTextChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            ActivityFromDate = null;
+            return;
+        }
+
+        if (DateTime.TryParse(value, out var selectedDate))
+            ActivityFromDate = selectedDate.Date;
+    }
 
     // --- Commands (Dashboard & General) ---
 

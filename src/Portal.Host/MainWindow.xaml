@@ -285,19 +285,7 @@
                             </Border>
                             <Popup x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom" StaysOpen="False">
                                 <Popup.Resources>
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#101728" />
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#EEF3FF" />
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#17233B" />
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#EEF3FF" />
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#3567CC" />
-                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF" />
-                                    <Style TargetType="CalendarItem">
-                                        <Setter Property="Background" Value="#101728" />
-                                        <Setter Property="BorderBrush" Value="#37589F" />
-                                        <Setter Property="BorderThickness" Value="0" />
-                                        <Setter Property="Foreground" Value="#EEF3FF" />
-                                    </Style>
-                                    <Style TargetType="CalendarDayButton">
+                                    <Style x:Key="ActivityCalendarDayButton" TargetType="CalendarDayButton">
                                         <Setter Property="Foreground" Value="#DDE9FF" />
                                         <Setter Property="Background" Value="Transparent" />
                                         <Setter Property="BorderBrush" Value="Transparent" />
@@ -328,7 +316,7 @@
                                             </Setter.Value>
                                         </Setter>
                                     </Style>
-                                    <Style TargetType="CalendarButton">
+                                    <Style x:Key="ActivityCalendarButton" TargetType="CalendarButton">
                                         <Setter Property="Foreground" Value="#DDE9FF" />
                                         <Setter Property="Background" Value="Transparent" />
                                         <Setter Property="BorderBrush" Value="Transparent" />
@@ -348,12 +336,141 @@
                                             </Setter.Value>
                                         </Setter>
                                     </Style>
+                                    <Style x:Key="ActivityCalendarNavigationButton" TargetType="Button">
+                                        <Setter Property="Foreground" Value="#CFE0FF" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="NavigationButtonBorder" Padding="6" Background="{TemplateBinding Background}" CornerRadius="7">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="NavigationButtonBorder" Property="Background" Value="#1F3966" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsPressed" Value="True">
+                                                            <Setter TargetName="NavigationButtonBorder" Property="Background" Value="#3567CC" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style x:Key="ActivityCalendarHeaderButton" TargetType="Button" BasedOn="{StaticResource ActivityCalendarNavigationButton}">
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                        <Setter Property="FontSize" Value="13" />
+                                    </Style>
+                                    <Style x:Key="ActivityCalendarItem" TargetType="CalendarItem">
+                                        <Setter Property="Background" Value="#101728" />
+                                        <Setter Property="Foreground" Value="#EEF3FF" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="CalendarItem">
+                                                    <Grid x:Name="PART_Root">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="42" />
+                                                            <RowDefinition Height="*" />
+                                                        </Grid.RowDefinitions>
+                                                        <Grid Grid.Row="0" Margin="4,4,4,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="34" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="34" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Button x:Name="PART_PreviousButton" Style="{StaticResource ActivityCalendarNavigationButton}" Content="‹" FontSize="22" />
+                                                            <Button x:Name="PART_HeaderButton" Grid.Column="1" Style="{StaticResource ActivityCalendarHeaderButton}" />
+                                                            <Button x:Name="PART_NextButton" Grid.Column="2" Style="{StaticResource ActivityCalendarNavigationButton}" Content="›" FontSize="22" />
+                                                        </Grid>
+                                                        <Grid x:Name="PART_MonthView" Grid.Row="1" Margin="4,0,4,4" KeyboardNavigation.TabNavigation="Once">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="26" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" /><RowDefinition Height="30" />
+                                                            </Grid.RowDefinitions>
+                                                        </Grid>
+                                                        <Grid x:Name="PART_YearView" Grid.Row="1" Margin="4,0,4,4" Visibility="Hidden" KeyboardNavigation.TabNavigation="Once">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="*" /><RowDefinition Height="*" /><RowDefinition Height="*" />
+                                                            </Grid.RowDefinitions>
+                                                        </Grid>
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Year">
+                                                            <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden" />
+                                                            <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding DisplayMode, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type Calendar}}}" Value="Decade">
+                                                            <Setter TargetName="PART_MonthView" Property="Visibility" Value="Hidden" />
+                                                            <Setter TargetName="PART_YearView" Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </ControlTemplate.Triggers>
+                                                    <ControlTemplate.Resources>
+                                                        <DataTemplate x:Key="{x:Static CalendarItem.DayTitleTemplateResourceKey}">
+                                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#91ADD9" Text="{Binding}" />
+                                                        </DataTemplate>
+                                                    </ControlTemplate.Resources>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                    <Style x:Key="ActivityCalendar" TargetType="Calendar">
+                                        <Setter Property="Background" Value="#101728" />
+                                        <Setter Property="Foreground" Value="#EEF3FF" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="CalendarDayButtonStyle" Value="{StaticResource ActivityCalendarDayButton}" />
+                                        <Setter Property="CalendarButtonStyle" Value="{StaticResource ActivityCalendarButton}" />
+                                        <Setter Property="CalendarItemStyle" Value="{StaticResource ActivityCalendarItem}" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Calendar">
+                                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
+                                                        <CalendarItem x:Name="PART_CalendarItem" Style="{TemplateBinding CalendarItemStyle}" />
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
                                 </Popup.Resources>
                                 <Border Margin="0,6,0,0" Padding="8" Background="#101728" BorderBrush="#37589F" BorderThickness="1" CornerRadius="12">
-                                    <Calendar x:Name="PART_Calendar" Background="#101728" Foreground="#EEF3FF" BorderBrush="#37589F" />
+                                    <Calendar x:Name="PART_Calendar" Width="270" Style="{StaticResource ActivityCalendar}" />
                                 </Border>
                             </Popup>
                         </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ActivityDateInput" TargetType="TextBox">
+            <Setter Property="Foreground" Value="#EEF3FF" />
+            <Setter Property="Background" Value="#101728" />
+            <Setter Property="BorderBrush" Value="#37589F" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="InputBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="#71A1FF" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="InputBorder" Property="BorderBrush" Value="#5781D4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -3106,7 +3223,10 @@
                             </StackPanel>
                             <StackPanel Grid.Column="4">
                                 <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="FROM DATE" />
-                                <DatePicker SelectedDate="{Binding ActivityFromDate}" Style="{StaticResource ActivityDatePicker}" />
+                                <TextBox
+                                    ToolTip="Enter a date in YYYY-MM-DD format"
+                                    Text="{Binding ActivityFromDateText, UpdateSourceTrigger=PropertyChanged}"
+                                    Style="{StaticResource ActivityDateInput}" />
                             </StackPanel>
                             <Button
                                 Grid.Column="6"
