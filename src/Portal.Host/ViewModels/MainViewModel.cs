@@ -166,6 +166,7 @@ public partial class MainViewModel : ObservableObject
     public bool ShowSettingsPanel => !ShowDashboard;
 
     [ObservableProperty] private bool _showAboutDialog;
+    [ObservableProperty] private bool _showActivityDialog;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFaqOverlayVisible))]
@@ -910,6 +911,16 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void RefreshActivity() => RefreshActivityJournal();
+
+    [RelayCommand]
+    private void ShowActivity()
+    {
+        RefreshActivityJournal();
+        ShowActivityDialog = true;
+    }
+
+    [RelayCommand]
+    private void CloseActivity() => ShowActivityDialog = false;
 
     [RelayCommand]
     private void ShowSettings()

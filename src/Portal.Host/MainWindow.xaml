@@ -774,7 +774,12 @@
             x:Name="WindowContentClipHost"
             ClipToBounds="True"
             SizeChanged="WindowContentClipHost_SizeChanged">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
         <Border
+            Grid.Row="0"
             Height="56"
             VerticalAlignment="Top"
             Background="#0e1320"
@@ -876,7 +881,7 @@
             </Grid>
         </Border>
 
-        <Grid Margin="0,56,0,0">
+        <Grid Grid.Row="1">
         <Ellipse
             Width="400"
             Height="400"
@@ -893,12 +898,13 @@
             </Ellipse.Fill>
         </Ellipse>
 
-        <Grid
+        <ScrollViewer
             x:Name="ViewDashboard"
             HorizontalAlignment="Center"
-            VerticalAlignment="Center"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto"
             Visibility="{Binding ShowDashboard, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel Width="320">
+            <StackPanel Width="320" Margin="0,28,0,28">
                 <Border
                     Width="176"
                     Height="176"
@@ -1026,19 +1032,15 @@
                                 Foreground="#e8f0ff"
                                 Text="✨ Recent activity" />
                             <Button
-                                Width="28"
-                                Height="28"
-                                Padding="0"
+                                Width="26"
+                                Height="26"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Command="{Binding RefreshActivityCommand}"
+                                Command="{Binding ShowActivityCommand}"
                                 Content="↻"
                                 FontSize="16"
-                                Foreground="#83adff"
-                                ToolTip="Refresh activity"
-                                Style="{StaticResource SecondaryButton}" />
+                                ToolTip="Open activity"
+                                Style="{StaticResource InfoIconButton}" />
                         </Grid>
                         <TextBlock
                             Grid.Row="1"
@@ -1126,7 +1128,7 @@
                     Foreground="#7b88b6"
                     Style="{StaticResource SecondaryButton}" />
             </StackPanel>
-        </Grid>
+        </ScrollViewer>
 
         <Grid
             x:Name="ViewSettings"
@@ -2946,12 +2948,103 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <Grid
+            Background="#D908101C"
+            Panel.ZIndex="35"
+            Visibility="{Binding ShowActivityDialog, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border
+                MinWidth="360"
+                MaxWidth="620"
+                MaxHeight="680"
+                Margin="24"
+                Padding="22"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="#10192B"
+                BorderBrush="#3B5E99"
+                BorderThickness="1"
+                CornerRadius="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock FontSize="22" FontWeight="Bold" Foreground="#F1F6FF" Text="✨ Recent activity" />
+                            <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="#9BB0D7" Text="{Binding ActivitySummaryText}" />
+                        </StackPanel>
+                        <Button
+                            Width="28"
+                            Height="28"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Command="{Binding RefreshActivityCommand}"
+                            Content="↻"
+                            FontSize="17"
+                            ToolTip="Refresh activity"
+                            Style="{StaticResource InfoIconButton}" />
+                    </Grid>
+                    <Border
+                        Grid.Row="1"
+                        Margin="0,16,0,12"
+                        Padding="11"
+                        Background="#14223A"
+                        BorderBrush="#29466F"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                        <TextBlock FontSize="11" Foreground="#BDD1F4" Text="Activity helps you understand pairing, unlocks and network recovery. It never includes passwords, IP addresses or certificate data." TextWrapping="Wrap" />
+                    </Border>
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding RecentActivity}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border
+                                        Margin="0,0,0,8"
+                                        Padding="12"
+                                        Background="{Binding BackgroundColor}"
+                                        BorderBrush="{Binding AccentColor}"
+                                        BorderThickness="1"
+                                        CornerRadius="12">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="34" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock VerticalAlignment="Top" FontSize="19" Text="{Binding Icon}" />
+                                            <StackPanel Grid.Column="1" Margin="2,0,8,0">
+                                                <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#F2F6FF" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#B6C7E5" Text="{Binding Details}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" VerticalAlignment="Top" FontSize="10" Foreground="#9EB3D8" Text="{Binding TimeText}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Button
+                        Grid.Row="3"
+                        Width="110"
+                        Margin="0,18,0,0"
+                        HorizontalAlignment="Right"
+                        Command="{Binding CloseActivityCommand}"
+                        Content="Close"
+                        Style="{StaticResource SecondaryButton}" />
+                </Grid>
+            </Border>
+        </Grid>
         </Grid>
 
         <!--  NOTIFICATION OVERLAY  -->
         <Grid
             x:Name="NotificationOverlay"
             Background="#BF050510"
+            Grid.RowSpan="2"
             Panel.ZIndex="40"
             Visibility="Collapsed">
             <Border
