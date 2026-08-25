@@ -227,7 +227,44 @@
                                 Foreground="{TemplateBinding Foreground}"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" />
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                                <DatePickerTextBox.Style>
+                                    <Style TargetType="DatePickerTextBox">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="DatePickerTextBox">
+                                                    <Grid>
+                                                        <Border
+                                                            x:Name="InputBorder"
+                                                            Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}">
+                                                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalContentAlignment="Center" />
+                                                        </Border>
+                                                        <TextBlock
+                                                            x:Name="Placeholder"
+                                                            Margin="{TemplateBinding Padding}"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Center"
+                                                            IsHitTestVisible="False"
+                                                            Foreground="#9CB4D8"
+                                                            Text="Choose date"
+                                                            Visibility="Collapsed" />
+                                                    </Grid>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="Text" Value="">
+                                                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                                                        </Trigger>
+                                                        <Trigger Property="IsKeyboardFocused" Value="True">
+                                                            <Setter TargetName="InputBorder" Property="BorderBrush" Value="#71A1FF" />
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DatePickerTextBox.Style>
+                            </DatePickerTextBox>
                             <Button
                                 x:Name="PART_Button"
                                 Grid.Column="1"
@@ -239,8 +276,16 @@
                                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" Foreground="#BFD7FF" Text="&#xE787;" FontFamily="Segoe MDL2 Assets" />
                             </Button>
                             <Popup x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom" StaysOpen="False">
+                                <Popup.Resources>
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#101728" />
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#EEF3FF" />
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#17233B" />
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#EEF3FF" />
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#3567CC" />
+                                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF" />
+                                </Popup.Resources>
                                 <Border Margin="0,4,0,0" Padding="6" Background="#101728" BorderBrush="#37589F" BorderThickness="1" CornerRadius="8">
-                                    <Calendar x:Name="PART_Calendar" Background="#101728" Foreground="#EEF3FF" />
+                                    <Calendar x:Name="PART_Calendar" Background="#101728" Foreground="#EEF3FF" BorderBrush="#37589F" />
                                 </Border>
                             </Popup>
                         </Grid>
