@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     {
         UpdateWindowSurfaceClip();
         await _viewModel.InitializeAsync();
+        _viewModel.ApplyUiLanguage();
 
         if (Application.Current is App app && !string.IsNullOrWhiteSpace(app.StartupBackupFilePath))
         {
