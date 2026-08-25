@@ -29,6 +29,7 @@
         <PackageReference Include="System.Management" Version="9.0.8" />
         <ProjectReference Include="..\Portal.Common\Portal.Common.csproj" />
         <ProjectReference Include="..\Portal.CredentialProvider\Portal.CredentialProvider.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+        <ProjectReference Include="..\Portal.Updater\Portal.Updater.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
     </ItemGroup>
 
     <PropertyGroup>
@@ -54,6 +55,16 @@
         <Copy
             SourceFiles="@(CredentialProviderOutput)"
             DestinationFiles="@(CredentialProviderOutput->'$(TargetDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true" />
+    </Target>
+
+    <Target Name="CopyUpdaterOutput" AfterTargets="Build">
+        <ItemGroup>
+            <UpdaterOutput Include="..\Portal.Updater\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+        </ItemGroup>
+        <Copy
+            SourceFiles="@(UpdaterOutput)"
+            DestinationFiles="@(UpdaterOutput->'$(TargetDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true" />
     </Target>
 
