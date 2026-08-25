@@ -845,8 +845,12 @@ public partial class MainViewModel : ObservableObject
                     ? "Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate."
                     : "No setup actions required.";
 
-                ClientCountText = $"{_config.Devices.Count} trusted devices";
+                ClientCountText = Services.LocalizationService.TF("{0} trusted devices", _config.Devices.Count);
                 RefreshDevicesList();
+
+                // Re-apply captions so elements realized after startup
+                // (device list templates, style setter statuses) get translated too.
+                Services.LocalizationService.ApplyToMainWindow(_config.UiLanguage);
 
                 ShowSetupPanel = !(IsServiceActive && _config.Devices.Any());
                 OnPropertyChanged(nameof(ShowConnectedPanel));

@@ -32,6 +32,7 @@ public class PortalWinProvider : PortalWinProviderBase
             var config = PortalWinConfig.Load();
             UnlockMode = config.UnlockMode;
             HostRequestTrigger = config.HostRequestTrigger;
+            Localization.SetCurrentLanguage(config.UiLanguage);
 
             // Ensure the auto-request can fire again for this session
             PortalWinTile.ResetAutoRequestClaim();
@@ -52,7 +53,7 @@ public class PortalWinProvider : PortalWinProviderBase
     {
         Logger.Log($"[PortalWinProvider] GetControls called for scenario: {cpus}");
 
-        yield return new CredentialProviderLabelControl("ProviderLabel", "PortalWin Remote Unlock");
+        yield return new CredentialProviderLabelControl("ProviderLabel", Localization.T("PortalWin Remote Unlock"));
 
         var logoImage = LoadLogo();
         if (logoImage != null)
@@ -66,7 +67,7 @@ public class PortalWinProvider : PortalWinProviderBase
         statusLabel.State = FieldState.DisplayInBoth;
         yield return statusLabel;
 
-        var versionLabel = new SmallLabelControl("VersionLabel", $"Ver: {GetProjectVersionText()}");
+        var versionLabel = new SmallLabelControl("VersionLabel", Localization.T("Ver: ") + GetProjectVersionText());
         versionLabel.State = FieldState.DisplayInBoth;
         yield return versionLabel;
 
@@ -74,36 +75,36 @@ public class PortalWinProvider : PortalWinProviderBase
         statusDetailsLabel.State = FieldState.Hidden;
         yield return statusDetailsLabel;
 
-        var showDetailsButton = new CommandLinkControl("ShowDetailsButton", "Show details");
+        var showDetailsButton = new CommandLinkControl("ShowDetailsButton", Localization.T("Show details"));
         showDetailsButton.State = FieldState.DisplayInSelectedTile;
         yield return showDetailsButton;
 
-        var hideDetailsButton = new CommandLinkControl("HideDetailsButton", "Hide details");
+        var hideDetailsButton = new CommandLinkControl("HideDetailsButton", Localization.T("Hide details"));
         hideDetailsButton.State = FieldState.Hidden;
         yield return hideDetailsButton;
 
         // Host-initiated controls (shown only when needed)
-        var reqButton = new CommandLinkControl("RequestButton", "Request Remote Unlock");
+        var reqButton = new CommandLinkControl("RequestButton", Localization.T("Request Remote Unlock"));
         reqButton.State = UnlockMode == UnlockMode.HostInitiated || UnlockMode == UnlockMode.Both
             ? FieldState.DisplayInSelectedTile
             : FieldState.Hidden;
         yield return reqButton;
 
-        var cancelButton = new CommandLinkControl("CancelButton", "Cancel Request");
+        var cancelButton = new CommandLinkControl("CancelButton", Localization.T("Cancel Request"));
         cancelButton.State = FieldState.Hidden;
         yield return cancelButton;
 
-        var usernameField = new TextboxControl("UsernameField", "Username");
+        var usernameField = new TextboxControl("UsernameField", Localization.T("Username"));
         usernameField.State = cpus == UsageScenario.CredUI
             ? FieldState.DisplayInSelectedTile
             : FieldState.Hidden;
         yield return usernameField;
 
-        var passwordField = new SecurePasswordTextboxControl("PasswordField", "Password");
+        var passwordField = new SecurePasswordTextboxControl("PasswordField", Localization.T("Password"));
         passwordField.State = FieldState.DisplayInSelectedTile;
         yield return passwordField;
 
-        yield return new SubmitButtonControl("SubmitButton", "Unlock", passwordField);
+        yield return new SubmitButtonControl("SubmitButton", Localization.T("Unlock"), passwordField);
     }
 
     public override bool ShouldIncludeGenericTile() => CredentialProviderTilePolicy.ShouldIncludeGenericTile(UsageScenario);
@@ -186,7 +187,7 @@ public class PortalWinProvider : PortalWinProviderBase
     private string BuildStatusHeadline(string? headline = null)
     {
         var state = string.IsNullOrWhiteSpace(headline) ? "Searching device" : headline.Trim();
-        return $"State: {state}";
+        return $"{Localization.T("State: ")}{Localization.T(state)}";
     }
 
     private string BuildStatusDetails(string? stateOverride = null)
@@ -201,7 +202,7 @@ public class PortalWinProvider : PortalWinProviderBase
 
         _ = stateOverride;
 
-        return $"Network: {networkState} ({networkClients})\nBluetooth: {btState} ({btClients})";
+        return $"{Localization.T("Network: ")}{networkState} ({networkClients})\nBluetooth: {btState} ({btClients})";
     }
 
     private static string NormalizeHeadline(string? rawStatus)
