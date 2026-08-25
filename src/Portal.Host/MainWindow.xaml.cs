@@ -337,6 +337,11 @@ public partial class MainWindow : Window
         }
 
         var radius = WindowState == WindowState.Maximized ? 0d : 24d;
+        WindowSurfaceBorder.CornerRadius = new CornerRadius(radius);
+        if (TitleBarBorder != null)
+        {
+            TitleBarBorder.CornerRadius = new CornerRadius(radius, radius, 0, 0);
+        }
         WindowContentClipHost.Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius);
     }
 

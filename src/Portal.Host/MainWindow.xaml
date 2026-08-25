@@ -780,6 +780,7 @@
             </Grid.RowDefinitions>
         <Border
             Grid.Row="0"
+            x:Name="TitleBarBorder"
             Height="56"
             VerticalAlignment="Top"
             Background="#0e1320"
