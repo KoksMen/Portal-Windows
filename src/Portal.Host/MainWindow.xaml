@@ -204,6 +204,51 @@
             </Setter>
         </Style>
 
+        <Style x:Key="ActivityDatePicker" TargetType="DatePicker">
+            <Setter Property="Foreground" Value="#EEF3FF" />
+            <Setter Property="Background" Value="#101728" />
+            <Setter Property="BorderBrush" Value="#37589F" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="SelectedDateFormat" Value="Short" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePicker">
+                        <Grid x:Name="PART_Root">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="34" />
+                            </Grid.ColumnDefinitions>
+                            <DatePickerTextBox
+                                x:Name="PART_TextBox"
+                                Padding="8,6"
+                                VerticalContentAlignment="Center"
+                                Foreground="{TemplateBinding Foreground}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" />
+                            <Button
+                                x:Name="PART_Button"
+                                Grid.Column="1"
+                                Focusable="False"
+                                Background="#19345E"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="0,0,1,0"
+                                ToolTip="Choose date">
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14" Foreground="#BFD7FF" Text="&#xE787;" FontFamily="Segoe MDL2 Assets" />
+                            </Button>
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom" StaysOpen="False">
+                                <Border Margin="0,4,0,0" Padding="6" Background="#101728" BorderBrush="#37589F" BorderThickness="1" CornerRadius="8">
+                                    <Calendar x:Name="PART_Calendar" Background="#101728" Foreground="#EEF3FF" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <DataTemplate x:Key="NetworkIpOptionTemplate">
             <StackPanel>
                 <TextBlock Foreground="#d9e2ff" Text="{Binding InterfaceName}" TextTrimming="CharacterEllipsis" />
@@ -2923,38 +2968,46 @@
                         CornerRadius="10">
                         <TextBlock FontSize="11" Foreground="#BDD1F4" Text="Activity helps you understand pairing, unlocks and network recovery. It never includes passwords, IP addresses or certificate data." TextWrapping="Wrap" />
                     </Border>
-                    <Grid Grid.Row="2" Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <ComboBox
-                            Padding="8,5"
-                            ItemsSource="{Binding ActivityFilterOptions}"
-                            SelectedItem="{Binding SelectedActivityFilter}" />
-                        <ComboBox
-                            Grid.Column="2"
-                            Padding="8,5"
-                            ItemsSource="{Binding ActivitySortOptions}"
-                            SelectedItem="{Binding SelectedActivitySort}" />
-                        <DatePicker
-                            Grid.Column="4"
-                            Padding="6,4"
-                            SelectedDate="{Binding ActivityFromDate}" />
-                        <Button
-                            Grid.Column="6"
-                            MinWidth="64"
-                            Padding="10,5"
-                            Command="{Binding ClearActivityFiltersCommand}"
-                            Content="Clear"
-                            FontSize="11"
-                            Style="{StaticResource SecondaryButton}" />
-                    </Grid>
+                    <Border
+                        Grid.Row="2"
+                        Margin="0,0,0,12"
+                        Padding="10"
+                        Background="#0C1628"
+                        BorderBrush="#263E65"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="SHOW" />
+                                <ComboBox ItemsSource="{Binding ActivityFilterOptions}" SelectedItem="{Binding SelectedActivityFilter}" Style="{StaticResource PortalComboBox}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="ORDER" />
+                                <ComboBox ItemsSource="{Binding ActivitySortOptions}" SelectedItem="{Binding SelectedActivitySort}" Style="{StaticResource PortalComboBox}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="FROM DATE" />
+                                <DatePicker SelectedDate="{Binding ActivityFromDate}" Style="{StaticResource ActivityDatePicker}" />
+                            </StackPanel>
+                            <Button
+                                Grid.Column="6"
+                                Margin="0,15,0,0"
+                                MinWidth="72"
+                                Command="{Binding ClearActivityFiltersCommand}"
+                                Content="Reset"
+                                FontSize="11"
+                                Style="{StaticResource SecondaryButton}" />
+                        </Grid>
+                    </Border>
                     <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding RecentActivity}">
                             <ItemsControl.ItemTemplate>

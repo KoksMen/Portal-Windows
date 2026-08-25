@@ -28,7 +28,7 @@
 		<InformationalVersion>1.2.1-Eve-Stable-Release</InformationalVersion>
 	</PropertyGroup>
 
-	<Target Name="SignOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+	<Target Name="SignOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' And '$(SkipSigning)' != 'true'">
 		<Exec
             Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;7492EFCAEAEFD328F405F05E0A6BCBF12402C7A8&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(TargetPath)&quot;" />
 	</Target>
