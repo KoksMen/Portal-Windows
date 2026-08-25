@@ -9,7 +9,8 @@ namespace Portal.Common;
 /// </summary>
 public static class ActivityJournal
 {
-    private const int DefaultReadLimit = 250;
+    private const int DefaultReadLimit = int.MaxValue;
+    private static readonly TimeSpan RetentionPeriod = TimeSpan.FromDays(7);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private static string JournalPath => Path.Combine(PortalStoragePaths.LogsDirectory, "activity.journal.jsonl");
@@ -96,7 +97,16 @@ public static class ActivityJournal
                 }
             }
 
-            return entries
+            var retainedEntries = entries
+                .Where(entry => entry.OccurredAtUtc >= DateTime.UtcNow - RetentionPeriod)
+                .ToList();
+
+            if (retainedEntries.Count != entries.Count)
+            {
+                TryRewrite(retainedEntries);
+            }
+
+            return retainedEntries
                 .OrderByDescending(entry => entry.OccurredAtUtc)
                 .Take(limit)
                 .ToList();
@@ -116,5 +126,20 @@ public static class ActivityJournal
             && string.Equals(latest.Details, candidate.Details, StringComparison.Ordinal)
             && string.Equals(latest.DeviceName, candidate.DeviceName, StringComparison.Ordinal)
             && DateTime.UtcNow - latest.OccurredAtUtc < TimeSpan.FromMinutes(1);
+    }
+
+    private static void TryRewrite(IReadOnlyList<ActivityEntry> entries)
+    {
+        try
+        {
+            var temporaryPath = JournalPath + ".tmp";
+            var lines = entries.Select(entry => JsonSerializer.Serialize(entry, JsonOptions)).ToArray();
+            File.WriteAllLines(temporaryPath, lines);
+            File.Move(temporaryPath, JournalPath, overwrite: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[ActivityJournal] Failed to prune expired activity records: {ex.Message}");
+        }
     }
 }

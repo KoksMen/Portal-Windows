@@ -125,7 +125,18 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<DeviceModel> Devices { get; } = new();
     public ObservableCollection<ActivityCard> RecentActivity { get; } = new();
+    public ObservableCollection<string> ActivityFilterOptions { get; } = new()
+    {
+        "All events", "Unlocks", "Pairing", "Network", "System", "Problems"
+    };
+    public ObservableCollection<string> ActivitySortOptions { get; } = new()
+    {
+        "Newest first", "Oldest first"
+    };
     [ObservableProperty] private string _activitySummaryText = "No recent activity yet.";
+    [ObservableProperty] private string _selectedActivityFilter = "All events";
+    [ObservableProperty] private string _selectedActivitySort = "Newest first";
+    [ObservableProperty] private DateTime? _activityFromDate;
 
     // --- App Info ---
     public string AppVersion => "v1.2.1";
@@ -862,17 +873,42 @@ public partial class MainViewModel : ObservableObject
 
     private void RefreshActivityJournal()
     {
-        var entries = ActivityJournal.ReadLatest(4);
+        var entries = ActivityJournal.ReadLatest()
+            .Where(entry => MatchesActivityFilter(entry))
+            .Where(entry => !ActivityFromDate.HasValue || entry.OccurredAtUtc.ToLocalTime().Date >= ActivityFromDate.Value.Date);
+
+        entries = SelectedActivitySort == "Oldest first"
+            ? entries.OrderBy(entry => entry.OccurredAtUtc)
+            : entries.OrderByDescending(entry => entry.OccurredAtUtc);
+
+        var visibleEntries = entries.ToList();
         RecentActivity.Clear();
-        foreach (var entry in entries)
+        foreach (var entry in visibleEntries)
         {
             RecentActivity.Add(ActivityCard.FromEntry(entry));
         }
 
-        ActivitySummaryText = entries.Count == 0
-            ? "Pair a device or unlock your PC to see events here."
-            : $"Last updated {DateTime.Now:HH:mm}";
+        ActivitySummaryText = visibleEntries.Count == 0
+            ? "No events match the selected filters."
+            : $"{visibleEntries.Count} events • retained for 7 days";
     }
+
+    private bool MatchesActivityFilter(ActivityEntry entry)
+    {
+        return SelectedActivityFilter switch
+        {
+            "Unlocks" => entry.Category == "unlock",
+            "Pairing" => entry.Category == "pairing",
+            "Network" => entry.Category == "network",
+            "System" => entry.Category == "system",
+            "Problems" => !entry.IsSuccess,
+            _ => true
+        };
+    }
+
+    partial void OnSelectedActivityFilterChanged(string value) => RefreshActivityJournal();
+    partial void OnSelectedActivitySortChanged(string value) => RefreshActivityJournal();
+    partial void OnActivityFromDateChanged(DateTime? value) => RefreshActivityJournal();
 
     // --- Commands (Dashboard & General) ---
 
@@ -911,6 +947,14 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void RefreshActivity() => RefreshActivityJournal();
+
+    [RelayCommand]
+    private void ClearActivityFilters()
+    {
+        SelectedActivityFilter = "All events";
+        SelectedActivitySort = "Newest first";
+        ActivityFromDate = null;
+    }
 
     [RelayCommand]
     private void ShowActivity()

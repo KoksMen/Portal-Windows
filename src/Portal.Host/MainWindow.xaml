@@ -2893,6 +2893,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -2922,7 +2923,40 @@
                         CornerRadius="10">
                         <TextBlock FontSize="11" Foreground="#BDD1F4" Text="Activity helps you understand pairing, unlocks and network recovery. It never includes passwords, IP addresses or certificate data." TextWrapping="Wrap" />
                     </Border>
-                    <ItemsControl Grid.Row="2" ItemsSource="{Binding RecentActivity}">
+                    <Grid Grid.Row="2" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox
+                            Padding="8,5"
+                            ItemsSource="{Binding ActivityFilterOptions}"
+                            SelectedItem="{Binding SelectedActivityFilter}" />
+                        <ComboBox
+                            Grid.Column="2"
+                            Padding="8,5"
+                            ItemsSource="{Binding ActivitySortOptions}"
+                            SelectedItem="{Binding SelectedActivitySort}" />
+                        <DatePicker
+                            Grid.Column="4"
+                            Padding="6,4"
+                            SelectedDate="{Binding ActivityFromDate}" />
+                        <Button
+                            Grid.Column="6"
+                            MinWidth="64"
+                            Padding="10,5"
+                            Command="{Binding ClearActivityFiltersCommand}"
+                            Content="Clear"
+                            FontSize="11"
+                            Style="{StaticResource SecondaryButton}" />
+                    </Grid>
+                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding RecentActivity}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border
@@ -2977,9 +3011,10 @@
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </ItemsControl>
+                    </ScrollViewer>
                     <Button
-                        Grid.Row="3"
+                        Grid.Row="4"
                         Width="110"
                         Margin="0,18,0,0"
                         HorizontalAlignment="Right"
