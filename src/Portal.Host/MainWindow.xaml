@@ -1006,8 +1006,98 @@
                     </TextBlock.Style>
                 </TextBlock>
 
+                <Border
+                    Margin="0,22,0,0"
+                    Padding="12"
+                    Background="#0d1423"
+                    BorderBrush="#263a62"
+                    BorderThickness="1"
+                    CornerRadius="14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Foreground="#e8f0ff"
+                                Text="✨ Recent activity" />
+                            <Button
+                                Width="28"
+                                Height="28"
+                                Padding="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Command="{Binding RefreshActivityCommand}"
+                                Content="↻"
+                                FontSize="16"
+                                Foreground="#83adff"
+                                ToolTip="Refresh activity"
+                                Style="{StaticResource SecondaryButton}" />
+                        </Grid>
+                        <TextBlock
+                            Grid.Row="1"
+                            Margin="0,3,0,9"
+                            FontSize="10"
+                            Foreground="#7f91b6"
+                            Text="{Binding ActivitySummaryText}" />
+                        <ScrollViewer Grid.Row="2" MaxHeight="230" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding RecentActivity}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border
+                                            Margin="0,0,0,7"
+                                            Padding="9"
+                                            Background="{Binding BackgroundColor}"
+                                            BorderBrush="{Binding AccentColor}"
+                                            BorderThickness="1"
+                                            CornerRadius="10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="30" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock
+                                                    VerticalAlignment="Top"
+                                                    FontSize="17"
+                                                    Text="{Binding Icon}" />
+                                                <StackPanel Grid.Column="1" Margin="2,0,5,0">
+                                                    <TextBlock
+                                                        FontSize="11"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="#f1f5ff"
+                                                        Text="{Binding Title}"
+                                                        TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock
+                                                        Margin="0,2,0,0"
+                                                        FontSize="10"
+                                                        Foreground="#afbfdf"
+                                                        Text="{Binding Details}"
+                                                        TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <TextBlock
+                                                    Grid.Column="2"
+                                                    VerticalAlignment="Top"
+                                                    FontSize="9"
+                                                    Foreground="#8fa4cb"
+                                                    Text="{Binding TimeText}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
                 <Button
-                    Margin="0,30,0,0"
+                    Margin="0,18,0,0"
                     Background="Transparent"
                     BorderThickness="0"
                     Command="{Binding ShowSettingsCommand}"

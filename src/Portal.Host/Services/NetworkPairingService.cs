@@ -295,6 +295,7 @@ public class NetworkPairingService
             }
 
             Logger.Log($"Pairing successful! Device: {device.Name} ({clientId})");
+            ActivityJournal.Record("pairing", "🤝", "New device paired", $"{device.Name} is ready to unlock this PC via Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
             _pairingStatusCallback?.Invoke($"Pairing successful! Device: {device.Name}");
             _pairingTcs?.TrySetResult(new PairingResult { Device = device, Success = true });
             _pairingContext = null;

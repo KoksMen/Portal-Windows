@@ -124,6 +124,8 @@ public partial class MainViewModel : ObservableObject
     public bool ShowConnectedPanel => !ShowSetupPanel;
 
     public ObservableCollection<DeviceModel> Devices { get; } = new();
+    public ObservableCollection<ActivityCard> RecentActivity { get; } = new();
+    [ObservableProperty] private string _activitySummaryText = "No recent activity yet.";
 
     // --- App Info ---
     public string AppVersion => "v1.2.1";
@@ -547,6 +549,7 @@ public partial class MainViewModel : ObservableObject
 
         _config = PortalWinConfig.Load();
         LoadConfigToUi();
+        RefreshActivityJournal();
         UpdateCurrentVersionText = AppVersion;
         _ = LoadAboutAvatarsAsync();
     }
@@ -856,6 +859,20 @@ public partial class MainViewModel : ObservableObject
         foreach (var d in _config.Devices) Devices.Add(d);
     }
 
+    private void RefreshActivityJournal()
+    {
+        var entries = ActivityJournal.ReadLatest(6);
+        RecentActivity.Clear();
+        foreach (var entry in entries)
+        {
+            RecentActivity.Add(ActivityCard.FromEntry(entry));
+        }
+
+        ActivitySummaryText = entries.Count == 0
+            ? "Pair a device or unlock your PC to see events here."
+            : $"Last updated {DateTime.Now:HH:mm}";
+    }
+
     // --- Commands (Dashboard & General) ---
 
     [RelayCommand]
@@ -890,6 +907,9 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private async Task AddDeviceAsync() => await StartWizardFlow(true);
+
+    [RelayCommand]
+    private void RefreshActivity() => RefreshActivityJournal();
 
     [RelayCommand]
     private void ShowSettings()
