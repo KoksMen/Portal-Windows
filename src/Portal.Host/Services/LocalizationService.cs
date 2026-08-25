@@ -81,6 +81,16 @@ public static class LocalizationService
         ["Unlock request cancelled"] = "Запрос разблокировки отменён",
         ["Unlock request declined"] = "Запрос разблокировки отклонён",
         ["Portal started"] = "Portal запущен"
+        ,["+ Add Another Device"] = "+ Добавить устройство"
+        ,["⚠ Reset & Re-create All"] = "⚠ Сбросить и настроить заново"
+        ,["✓ Service Active & Ready"] = "✓ Служба активна и готова"
+        ,["✨ Recent Activity"] = "✨ Последняя активность"
+        ,["⚙  Advanced Settings"] = "⚙  Расширенные настройки"
+        ,["🌐 Network (Wi-Fi / LAN)"] = "🌐 Сеть (Wi‑Fi / LAN)"
+        ,["Bluetooth"] = "Bluetooth"
+        ,["Pair over local network. Both devices must be on the same Wi-Fi/LAN."] = "Привязка по локальной сети. Оба устройства должны быть в одной сети Wi‑Fi/LAN."
+        ,["Pair over Bluetooth. No Wi-Fi required. Devices must be in range."] = "Привязка по Bluetooth. Wi‑Fi не требуется. Устройства должны быть в зоне действия."
+        ,["↻ Refresh Code"] = "↻ Обновить код"
         ,["✨ Recent activity"] = "✨ Последняя активность"
         ,["Remote Unlock System"] = "Система удалённой разблокировки"
         ,["Request on button click AND automatically at PC startup (first logon after boot)."] = "Запрос отправляется по нажатию и автоматически при запуске ПК (при первом входе после загрузки)."

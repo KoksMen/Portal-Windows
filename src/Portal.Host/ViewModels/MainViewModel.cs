@@ -576,8 +576,8 @@ public partial class MainViewModel : ObservableObject
     {
         Logger.Log("[MainViewModel] Initializing...");
         await RunBusyOperationAsync(
-            "Starting Portal",
-            "Running initial Host checks...",
+            IsRussianUi ? "Запуск Portal" : "Starting Portal",
+            IsRussianUi ? "Выполняется начальная проверка компьютера..." : "Running initial Host checks...",
             _ => RefreshStatusAsync(),
             minimumDisplayDuration: TimeSpan.FromSeconds(0.9),
             canCancel: false);
@@ -827,7 +827,7 @@ public partial class MainViewModel : ObservableObject
                 ProviderInstallButtonText = providerHealth.IsHealthy ? "Reinstall" : "Install";
 
                 MainStatusText = IsServiceActive
-                    ? "✓ Service Active & Ready"
+                    ? IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready"
                     : $"⚠ {(providerHealth.FailureReasons.FirstOrDefault() ?? "Service Not Installed")}";
 
                 var setupIssues = new List<string>();
@@ -952,6 +952,7 @@ public partial class MainViewModel : ObservableObject
     private string BuildCurrentVersionText() => IsRussianUi ? $"Текущая версия: {AppVersion}" : $"Current version: {AppVersion}";
     private string BuildLastCheckedText(DateTime value) => IsRussianUi ? $"Последняя проверка: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}" : $"Last checked: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
     private string BuildLastUpdateText(DateTime value) => IsRussianUi ? $"Последнее обновление: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}" : $"Last update: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+    private string BuildCodeExpiresText(TimeSpan remaining) => IsRussianUi ? $"Срок действия кода: {remaining:m\\:ss}" : $"Code expires in {remaining:m\\:ss}";
     partial void OnActivityFromDateChanged(DateTime? value)
     {
         if (value.HasValue)
@@ -1071,9 +1072,9 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        CertificateInfoTitle = $"{device.Name} certificate";
-        CertificateInfoSummary = $"Client: {device.Name}";
-        CertificateInfoDetails = $"Client ID: {device.ClientId}";
+        CertificateInfoTitle = IsRussianUi ? $"Сертификат {device.Name}" : $"{device.Name} certificate";
+        CertificateInfoSummary = IsRussianUi ? $"Клиент: {device.Name}" : $"Client: {device.Name}";
+        CertificateInfoDetails = IsRussianUi ? $"ID клиента: {device.ClientId}" : $"Client ID: {device.ClientId}";
         CertificateInfoHash = string.IsNullOrWhiteSpace(device.CertHash)
             ? "Certificate hash is not available for this client."
             : FormatCertificateHash(device.CertHash);
@@ -1086,17 +1087,17 @@ public partial class MainViewModel : ObservableObject
         using var cert = CertificateService.LoadCertificate();
         if (cert == null)
         {
-            CertificateInfoTitle = "Host certificate";
-            CertificateInfoSummary = "Host certificate is not available.";
-            CertificateInfoDetails = "Generate or restore the certificate first.";
-            CertificateInfoHash = "Hash is unavailable.";
+            CertificateInfoTitle = IsRussianUi ? "Сертификат компьютера" : "Host certificate";
+            CertificateInfoSummary = IsRussianUi ? "Сертификат компьютера недоступен." : "Host certificate is not available.";
+            CertificateInfoDetails = IsRussianUi ? "Сначала создайте или восстановите сертификат." : "Generate or restore the certificate first.";
+            CertificateInfoHash = IsRussianUi ? "Хеш недоступен." : "Hash is unavailable.";
             ShowCertificateInfoDialog = true;
             return;
         }
 
         var certHash = CertificateService.GetCertHash(cert);
-        CertificateInfoTitle = "Host certificate";
-        CertificateInfoSummary = $"Subject: {cert.Subject}";
+        CertificateInfoTitle = IsRussianUi ? "Сертификат компьютера" : "Host certificate";
+        CertificateInfoSummary = IsRussianUi ? $"Владелец: {cert.Subject}" : $"Subject: {cert.Subject}";
         CertificateInfoDetails =
             $"Thumbprint: {FormatCertificateHash(cert.Thumbprint)}{Environment.NewLine}" +
             $"Valid from: {cert.NotBefore:G}{Environment.NewLine}" +
@@ -2630,11 +2631,11 @@ public partial class MainViewModel : ObservableObject
         var transport = _pairingContext.SelectedTransport;
         var sessionId = Interlocked.Increment(ref _pairingSessionId);
         WizPairInfo = transport == TransportType.Network
-            ? "Network pairing service started. Waiting for device..."
-            : "Bluetooth pairing service started. Waiting for device...";
+            ? IsRussianUi ? "Служба привязки по сети запущена. Ожидание устройства..." : "Network pairing service started. Waiting for device..."
+            : IsRussianUi ? "Служба привязки по Bluetooth запущена. Ожидание устройства..." : "Bluetooth pairing service started. Waiting for device...";
 
         if (code != null) WizPairCode = $"{code.Substring(0, 3)} {code.Substring(3)}";
-        WizExpiresInfo = "Code expires in 2:00";
+        WizExpiresInfo = BuildCodeExpiresText(TimeSpan.FromMinutes(2));
         WizIsExpiresRed = false;
 
         _expirationTimer?.Stop();
@@ -2644,11 +2645,11 @@ public partial class MainViewModel : ObservableObject
             var remaining = TimeSpan.FromMinutes(2) - (DateTime.Now - _pairingStartTime);
             if (remaining.TotalSeconds <= 0)
             {
-                WizExpiresInfo = "Code Expired";
+                WizExpiresInfo = IsRussianUi ? "Срок действия кода истёк" : "Code Expired";
                 WizIsExpiresRed = true;
                 _expirationTimer.Stop();
             }
-            else WizExpiresInfo = $"Code expires in {remaining:m\\:ss}";
+            else WizExpiresInfo = BuildCodeExpiresText(remaining);
         };
         _expirationTimer.Start();
 
@@ -2823,7 +2824,7 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
-        WizPairInfo = "Network changed — QR code updated for the current connection.";
+        WizPairInfo = IsRussianUi ? "Сеть изменилась — QR-код обновлён для текущего подключения." : "Network changed — QR code updated for the current connection.";
     }
 
     private void RefreshNetworkQrPayload(int? providedCode = null, string? providedHostName = null)
@@ -3014,7 +3015,7 @@ public partial class MainViewModel : ObservableObject
                     }
                     if (IsAccountAlreadyPairedOnOtherTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, device.TransportType, _editingClientId))
                     {
-                        _dialogService.ShowNotificationAsync("Error", "This account already has pairing on another transport.");
+                        _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on another transport.");
                         return;
                     }
 
@@ -3084,12 +3085,12 @@ public partial class MainViewModel : ObservableObject
         if (IsAccountAlreadyPairedForTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, selectedTransport))
         {
             var transportLabel = selectedTransport == TransportType.Network ? "Network" : "Bluetooth";
-            _dialogService.ShowNotificationAsync("Error", $"This account already has a paired device for {transportLabel} transport.");
+            _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? $"Для этого аккаунта уже есть привязанное устройство через канал «{transportLabel}»." : $"This account already has a paired device for {transportLabel} transport.");
             return;
         }
         if (IsAccountAlreadyPairedOnOtherTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, selectedTransport))
         {
-            _dialogService.ShowNotificationAsync("Error", "This account already has pairing on the other transport.");
+            _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on the other transport.");
             return;
         }
 
