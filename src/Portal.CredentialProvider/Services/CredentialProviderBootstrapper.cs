@@ -55,6 +55,15 @@ public static class CredentialProviderBootstrapper
         {
             Logger.LogError("[Bootstrapper] Failed to start BluetoothUnlockService", ex);
         }
+
+        if (TlsService != null || BtService != null)
+        {
+            ActivityJournal.Record(
+                "system",
+                "⚡",
+                "Portal provider started",
+                "Credential Provider is ready on the Windows lock screen.");
+        }
     }
 
     public static void RegisterProvider(Portal.CredentialProvider.Base.PortalWinProviderBase provider)

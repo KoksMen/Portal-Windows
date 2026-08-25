@@ -550,11 +550,6 @@ public partial class MainViewModel : ObservableObject
 
         _config = PortalWinConfig.Load();
         LoadConfigToUi();
-        ActivityJournal.Record(
-            "system",
-            "🟢",
-            "Portal started",
-            "Host is ready. Pairing, unlock and network recovery events will appear here.");
         RefreshActivityJournal();
         UpdateCurrentVersionText = AppVersion;
         _ = LoadAboutAvatarsAsync();

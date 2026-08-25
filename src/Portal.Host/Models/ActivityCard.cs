@@ -8,20 +8,28 @@ public sealed class ActivityCard
     public string Title { get; init; } = string.Empty;
     public string Details { get; init; } = string.Empty;
     public string TimeText { get; init; } = string.Empty;
+    public string DeviceBadge { get; init; } = string.Empty;
+    public string TransportBadge { get; init; } = string.Empty;
+    public bool HasDeviceBadge => !string.IsNullOrWhiteSpace(DeviceBadge);
+    public bool HasTransportBadge => !string.IsNullOrWhiteSpace(TransportBadge);
     public string AccentColor { get; init; } = "#4f8cff";
     public string BackgroundColor { get; init; } = "#111c31";
 
     public static ActivityCard FromEntry(ActivityEntry entry)
     {
+        var isCancellation = entry.Title.Contains("cancelled", StringComparison.OrdinalIgnoreCase);
         var isWarning = !entry.IsSuccess;
+        var isCritical = isWarning && (isCancellation || entry.Title.Contains("declined", StringComparison.OrdinalIgnoreCase));
         return new ActivityCard
         {
             Icon = entry.Icon,
             Title = entry.Title,
             Details = entry.Details,
             TimeText = FormatTime(entry.OccurredAtUtc.ToLocalTime()),
-            AccentColor = isWarning ? "#f2a65a" : entry.Category == "unlock" ? "#47d18c" : "#70a5ff",
-            BackgroundColor = isWarning ? "#2a1d16" : entry.Category == "unlock" ? "#11261e" : "#111c31"
+            DeviceBadge = entry.DeviceName ?? string.Empty,
+            TransportBadge = entry.Transport ?? string.Empty,
+            AccentColor = isCritical ? "#F05D6F" : isWarning ? "#f2a65a" : entry.Category == "unlock" ? "#47d18c" : "#70a5ff",
+            BackgroundColor = isCritical ? "#32171D" : isWarning ? "#2a1d16" : entry.Category == "unlock" ? "#11261e" : "#111c31"
         };
     }
 

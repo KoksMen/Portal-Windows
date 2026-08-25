@@ -2943,6 +2943,27 @@
                                             <StackPanel Grid.Column="1" Margin="2,0,8,0">
                                                 <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#F2F6FF" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#B6C7E5" Text="{Binding Details}" TextWrapping="Wrap" />
+                                                <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                                                    <Border
+                                                        Margin="0,0,6,0"
+                                                        Padding="7,3"
+                                                        Background="#183760"
+                                                        BorderBrush="#3B70B5"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7"
+                                                        Visibility="{Binding HasDeviceBadge, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="#D8E9FF" Text="{Binding DeviceBadge}" />
+                                                    </Border>
+                                                    <Border
+                                                        Padding="7,3"
+                                                        Background="#173B2A"
+                                                        BorderBrush="#39825B"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7"
+                                                        Visibility="{Binding HasTransportBadge, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="#D9FFE7" Text="{Binding TransportBadge}" />
+                                                    </Border>
+                                                </StackPanel>
                                             </StackPanel>
                                             <TextBlock Grid.Column="2" VerticalAlignment="Top" FontSize="10" Foreground="#9EB3D8" Text="{Binding TimeText}" />
                                         </Grid>
