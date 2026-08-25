@@ -10,7 +10,6 @@ namespace Portal.Common;
 public static class ActivityJournal
 {
     private const int DefaultReadLimit = 250;
-    private static readonly object ProcessSync = new();
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private static string JournalPath => Path.Combine(PortalStoragePaths.LogsDirectory, "activity.journal.jsonl");
@@ -38,34 +37,19 @@ public static class ActivityJournal
 
         try
         {
-            lock (ProcessSync)
-            {
-                using var mutex = new Mutex(false, @"Global\Portal.ActivityJournal");
-                var hasMutex = false;
-                try
-                {
-                    hasMutex = mutex.WaitOne(TimeSpan.FromSeconds(2));
-                    if (!hasMutex)
-                    {
-                        return;
-                    }
-
-                    var line = JsonSerializer.Serialize(entry, JsonOptions) + Environment.NewLine;
-                    using var writer = new StreamWriter(new FileStream(
-                        JournalPath,
-                        FileMode.Append,
-                        FileAccess.Write,
-                        FileShare.Read), System.Text.Encoding.UTF8);
-                    writer.Write(line);
-                }
-                finally
-                {
-                    if (hasMutex)
-                    {
-                        mutex.ReleaseMutex();
-                    }
-                }
-            }
+            var line = JsonSerializer.Serialize(entry, JsonOptions) + Environment.NewLine;
+            // Host runs in the interactive user session while Credential Provider runs in LogonUI.
+            // A Global mutex can have session-specific ACLs and reject the provider. A short append
+            // is sufficient here; ReadLatest tolerates a malformed partial line after an interruption.
+            using var stream = new FileStream(
+                JournalPath,
+                FileMode.Append,
+                FileAccess.Write,
+                FileShare.ReadWrite);
+            using var writer = new StreamWriter(stream, System.Text.Encoding.UTF8);
+            writer.Write(line);
+            writer.Flush();
+            stream.Flush(flushToDisk: true);
         }
         catch (Exception ex)
         {

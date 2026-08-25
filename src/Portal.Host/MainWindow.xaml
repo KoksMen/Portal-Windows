@@ -2939,7 +2939,7 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock VerticalAlignment="Top" FontSize="19" Text="{Binding Icon}" />
+                                            <TextBlock VerticalAlignment="Top" FontFamily="Segoe UI Emoji" FontSize="19" Foreground="#DDEAFF" Text="{Binding Icon}" />
                                             <StackPanel Grid.Column="1" Margin="2,0,8,0">
                                                 <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="#F2F6FF" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#B6C7E5" Text="{Binding Details}" TextWrapping="Wrap" />
