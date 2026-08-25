@@ -80,6 +80,70 @@ public static class LocalizationService
         ["Unlock request cancelled"] = "Запрос разблокировки отменён",
         ["Unlock request declined"] = "Запрос разблокировки отклонён",
         ["Portal started"] = "Portal запущен"
+        ,["System Health & Maintenance"] = "Состояние системы и обслуживание"
+        ,["Credential Provider"] = "Поставщик учётных данных"
+        ,["Firewall Rule"] = "Правило брандмауэра"
+        ,["SSL Certificate"] = "SSL-сертификат"
+        ,["DLL Files"] = "Файлы DLL"
+        ,["Certificate information"] = "Сведения о сертификате"
+        ,["Host certificate information"] = "Сведения о сертификате компьютера"
+        ,["Edit Account"] = "Изменить аккаунт"
+        ,["Remove Device / Удалить"] = "Удалить устройство"
+        ,["Port"] = "Порт"
+        ,["How long Host waits for device approval. Use 0 to wait until manual cancellation."] = "Как долго компьютер ждёт подтверждения от устройства. Укажите 0, чтобы ждать до ручной отмены."
+        ,["Second option depends on the first one. If the first is off, this one is disabled and turned off."] = "Вторая опция зависит от первой. Если первая выключена, вторая недоступна и отключается."
+        ,["Recommended for stable pairing/restore IP routing when VPN is active."] = "Рекомендуется для стабильной привязки и восстановления маршрута при активном VPN."
+        ,["Update Wizard"] = "Мастер обновления"
+        ,["File"] = "Файл"
+        ,["Transfer"] = "Передача"
+        ,["Speed"] = "Скорость"
+        ,["About app"] = "О приложении"
+        ,["Terms of Use"] = "Условия использования"
+        ,["Privacy Policy"] = "Политика конфиденциальности"
+        ,["Download mobile app"] = "Скачать мобильное приложение"
+        ,["Source Code of android app"] = "Исходный код приложения Android"
+        ,["Source Code of PC client"] = "Исходный код клиента ПК"
+        ,["Android app developer"] = "Разработчик Android-приложения"
+        ,["PC client developer"] = "Разработчик клиента ПК"
+        ,["App Version"] = "Версия приложения"
+        ,["Configuring..."] = "Настройка..."
+        ,["Cancel Setup"] = "Отменить настройку"
+        ,["PC Login Details"] = "Данные для входа на ПК"
+        ,["Required for Windows to unlock."] = "Нужно Windows для разблокировки."
+        ,["Choose Windows Account"] = "Выберите учётную запись Windows"
+        ,["Password"] = "Пароль"
+        ,["Device Name"] = "Имя устройства"
+        ,["Back"] = "Назад"
+        ,["Cancel"] = "Отмена"
+        ,["Choose Pairing Method"] = "Выберите способ привязки"
+        ,["Select how you want to pair with the device."] = "Выберите способ привязки устройства."
+        ,["Next →"] = "Далее →"
+        ,["Connect Phone"] = "Подключите телефон"
+        ,["Enter this code in the mobile app:"] = "Введите этот код в мобильном приложении:"
+        ,["IP Interface:"] = "Сетевой интерфейс:"
+        ,["Port: "] = "Порт: "
+        ,["BT: "] = "Bluetooth: "
+        ,["Name Device"] = "Назовите устройство"
+        ,["Give this device a friendly name."] = "Укажите понятное имя для устройства."
+        ,["Save & Finish"] = "Сохранить и завершить"
+        ,["Success!"] = "Готово!"
+        ,["Error"] = "Ошибка"
+        ,["Action is in progress. Please wait and avoid interacting with Host until it finishes."] = "Выполняется операция. Подождите и не используйте Portal до её завершения."
+        ,["Cancelling can interrupt configuration and may require manual recovery or reinstall."] = "Отмена может прервать настройку и потребовать ручного восстановления или переустановки."
+        ,["Backup includes config settings, trusted devices and host server certificate."] = "Копия включает настройки, доверенные устройства и сертификат сервера компьютера."
+        ,["Confirm Password"] = "Подтвердите пароль"
+        ,["Backup File"] = "Файл копии"
+        ,["Browse"] = "Выбрать"
+        ,["Restore"] = "Восстановить"
+        ,["Restore replaces current config settings, trusted devices and host server certificate."] = "Восстановление заменит текущие настройки, доверенные устройства и сертификат сервера."
+        ,["Certificate SHA-256"] = "Сертификат SHA-256"
+        ,["Activity helps you understand pairing, unlocks and network recovery. It never includes passwords, IP addresses or certificate data."] = "Журнал показывает привязку, разблокировки и восстановление сети. Пароли, IP-адреса и данные сертификатов в него не записываются."
+        ,["Day"] = "День"
+        ,["Month"] = "Месяц"
+        ,["Year"] = "Год"
+        ,["Notification"] = "Уведомление"
+        ,["YES"] = "ДА"
+        ,["NO"] = "НЕТ"
     };
 
     public static void ApplyToMainWindow(string language)
@@ -105,6 +169,10 @@ public static class LocalizationService
     private static void ApplyRecursive(DependencyObject element, bool useRussian, ISet<DependencyObject> visited)
     {
         if (!visited.Add(element)) return;
+
+        // Language names must always be readable in their native form and must not be translated.
+        if (element is ComboBox { Name: "LanguageSelector" })
+            return;
 
         if (!Originals.TryGetValue(element, out var original))
         {

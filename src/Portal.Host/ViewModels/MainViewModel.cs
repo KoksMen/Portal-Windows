@@ -133,11 +133,10 @@ public partial class MainViewModel : ObservableObject
     {
         "Newest first", "Oldest first"
     };
-    public ObservableCollection<string> LanguageOptions { get; } = new() { "Русский", "English" };
     [ObservableProperty] private string _activitySummaryText = "No recent activity yet.";
     [ObservableProperty] private string _selectedActivityFilter = "All events";
     [ObservableProperty] private string _selectedActivitySort = "Newest first";
-    [ObservableProperty] private string _selectedLanguage = "Русский";
+    [ObservableProperty] private string _selectedLanguageCode = "ru";
     [ObservableProperty] private DateTime? _activityFromDate = DateTime.Today;
     [ObservableProperty] private int _activityFromDay = DateTime.Today.Day;
     [ObservableProperty] private int _activityFromMonth = DateTime.Today.Month;
@@ -566,7 +565,7 @@ public partial class MainViewModel : ObservableObject
 
         _config = PortalWinConfig.Load();
         LoadConfigToUi();
-        SelectedLanguage = string.Equals(_config.UiLanguage, "en", StringComparison.OrdinalIgnoreCase) ? "English" : "Русский";
+        SelectedLanguageCode = string.Equals(_config.UiLanguage, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
         UpdateActivityLanguageOptions();
         RefreshActivityJournal();
         UpdateCurrentVersionText = AppVersion;
@@ -892,12 +891,13 @@ public partial class MainViewModel : ObservableObject
         RecentActivity.Clear();
         foreach (var entry in visibleEntries)
         {
-            RecentActivity.Add(ActivityCard.FromEntry(entry));
+            RecentActivity.Add(ActivityCard.FromEntry(entry, SelectedLanguageCode != "en"));
         }
 
+        var isRussian = SelectedLanguageCode != "en";
         ActivitySummaryText = visibleEntries.Count == 0
-            ? "No events match the selected filters."
-            : $"{visibleEntries.Count} events • retained for 7 days";
+            ? isRussian ? "Нет событий по выбранным фильтрам." : "No events match the selected filters."
+            : isRussian ? $"Событий: {visibleEntries.Count} • хранятся 7 дней" : $"{visibleEntries.Count} events • retained for 7 days";
     }
 
     private bool MatchesActivityFilter(ActivityEntry entry)
@@ -915,9 +915,9 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedActivityFilterChanged(string value) => RefreshActivityJournal();
     partial void OnSelectedActivitySortChanged(string value) => RefreshActivityJournal();
-    partial void OnSelectedLanguageChanged(string value)
+    partial void OnSelectedLanguageCodeChanged(string value)
     {
-        _config.UiLanguage = value == "English" ? "en" : "ru";
+        _config.UiLanguage = string.Equals(value, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
         UpdateActivityLanguageOptions();
         _config.Save();
         LocalizationService.ApplyToMainWindow(_config.UiLanguage);
@@ -927,7 +927,7 @@ public partial class MainViewModel : ObservableObject
 
     private void UpdateActivityLanguageOptions()
     {
-        var isRussian = SelectedLanguage != "English";
+        var isRussian = !string.Equals(SelectedLanguageCode, "en", StringComparison.OrdinalIgnoreCase);
         var filters = isRussian
             ? new[] { "Все события", "Разблокировки", "Привязка", "Сеть", "Система", "Проблемы" }
             : new[] { "All events", "Unlocks", "Pairing", "Network", "System", "Problems" };
@@ -941,6 +941,8 @@ public partial class MainViewModel : ObservableObject
         foreach (var sort in sorts) ActivitySortOptions.Add(sort);
         SelectedActivityFilter = filters[0];
         SelectedActivitySort = sorts[0];
+        SaveConfigBtnText = isRussian ? "Сохранить настройки" : "Save Configuration";
+        RefreshActivityJournal();
     }
     partial void OnActivityFromDateChanged(DateTime? value)
     {

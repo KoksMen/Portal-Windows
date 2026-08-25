@@ -1376,9 +1376,13 @@
                                 Text="Choose the language for the Portal interface. The selection is saved automatically."
                                 TextWrapping="Wrap" />
                             <ComboBox
-                                ItemsSource="{Binding LanguageOptions}"
-                                SelectedItem="{Binding SelectedLanguage}"
-                                Style="{StaticResource PortalComboBox}" />
+                                x:Name="LanguageSelector"
+                                SelectedValue="{Binding SelectedLanguageCode}"
+                                SelectedValuePath="Tag"
+                                Style="{StaticResource PortalComboBox}">
+                                <ComboBoxItem Content="Русский" Tag="ru" />
+                                <ComboBoxItem Content="English" Tag="en" />
+                            </ComboBox>
                         </StackPanel>
                     </Expander>
 
