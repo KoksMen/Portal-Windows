@@ -3180,10 +3180,10 @@
                             Height="28"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Top"
-                            Command="{Binding RefreshActivityCommand}"
-                            Content="↻"
-                            FontSize="17"
-                            ToolTip="Refresh activity"
+                            Command="{Binding CloseActivityCommand}"
+                            Content="×"
+                            FontSize="20"
+                            ToolTip="Close activity"
                             Style="{StaticResource InfoIconButton}" />
                     </Grid>
                     <Border
@@ -3205,14 +3205,14 @@
                         BorderThickness="1"
                         CornerRadius="12">
                         <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="10" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="SHOW" />
@@ -3222,24 +3222,27 @@
                                 <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="ORDER" />
                                 <ComboBox ItemsSource="{Binding ActivitySortOptions}" SelectedItem="{Binding SelectedActivitySort}" Style="{StaticResource PortalComboBox}" />
                             </StackPanel>
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Margin="2,0,0,5" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="FROM DATE" />
-                                <StackPanel Orientation="Horizontal">
+                            <Grid Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Center" FontSize="10" FontWeight="SemiBold" Foreground="#8FAAD5" Text="FROM DATE" />
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
                                     <TextBox Width="38" ToolTip="Day" Text="{Binding ActivityFromDay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
                                     <TextBlock Margin="4,0" VerticalAlignment="Center" Foreground="#6F8FC5" Text="/" />
                                     <TextBox Width="38" ToolTip="Month" Text="{Binding ActivityFromMonth, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
                                     <TextBlock Margin="4,0" VerticalAlignment="Center" Foreground="#6F8FC5" Text="/" />
                                     <TextBox Width="58" ToolTip="Year" Text="{Binding ActivityFromYear, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ActivityDateInput}" />
                                 </StackPanel>
-                            </StackPanel>
-                            <Button
-                                Grid.Column="6"
-                                Margin="0,15,0,0"
-                                MinWidth="72"
-                                Command="{Binding ClearActivityFiltersCommand}"
-                                Content="Reset"
-                                FontSize="11"
-                                Style="{StaticResource SecondaryButton}" />
+                                <Button Grid.Column="4" Width="34" Height="34" Command="{Binding RefreshActivityCommand}" Content="↻" FontSize="17" ToolTip="Refresh activity" Style="{StaticResource InfoIconButton}" />
+                                <Button Grid.Column="6" MinWidth="72" Command="{Binding ClearActivityFiltersCommand}" Content="Reset" FontSize="11" Style="{StaticResource SecondaryButton}" />
+                            </Grid>
                         </Grid>
                     </Border>
                     <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
