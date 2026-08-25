@@ -568,7 +568,7 @@ public partial class MainViewModel : ObservableObject
         SelectedLanguageCode = string.Equals(_config.UiLanguage, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
         UpdateActivityLanguageOptions();
         RefreshActivityJournal();
-        UpdateCurrentVersionText = AppVersion;
+        UpdateCurrentVersionText = BuildCurrentVersionText();
         _ = LoadAboutAvatarsAsync();
     }
 
@@ -607,7 +607,7 @@ public partial class MainViewModel : ObservableObject
             UpdateAvailableVersionText = $"Installed version: {lastResult.TargetVersion}";
             _config.LastInstalledUpdateUtc = lastResult.CompletedAtUtc;
             _config.Save();
-            UpdateLastInstalledText = $"Last update: {lastResult.CompletedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+            UpdateLastInstalledText = BuildLastUpdateText(lastResult.CompletedAtUtc);
         }
 
         _updateService.ClearLastUpdateResult();
@@ -619,13 +619,13 @@ public partial class MainViewModel : ObservableObject
         SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
         IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
         AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
-        UpdateSourceText = $"Source: {UpdateService.BuiltInSourceLabel}";
+        UpdateSourceText = IsRussianUi ? $"Источник: {UpdateService.BuiltInSourceLabel}" : $"Source: {UpdateService.BuiltInSourceLabel}";
         UpdateLastCheckedText = _config.LastUpdateCheckUtc.HasValue
-            ? $"Last checked: {_config.LastUpdateCheckUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}"
-            : "Not checked yet";
+            ? BuildLastCheckedText(_config.LastUpdateCheckUtc.Value)
+            : IsRussianUi ? "Ещё не проверялось" : "Not checked yet";
         UpdateLastInstalledText = _config.LastInstalledUpdateUtc.HasValue
-            ? $"Last update: {_config.LastInstalledUpdateUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm:ss}"
-            : "Last update: not installed yet";
+            ? BuildLastUpdateText(_config.LastInstalledUpdateUtc.Value)
+            : IsRussianUi ? "Обновление ещё не устанавливалось" : "Last update: not installed yet";
         UpdateRepositoryText = _config.UpdateRepository;
         UpdateTokenText = string.Empty;
         IsAutoUpdateChecksEnabled = _config.AutoUpdateChecksEnabled;
@@ -919,6 +919,9 @@ public partial class MainViewModel : ObservableObject
     {
         _config.UiLanguage = string.Equals(value, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
         UpdateActivityLanguageOptions();
+        UpdateCurrentVersionText = BuildCurrentVersionText();
+        UpdateLastCheckedText = _config.LastUpdateCheckUtc.HasValue ? BuildLastCheckedText(_config.LastUpdateCheckUtc.Value) : IsRussianUi ? "Ещё не проверялось" : "Not checked yet";
+        UpdateLastInstalledText = _config.LastInstalledUpdateUtc.HasValue ? BuildLastUpdateText(_config.LastInstalledUpdateUtc.Value) : IsRussianUi ? "Обновление ещё не устанавливалось" : "Last update: not installed yet";
         _config.Save();
         LocalizationService.ApplyToMainWindow(_config.UiLanguage);
     }
@@ -944,6 +947,11 @@ public partial class MainViewModel : ObservableObject
         SaveConfigBtnText = isRussian ? "Сохранить настройки" : "Save Configuration";
         RefreshActivityJournal();
     }
+
+    private bool IsRussianUi => !string.Equals(SelectedLanguageCode, "en", StringComparison.OrdinalIgnoreCase);
+    private string BuildCurrentVersionText() => IsRussianUi ? $"Текущая версия: {AppVersion}" : $"Current version: {AppVersion}";
+    private string BuildLastCheckedText(DateTime value) => IsRussianUi ? $"Последняя проверка: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}" : $"Last checked: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+    private string BuildLastUpdateText(DateTime value) => IsRussianUi ? $"Последнее обновление: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}" : $"Last update: {value.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
     partial void OnActivityFromDateChanged(DateTime? value)
     {
         if (value.HasValue)
@@ -1207,8 +1215,8 @@ public partial class MainViewModel : ObservableObject
         }
 
         var confirmed = await _dialogService.ShowNotificationAsync(
-            "Cancel current action?",
-            "Cancelling now may leave Portal partially configured and can require manual recovery or reinstall. Continue?",
+            IsRussianUi ? "Отменить текущую операцию?" : "Cancel current action?",
+            IsRussianUi ? "Отмена может оставить Portal в частично настроенном состоянии и потребовать ручного восстановления или переустановки. Продолжить?" : "Cancelling now may leave Portal partially configured and can require manual recovery or reinstall. Continue?",
             true);
 
         if (!confirmed)

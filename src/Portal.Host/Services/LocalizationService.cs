@@ -18,6 +18,7 @@ public static class LocalizationService
         public string? Content { get; init; }
         public string? Header { get; init; }
         public string? ToolTip { get; init; }
+        public string? Tag { get; init; }
     }
 
     private static readonly ConditionalWeakTable<DependencyObject, OriginalValues> Originals = new();
@@ -80,6 +81,11 @@ public static class LocalizationService
         ["Unlock request cancelled"] = "Запрос разблокировки отменён",
         ["Unlock request declined"] = "Запрос разблокировки отклонён",
         ["Portal started"] = "Portal запущен"
+        ,["✨ Recent activity"] = "✨ Последняя активность"
+        ,["Remote Unlock System"] = "Система удалённой разблокировки"
+        ,["Request on button click AND automatically at PC startup (first logon after boot)."] = "Запрос отправляется по нажатию и автоматически при запуске ПК (при первом входе после загрузки)."
+        ,["Request on button click AND automatically whenever the lock screen appears (startup, Win+L, etc.)."] = "Запрос отправляется по нажатию и автоматически при каждом появлении экрана блокировки (запуск, Win+L и т. д.)."
+        ,["Unlock request is sent only when the user clicks the button on the lock screen."] = "Запрос разблокировки отправляется только после нажатия кнопки на экране блокировки."
         ,["System Health & Maintenance"] = "Состояние системы и обслуживание"
         ,["Credential Provider"] = "Поставщик учётных данных"
         ,["Firewall Rule"] = "Правило брандмауэра"
@@ -181,7 +187,8 @@ public static class LocalizationService
                 Text = element is TextBlock textBlock && !BindingOperations.IsDataBound(textBlock, TextBlock.TextProperty) ? textBlock.Text : null,
                 Content = element is ContentControl contentControl && contentControl.Content is string content && !BindingOperations.IsDataBound(contentControl, ContentControl.ContentProperty) ? content : null,
                 Header = element is HeaderedContentControl headered && headered.Header is string header && !BindingOperations.IsDataBound(headered, HeaderedContentControl.HeaderProperty) ? header : null,
-                ToolTip = element is FrameworkElement frameworkElement && frameworkElement.ToolTip is string toolTip ? toolTip : null
+                ToolTip = element is FrameworkElement frameworkElement && frameworkElement.ToolTip is string toolTip ? toolTip : null,
+                Tag = element is FrameworkElement taggedElement && taggedElement.Tag is string tag ? tag : null
             };
             Originals.Add(element, original);
         }
@@ -194,6 +201,8 @@ public static class LocalizationService
             targetHeader.Header = Translate(original.Header, useRussian);
         if (element is FrameworkElement targetElement && original.ToolTip != null)
             targetElement.ToolTip = Translate(original.ToolTip, useRussian);
+        if (element is FrameworkElement targetTaggedElement && original.Tag != null)
+            targetTaggedElement.Tag = Translate(original.Tag, useRussian);
 
         var visualChildren = element is Visual || element is System.Windows.Media.Media3D.Visual3D
             ? VisualTreeHelper.GetChildrenCount(element)

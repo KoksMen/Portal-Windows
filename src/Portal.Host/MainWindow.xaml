@@ -1987,7 +1987,7 @@
                                 Margin="0,8,0,0"
                                 FontSize="12"
                                 Foreground="#9fa8c4"
-                                Text="{Binding UpdateCurrentVersionText, StringFormat='Current version: {0}'}"
+                                Text="{Binding UpdateCurrentVersionText}"
                                 TextWrapping="Wrap" />
                             <TextBlock
                                 Margin="0,4,0,0"
