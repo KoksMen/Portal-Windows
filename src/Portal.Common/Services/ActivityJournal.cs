@@ -37,6 +37,11 @@ public static class ActivityJournal
 
         try
         {
+            if (IsRecentDuplicate(entry))
+            {
+                return;
+            }
+
             var line = JsonSerializer.Serialize(entry, JsonOptions) + Environment.NewLine;
             // Host runs in the interactive user session while Credential Provider runs in LogonUI.
             // A Global mutex can have session-specific ACLs and reject the provider. A short append
@@ -101,5 +106,15 @@ public static class ActivityJournal
             Logger.LogWarning($"[ActivityJournal] Failed to read activity records: {ex.Message}");
             return Array.Empty<ActivityEntry>();
         }
+    }
+
+    private static bool IsRecentDuplicate(ActivityEntry candidate)
+    {
+        var latest = ReadLatest(1).FirstOrDefault();
+        return latest != null
+            && string.Equals(latest.Title, candidate.Title, StringComparison.Ordinal)
+            && string.Equals(latest.Details, candidate.Details, StringComparison.Ordinal)
+            && string.Equals(latest.DeviceName, candidate.DeviceName, StringComparison.Ordinal)
+            && DateTime.UtcNow - latest.OccurredAtUtc < TimeSpan.FromMinutes(1);
     }
 }

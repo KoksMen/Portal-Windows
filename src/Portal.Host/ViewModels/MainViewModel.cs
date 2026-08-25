@@ -862,7 +862,7 @@ public partial class MainViewModel : ObservableObject
 
     private void RefreshActivityJournal()
     {
-        var entries = ActivityJournal.ReadLatest(6);
+        var entries = ActivityJournal.ReadLatest(4);
         RecentActivity.Clear();
         foreach (var entry in entries)
         {

@@ -8,6 +8,7 @@ public sealed class ActivityCard
     public string Title { get; init; } = string.Empty;
     public string Details { get; init; } = string.Empty;
     public string TimeText { get; init; } = string.Empty;
+    public string TimeBadge { get; init; } = string.Empty;
     public string DeviceBadge { get; init; } = string.Empty;
     public string TransportBadge { get; init; } = string.Empty;
     public bool HasDeviceBadge => !string.IsNullOrWhiteSpace(DeviceBadge);
@@ -19,13 +20,16 @@ public sealed class ActivityCard
     {
         var isCancellation = entry.Title.Contains("cancelled", StringComparison.OrdinalIgnoreCase);
         var isWarning = !entry.IsSuccess;
-        var isCritical = isWarning && (isCancellation || entry.Title.Contains("declined", StringComparison.OrdinalIgnoreCase));
+        var isCritical = isWarning && isCancellation;
         return new ActivityCard
         {
             Icon = entry.Icon,
             Title = entry.Title,
-            Details = entry.Details,
+            Details = entry.Category == "unlock" && entry.IsSuccess && !string.IsNullOrWhiteSpace(entry.DeviceName)
+                ? "Remote unlock request approved."
+                : entry.Details,
             TimeText = FormatTime(entry.OccurredAtUtc.ToLocalTime()),
+            TimeBadge = FormatTime(entry.OccurredAtUtc.ToLocalTime()),
             DeviceBadge = entry.DeviceName ?? string.Empty,
             TransportBadge = entry.Transport ?? string.Empty,
             AccentColor = isCritical ? "#F05D6F" : isWarning ? "#f2a65a" : entry.Category == "unlock" ? "#47d18c" : "#70a5ff",

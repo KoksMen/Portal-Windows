@@ -2922,8 +2922,7 @@
                         CornerRadius="10">
                         <TextBlock FontSize="11" Foreground="#BDD1F4" Text="Activity helps you understand pairing, unlocks and network recovery. It never includes passwords, IP addresses or certificate data." TextWrapping="Wrap" />
                     </Border>
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding RecentActivity}">
+                    <ItemsControl Grid.Row="2" ItemsSource="{Binding RecentActivity}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border
@@ -2955,6 +2954,7 @@
                                                         <TextBlock FontSize="10" FontWeight="Bold" Foreground="#D8E9FF" Text="{Binding DeviceBadge}" />
                                                     </Border>
                                                     <Border
+                                                        Margin="0,0,6,0"
                                                         Padding="7,3"
                                                         Background="#173B2A"
                                                         BorderBrush="#39825B"
@@ -2963,15 +2963,21 @@
                                                         Visibility="{Binding HasTransportBadge, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                         <TextBlock FontSize="10" FontWeight="Bold" Foreground="#D9FFE7" Text="{Binding TransportBadge}" />
                                                     </Border>
+                                                    <Border
+                                                        Padding="7,3"
+                                                        Background="#263047"
+                                                        BorderBrush="#53617E"
+                                                        BorderThickness="1"
+                                                        CornerRadius="7">
+                                                        <TextBlock FontSize="10" FontWeight="Bold" Foreground="#DDE6FA" Text="{Binding TimeBadge}" />
+                                                    </Border>
                                                 </StackPanel>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="2" VerticalAlignment="Top" FontSize="10" Foreground="#9EB3D8" Text="{Binding TimeText}" />
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    </ItemsControl>
                     <Button
                         Grid.Row="3"
                         Width="110"

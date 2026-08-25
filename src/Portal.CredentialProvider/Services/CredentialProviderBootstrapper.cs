@@ -43,6 +43,7 @@ public static class CredentialProviderBootstrapper
         catch (Exception ex)
         {
             Logger.LogError("[Bootstrapper] Failed to start TlsUnlockService", ex);
+            ActivityJournal.Record("system", "⚠️", "Network unlock service failed", "Credential Provider could not start its Wi-Fi unlock service.", false);
         }
 
         try
@@ -54,6 +55,7 @@ public static class CredentialProviderBootstrapper
         catch (Exception ex)
         {
             Logger.LogError("[Bootstrapper] Failed to start BluetoothUnlockService", ex);
+            ActivityJournal.Record("system", "⚠️", "Bluetooth unlock service failed", "Credential Provider could not start its Bluetooth unlock service.", false);
         }
 
         if (TlsService != null || BtService != null)
