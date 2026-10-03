@@ -419,7 +419,7 @@ public class PortalWinTile : PortalWinTileBase
             return;
         }
 
-        UpdateStatus("Searching device...");
+        UpdateStatus("Sending request: searching device...");
         ShowCancelButton();
 
         var requestTimer = Stopwatch.StartNew();
@@ -636,15 +636,15 @@ public class PortalWinTile : PortalWinTileBase
         {
             if (_latestStage == UnlockTransportStage.AwaitingApproval)
             {
-                return "Awaiting approval...";
+                return "Request sent to device. Awaiting confirmation";
             }
 
             if (_latestStage == UnlockTransportStage.Searching)
             {
-                return "Searching device...";
+                return "Sending request: searching device...";
             }
 
-            return "Requesting unlock...";
+            return "Sending request: searching device...";
         }
     }
 
@@ -752,7 +752,7 @@ public class PortalWinTile : PortalWinTileBase
 
     private void HandleApproval(PortalWinConfig config, Portal.Common.Models.DeviceModel targetDevice)
     {
-        UpdateStatus("Approved! Loading credentials...");
+        UpdateStatus("Approved! Signing in...");
         var targetAccount = CredentialProviderTilePolicy.ResolveApprovalAccount(
             targetDevice,
             User?.QualifiedUserName,

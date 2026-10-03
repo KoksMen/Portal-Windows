@@ -131,6 +131,11 @@ public abstract class PortalWinTileBase : CredentialTile2
 
     internal void RefreshStatusFromProvider()
     {
+        if (PortalWinTile.IsEmergencyRollbackActive)
+        {
+            return;
+        }
+
         if (_providerBase is PortalWinProvider provider)
         {
             UpdateStatus(provider.BuildStatusHeadlineForState(_lastStatusRaw), provider.BuildStatusDetailsForState(_lastStatusRaw));
