@@ -56,12 +56,13 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                 .Where(ni => IsAdapterEligible(ni, config.VpnCompatibilityModeEnabled))
                 .SelectMany(ni => ni.GetIPProperties().UnicastAddresses)
                 .Select(ua => ua.Address)
+                .Where(ip => !IsLinkLocalOrLoopback(ip))
                 .ToList();
 
             if (!string.IsNullOrEmpty(ipAddress) && IPAddress.TryParse(ipAddress, out var preferredTargetIp))
             {
-                allIps.RemoveAll(i => i.Equals(preferredTargetIp));
-                allIps.Insert(0, preferredTargetIp);
+                allIps.Clear();
+                allIps.Add(preferredTargetIp);
             }
 
             var hostAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -335,4 +336,16 @@ public class MdnsAnnouncer : IMdnsAnnouncer
         return false;
     }
 
+    private static bool IsLinkLocalOrLoopback(IPAddress ip)
+    {
+        if (ip.IsIPv6LinkLocal || IPAddress.IsLoopback(ip)) return true;
+        var bytes = ip.GetAddressBytes();
+        if (bytes.Length == 4)
+        {
+            if (bytes[0] == 169 && bytes[1] == 254) return true;
+            if (bytes[0] == 127) return true;
+            if (bytes[0] == 0) return true;
+        }
+        return false;
+    }
 }

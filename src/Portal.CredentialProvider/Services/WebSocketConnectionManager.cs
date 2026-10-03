@@ -18,6 +18,7 @@ public class WebSocketConnectionManager
 
     private readonly ConcurrentDictionary<string, WebSocket> _connectedClients = new();
     private readonly ConcurrentDictionary<string, PendingApprovalContext> _pendingApprovals = new();
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public void RegisterClient(string clientId, WebSocket ws)
     {
@@ -279,12 +280,12 @@ public class WebSocketConnectionManager
                     break;
                 }
 
-                if (messageType == WebSocketMessageType.Text && !string.IsNullOrWhiteSpace(json))
+                if (!string.IsNullOrWhiteSpace(json))
                 {
-                    var msg = JsonSerializer.Deserialize<WsMessage>(json);
+                    var msg = JsonSerializer.Deserialize<WsMessage>(json, JsonOptions);
                     Logger.Log($"[WebSocketManager] Received WS message from {clientId}: type='{msg?.Type ?? "null"}' status='{msg?.Status ?? "null"}' requestId='{msg?.RequestId ?? "null"}'");
 
-                    if (msg?.Type == "unlock_response")
+                    if (msg != null && string.Equals(msg.Type, "unlock_response", StringComparison.OrdinalIgnoreCase))
                     {
                         if (_pendingApprovals.TryGetValue(clientId, out var pending))
                         {
@@ -340,10 +341,9 @@ public class WebSocketConnectionManager
             }
         }
 
-        if (_pendingApprovals.TryGetValue(clientId, out var pendingTcs))
-        {
-            pendingTcs.Completion.TrySetResult(null);
-        }
+        // Socket loop ended (disconnected or replaced).
+        // In-flight approval (_pendingApprovals) is intentionally preserved so
+        // reconnected sockets or user tap on mobile can still complete the unlock.
     }
 
     private static async Task<(WebSocketMessageType MessageType, string? Text)> ReceiveTextMessageAsync(WebSocket ws, CancellationToken ct)
@@ -362,11 +362,8 @@ public class WebSocketConnectionManager
 
             if (result.EndOfMessage)
             {
-                if (result.MessageType != WebSocketMessageType.Text)
-                    return (result.MessageType, null);
-
                 var payload = Encoding.UTF8.GetString(ms.ToArray());
-                return (WebSocketMessageType.Text, payload);
+                return (result.MessageType, payload);
             }
         }
     }
