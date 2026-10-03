@@ -187,7 +187,16 @@ public class PortalWinProvider : PortalWinProviderBase
     private string BuildStatusHeadline(string? headline = null)
     {
         var state = string.IsNullOrWhiteSpace(headline) ? "Searching device" : headline.Trim();
-        return $"{Localization.T("State: ")}{Localization.T(state)}";
+        var statePrefix = Localization.T("State: ");
+        if (state.StartsWith(statePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            state = state.Substring(statePrefix.Length).Trim();
+        }
+        if (state.StartsWith("State: ", StringComparison.OrdinalIgnoreCase))
+        {
+            state = state.Substring("State: ".Length).Trim();
+        }
+        return $"{statePrefix}{Localization.T(state)}";
     }
 
     private string BuildStatusDetails(string? stateOverride = null)
@@ -223,6 +232,16 @@ public class PortalWinProvider : PortalWinProviderBase
         }
 
         var value = rawStatus.Trim().TrimEnd('.');
+        var statePrefix = Localization.T("State: ");
+        if (value.StartsWith(statePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            value = value.Substring(statePrefix.Length).Trim();
+        }
+        if (value.StartsWith("State: ", StringComparison.OrdinalIgnoreCase))
+        {
+            value = value.Substring("State: ".Length).Trim();
+        }
+
         var lower = value.ToLowerInvariant();
 
         return lower switch
@@ -241,19 +260,11 @@ public class PortalWinProvider : PortalWinProviderBase
             var text when text.Contains("cancelled")
                        || text.Contains("отменен")
                        || text.Contains("отменён") => "Request cancelled",
-            var text when text.Contains("signing in") || text.Contains("вход в систему") || text.Contains("loading credentials")
-                => "Approved! Signing in...",
-            var text when text.Contains("approved") || text.Contains("подтверждено")
-                => "Approved! Signing in...",
             var text when text.Contains("awaiting approval")
+                       || text.Contains("approved")
                        || text.Contains("подтверждения")
-                       || text.Contains("подтвердите")
-                       || text.Contains("sent to") => "Request sent to device. Awaiting confirmation",
-            var text when text.Contains("sending request") || text.Contains("отправка запроса") || text.Contains("requesting")
-                => "Sending request: searching device...",
-            var text when text.Contains("searching") || text.Contains("поиск")
-                => "Sending request: searching device...",
-            _ => value
+                       || text.Contains("подтверждено") => "Awaiting unlock approval",
+            _ => "Searching device"
         };
     }
 

@@ -419,7 +419,7 @@ public class PortalWinTile : PortalWinTileBase
             return;
         }
 
-        UpdateStatus("Sending request: searching device...");
+        UpdateStatus("Searching device...");
         ShowCancelButton();
 
         var requestTimer = Stopwatch.StartNew();
@@ -636,15 +636,15 @@ public class PortalWinTile : PortalWinTileBase
         {
             if (_latestStage == UnlockTransportStage.AwaitingApproval)
             {
-                return "Request sent to device. Awaiting confirmation";
+                return "Awaiting approval...";
             }
 
             if (_latestStage == UnlockTransportStage.Searching)
             {
-                return "Sending request: searching device...";
+                return "Searching device...";
             }
 
-            return "Sending request: searching device...";
+            return "Requesting unlock...";
         }
     }
 
@@ -752,7 +752,7 @@ public class PortalWinTile : PortalWinTileBase
 
     private void HandleApproval(PortalWinConfig config, Portal.Common.Models.DeviceModel targetDevice)
     {
-        UpdateStatus("Approved! Signing in...");
+        UpdateStatus("Approved! Loading credentials...");
         var targetAccount = CredentialProviderTilePolicy.ResolveApprovalAccount(
             targetDevice,
             User?.QualifiedUserName,
@@ -879,9 +879,7 @@ public class PortalWinTile : PortalWinTileBase
             try
             {
                 tile._activeRequestCts?.Cancel();
-                tile.UpdateStatus(
-                    Localization.T("Emergency rollback: request cancelled"),
-                    Localization.T("Cancelled by shortcut (Left Ctrl + Left Alt)"));
+                tile.UpdateStatus("Emergency rollback: request cancelled");
                 tile.ShowRequestButton();
             }
             catch (Exception ex)
