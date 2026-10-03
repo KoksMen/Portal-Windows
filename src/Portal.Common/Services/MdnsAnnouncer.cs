@@ -72,9 +72,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                 machineName,
                 $"{machineName}.local",
                 instanceName,
-                $"{instanceName}.local",
-                "RINSHIMALAPTOP",
-                "RINSHIMALAPTOP.local"
+                $"{instanceName}.local"
             };
 
             foreach (var alias in hostAliases)
@@ -169,10 +167,8 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                         var qNameStr = q.Name.ToString().TrimEnd('.');
                         bool isHostMatch = hostAliases.Contains(qNameStr)
                             || hostAliases.Contains($"{qNameStr}.local")
-                            || qNameStr.StartsWith("RINSHIMA", StringComparison.OrdinalIgnoreCase)
                             || qNameStr.StartsWith(machineName, StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(qNameStr, "RINSHIMALAPTOP", StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(qNameStr, "RINSHIMALAPTOP.local", StringComparison.OrdinalIgnoreCase)
+                            || qNameStr.StartsWith(hostName, StringComparison.OrdinalIgnoreCase)
                             || (qNameStr.EndsWith(".local", StringComparison.OrdinalIgnoreCase) && !qNameStr.StartsWith("_"));
 
                         if (isHostMatch)
