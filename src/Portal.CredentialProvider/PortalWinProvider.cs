@@ -222,6 +222,7 @@ public class PortalWinProvider : PortalWinProviderBase
 
         return lower switch
         {
+            var text when text.Contains("emergency rollback") => "Emergency rollback: request cancelled",
             var text when text.Contains("timed out") => "Request timed out",
             var text when text.Contains("denied")
                        || text.Contains("rejected")

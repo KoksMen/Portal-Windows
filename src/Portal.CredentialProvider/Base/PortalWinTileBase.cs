@@ -63,9 +63,17 @@ public abstract class PortalWinTileBase : CredentialTile2
 
             ApplyDetailsVisibility();
 
-            if (User != null && _usernameControl != null)
+            if (_usernameControl != null)
             {
-                _usernameControl.Text = User.QualifiedUserName;
+                if (User != null)
+                {
+                    _usernameControl.Text = User.QualifiedUserName;
+                    _usernameControl.State = FieldState.Hidden;
+                }
+                else if (_providerBase.UsageScenario == UsageScenario.CredUI)
+                {
+                    _usernameControl.State = FieldState.DisplayInSelectedTile;
+                }
             }
 
             RefreshStatusFromProvider();
@@ -205,9 +213,18 @@ public abstract class PortalWinTileBase : CredentialTile2
                 string fallbackDomain = System.Environment.MachineName;
                 string fallbackUser = User?.UserName ?? _usernameControl?.Text ?? "";
 
-                if (User != null && !string.IsNullOrEmpty(User.QualifiedUserName) && User.QualifiedUserName.Contains("\\"))
+                if (User != null && !string.IsNullOrEmpty(User.QualifiedUserName) && User.QualifiedUserName.Contains('\\'))
                 {
                     var parts = User.QualifiedUserName.Split('\\');
+                    if (parts.Length == 2)
+                    {
+                        fallbackDomain = parts[0];
+                        fallbackUser = parts[1];
+                    }
+                }
+                else if (User == null && !string.IsNullOrEmpty(_usernameControl?.Text) && _usernameControl.Text.Contains('\\'))
+                {
+                    var parts = _usernameControl.Text.Split('\\');
                     if (parts.Length == 2)
                     {
                         fallbackDomain = parts[0];

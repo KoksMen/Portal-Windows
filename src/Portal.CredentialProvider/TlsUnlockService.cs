@@ -746,8 +746,13 @@ public class TlsUnlockService : IDisposable
                 Logger.Log("Host certificate PFX not found: " + pfxPath);
                 return null;
             }
+#if NET9_0_OR_GREATER
             return X509CertificateLoader.LoadPkcs12FromFile(pfxPath, "portalwin-host",
                 X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
+#else
+            return new X509Certificate2(pfxPath, "portalwin-host",
+                X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
+#endif
         }
         catch (Exception ex)
         {

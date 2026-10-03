@@ -59,6 +59,26 @@ public class PortalWinConfig
     public int HostRequestTimeoutMinutes { get; set; } = 2;
 
     /// <summary>
+    /// Enables emergency rollback/cancellation of in-flight unlock requests using a hotkey.
+    /// Default: true.
+    /// </summary>
+    [JsonPropertyName("emergencyCancelEnabled")]
+    public bool EmergencyCancelEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Duration in milliseconds the emergency hotkey must be held down to trigger rollback.
+    /// Default: 350 ms.
+    /// </summary>
+    [JsonPropertyName("emergencyCancelHoldDurationMs")]
+    public int EmergencyCancelHoldDurationMs { get; set; } = 350;
+
+    /// <summary>
+    /// Key combination for emergency rollback. Default: "LeftCtrl+LeftAlt".
+    /// </summary>
+    [JsonPropertyName("emergencyCancelHotkey")]
+    public string EmergencyCancelHotkey { get; set; } = "LeftCtrl+LeftAlt";
+
+    /// <summary>
     /// Hidden compatibility flag for Host-Initiated request correlation.
     /// true (default): use requestId to correlate unlock_request/unlock_response across transports.
     /// false: completely disable requestId correlation and use legacy transport behavior.

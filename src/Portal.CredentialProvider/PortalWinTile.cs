@@ -124,7 +124,8 @@ public class PortalWinTile : PortalWinTileBase
             HostRequestTrigger.OnClickAndStartup => scenario == Lithnet.CredentialProvider.UsageScenario.Logon,
             HostRequestTrigger.OnClickAndAnyLockScreen =>
                 scenario == Lithnet.CredentialProvider.UsageScenario.Logon
-                || scenario == Lithnet.CredentialProvider.UsageScenario.UnlockWorkstation,
+                || scenario == Lithnet.CredentialProvider.UsageScenario.UnlockWorkstation
+                || scenario == Lithnet.CredentialProvider.UsageScenario.CredUI,
             _ => false
         };
 
@@ -252,7 +253,8 @@ public class PortalWinTile : PortalWinTileBase
                 break;
             case HostRequestTrigger.OnClickAndAnyLockScreen:
                 shouldAutoRequest = (scenario == Lithnet.CredentialProvider.UsageScenario.Logon
-                                  || scenario == Lithnet.CredentialProvider.UsageScenario.UnlockWorkstation);
+                                  || scenario == Lithnet.CredentialProvider.UsageScenario.UnlockWorkstation
+                                  || scenario == Lithnet.CredentialProvider.UsageScenario.CredUI);
                 break;
         }
 
@@ -260,13 +262,13 @@ public class PortalWinTile : PortalWinTileBase
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested) return;
 
-        if (User == null) return;
+        if (User == null && scenario != Lithnet.CredentialProvider.UsageScenario.CredUI) return;
         var config = PortalWinConfig.Load();
-        var matchedDevices = FindAllDevicesForCurrentUser(config);
+        var matchedDevices = FindHostInitiatedDevices(config);
         ApplyHostInitiatedTlsPolicy(config, source);
         if (matchedDevices.Count == 0) return;
 
-        Logger.Log($"[PortalWinTile] Auto-triggering unlock request for {User?.UserName ?? "Unknown"} (source={source}, forceTakeover={forceTakeover}).");
+        Logger.Log($"[PortalWinTile] Auto-triggering unlock request for {GetTileIdentityForLogging()} (source={source}, forceTakeover={forceTakeover}).");
         Task.Run(() => StartUnlockRequest(forceTakeover, source));
     }
 
@@ -794,6 +796,66 @@ public class PortalWinTile : PortalWinTileBase
             ?? User?.UserName
             ?? usernameText
             ?? "generic";
+    }
+
+    public static void TriggerEmergencyRollback()
+    {
+        Logger.LogWarning("[PortalWinTile] TriggerEmergencyRollback invoked by emergency shortcut (Left Ctrl + Left Alt).");
+
+        lock (_requestSync)
+        {
+            if (_globalActiveRequestCts != null)
+            {
+                try
+                {
+                    _globalActiveRequestCts.Cancel();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"[PortalWinTile] Error cancelling global request CTS: {ex.Message}");
+                }
+            }
+        }
+
+        DisconnectAllTransportsFast("Emergency rollback (Left Ctrl + Left Alt)");
+
+        try
+        {
+            CredentialProviderBootstrapper.CurrentProvider?.CancelPendingAutoLogon();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[PortalWinTile] Error clearing provider unlock state", ex);
+        }
+
+        PortalWinTile[] snapshot;
+        lock (_tilesSync)
+        {
+            snapshot = _tiles.ToArray();
+        }
+
+        foreach (var tile in snapshot)
+        {
+            try
+            {
+                tile._activeRequestCts?.Cancel();
+                tile.UpdateStatus(
+                    Localization.T("Emergency rollback: request cancelled"),
+                    Localization.T("Cancelled by shortcut (Left Ctrl + Left Alt)"));
+                tile.ShowRequestButton();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[PortalWinTile] Error updating tile on emergency rollback", ex);
+            }
+        }
+
+        ActivityJournal.Record(
+            "unlock",
+            "🚨",
+            Localization.T("Emergency rollback"),
+            Localization.T("The authorization process was cancelled via emergency shortcut (Left Ctrl + Left Alt)."),
+            false);
     }
 
     internal static void ResetAutoRequestClaim()
