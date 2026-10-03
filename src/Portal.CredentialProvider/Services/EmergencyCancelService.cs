@@ -20,6 +20,8 @@ public static class EmergencyCancelService
     // Win32 Virtual Key Codes
     private const int VK_LCONTROL = 0xA2;
     private const int VK_LMENU = 0xA4; // Left Alt
+    private const int VK_CONTROL = 0x11;
+    private const int VK_MENU = 0x12; // Alt
 
     private static readonly object _lock = new();
     private static Thread? _monitorThread;
@@ -98,8 +100,8 @@ public static class EmergencyCancelService
         {
             try
             {
-                bool isLeftCtrlDown = (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0;
-                bool isLeftAltDown = (GetAsyncKeyState(VK_LMENU) & 0x8000) != 0;
+                bool isLeftCtrlDown = (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 || (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                bool isLeftAltDown = (GetAsyncKeyState(VK_LMENU) & 0x8000) != 0 || (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
 
                 if (isLeftCtrlDown && isLeftAltDown)
                 {

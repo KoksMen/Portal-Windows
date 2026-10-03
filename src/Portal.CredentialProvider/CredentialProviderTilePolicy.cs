@@ -23,7 +23,7 @@ public static class CredentialProviderTilePolicy
 
     public static bool ShouldIncludeGenericTile(UsageScenario scenario)
     {
-        return scenario == UsageScenario.CredUI;
+        return false;
     }
 
     public static bool ShouldIncludeUserTile(UsageScenario scenario)

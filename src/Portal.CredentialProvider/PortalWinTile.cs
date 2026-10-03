@@ -20,6 +20,7 @@ public class PortalWinTile : PortalWinTileBase
     private static CancellationTokenSource? _globalActiveRequestCts;
     private static string? _globalActiveOwner;
     private static volatile bool _isEmergencyRollbackActive;
+    public static bool IsEmergencyRollbackActive => _isEmergencyRollbackActive;
     private bool _isRegisteredInTiles;
 
     private PortalWinProvider Provider => (PortalWinProvider)_providerBase;
@@ -246,6 +247,7 @@ public class PortalWinTile : PortalWinTileBase
 
     private void TryAutoRequestUnlock(bool forceTakeover, string source)
     {
+        if (_isEmergencyRollbackActive) return;
         if (!AllowsHostInitiated) return;
 
         var trigger = Provider.HostRequestTrigger;

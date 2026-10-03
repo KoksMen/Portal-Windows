@@ -105,6 +105,7 @@ public abstract class PortalWinTileBase : CredentialTile2
 
     internal void UpdateStatus(string headline, string? details)
     {
+        _lastStatusRaw = headline ?? "Waiting for remote command.";
         if (_statusLabel != null)
         {
             try
