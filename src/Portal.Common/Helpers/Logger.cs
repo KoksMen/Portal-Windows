@@ -35,6 +35,7 @@ public static class Logger
                     logPath,
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 7,
+                    fileSizeLimitBytes: null,
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
                     shared: true)
                 .CreateLogger();

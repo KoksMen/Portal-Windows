@@ -86,7 +86,7 @@ public class PortalWinProvider : PortalWinProviderBase
         // Host-initiated controls (shown only when needed)
         var reqButton = new CommandLinkControl("RequestButton", Localization.T("Request Remote Unlock"));
         reqButton.State = UnlockMode == UnlockMode.HostInitiated || UnlockMode == UnlockMode.Both
-            ? FieldState.DisplayInSelectedTile
+            ? (cpus == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
             : FieldState.Hidden;
         yield return reqButton;
 

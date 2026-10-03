@@ -106,9 +106,10 @@ public class PortalWinTile : PortalWinTileBase
         // Lock screen curtain can delay OnSelected; for likely default user tile we start early.
         if (!ShouldAttemptEarlyStart()) return;
 
-        Logger.Log($"[PortalWinTile] Early auto-start candidate detected for '{User?.QualifiedUserName ?? User?.UserName ?? "Unknown"}'.");
-        ApplyHostInitiatedTlsPolicy(PortalWinConfig.Load(), "initialize");
-        TryAutoRequestUnlock(forceTakeover: false, source: "initialize");
+        var isCredUi = Provider.UsageScenario == Lithnet.CredentialProvider.UsageScenario.CredUI;
+        Logger.Log($"[PortalWinTile] Early auto-start candidate detected for '{User?.QualifiedUserName ?? User?.UserName ?? "Generic"}' (CredUI={isCredUi}).");
+        ApplyHostInitiatedTlsPolicy(PortalWinConfig.Load(), isCredUi ? "credui_initialize" : "initialize");
+        TryAutoRequestUnlock(forceTakeover: isCredUi, source: isCredUi ? "credui_initialize" : "initialize");
     }
 
     private bool ShouldAttemptEarlyStart()
@@ -130,9 +131,15 @@ public class PortalWinTile : PortalWinTileBase
         };
 
         if (!shouldAutoRequest) return false;
-        if (User == null) return false;
 
         var config = PortalWinConfig.Load();
+
+        if (scenario == Lithnet.CredentialProvider.UsageScenario.CredUI)
+        {
+            return FindHostInitiatedDevices(config).Count > 0;
+        }
+
+        if (User == null) return false;
         if (FindAllDevicesForCurrentUser(config).Count == 0) return false;
 
         // Primary signal from framework; fallback to registry for environments where selection is delayed.
@@ -532,6 +539,12 @@ public class PortalWinTile : PortalWinTileBase
                     return false;
                 }
 
+                if (string.Equals(owner, "generic", StringComparison.OrdinalIgnoreCase) && !string.Equals(_globalActiveOwner, "generic", StringComparison.OrdinalIgnoreCase) && source.Contains("initialize"))
+                {
+                    Logger.Log($"[PortalWinTile] Keeping specific user tile request '{_globalActiveOwner}' over 'generic' (source={source}).");
+                    return false;
+                }
+
                 Logger.Log($"[PortalWinTile] Taking over active request from '{_globalActiveOwner}' to '{owner}' (source={source}).");
                 try { _globalActiveRequestCts.Cancel(); } catch { }
             }
@@ -696,6 +709,7 @@ public class PortalWinTile : PortalWinTileBase
             {
                 Logger.LogWarning($"[Tile] transport_waiting clientId={device.ClientId} transport={transport} reason=no_connected_client");
                 statusAggregator.Report(UnlockTransportStage.Searching);
+                try { await Task.Delay(1000, ct); } catch (OperationCanceledException) { break; }
             }
         }
 
@@ -769,7 +783,7 @@ public class PortalWinTile : PortalWinTileBase
         {
             var config = PortalWinConfig.Load();
             _requestButton.State = AllowsHostInitiated && FindHostInitiatedDevices(config).Count > 0
-                ? FieldState.DisplayInSelectedTile
+                ? (Provider.UsageScenario == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
                 : FieldState.Hidden;
         }
         if (_cancelButton != null) _cancelButton.State = FieldState.Hidden;
@@ -778,7 +792,12 @@ public class PortalWinTile : PortalWinTileBase
     private void ShowCancelButton()
     {
         if (_requestButton != null) _requestButton.State = FieldState.Hidden;
-        if (_cancelButton != null) _cancelButton.State = FieldState.DisplayInSelectedTile;
+        if (_cancelButton != null)
+        {
+            _cancelButton.State = Provider.UsageScenario == UsageScenario.CredUI
+                ? FieldState.DisplayInBoth
+                : FieldState.DisplayInSelectedTile;
+        }
     }
 
     private bool IsForUser(string username)

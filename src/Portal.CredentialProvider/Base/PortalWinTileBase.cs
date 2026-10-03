@@ -73,6 +73,14 @@ public abstract class PortalWinTileBase : CredentialTile2
                 else if (_providerBase.UsageScenario == UsageScenario.CredUI)
                 {
                     _usernameControl.State = FieldState.DisplayInSelectedTile;
+                    if (string.IsNullOrWhiteSpace(_usernameControl.Text))
+                    {
+                        var defaultUser = ResolveDefaultCredUiUsername();
+                        if (!string.IsNullOrWhiteSpace(defaultUser))
+                        {
+                            _usernameControl.Text = defaultUser;
+                        }
+                    }
                 }
             }
 
@@ -267,5 +275,41 @@ public abstract class PortalWinTileBase : CredentialTile2
                 System.Runtime.InteropServices.Marshal.ZeroFreeGlobalAllocUnicode(unmanagedString);
             }
         }
+    }
+
+    private static string? ResolveDefaultCredUiUsername()
+    {
+        try
+        {
+            var config = PortalWinConfig.Load();
+            var accountUser = config.Devices.SelectMany(d => d.Accounts).FirstOrDefault()?.Username;
+            if (!string.IsNullOrWhiteSpace(accountUser))
+            {
+                return accountUser;
+            }
+
+            const string keyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI";
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(keyPath);
+            if (key != null)
+            {
+                foreach (var name in new[] { "LastLoggedOnUser", "LastLoggedOnSAMUser" })
+                {
+                    var val = key.GetValue(name) as string;
+                    if (!string.IsNullOrWhiteSpace(val))
+                    {
+                        return val.Trim();
+                    }
+                }
+            }
+
+            var envUser = System.Environment.UserName;
+            if (!string.IsNullOrWhiteSpace(envUser) && !string.Equals(envUser, "SYSTEM", StringComparison.OrdinalIgnoreCase))
+            {
+                return envUser;
+            }
+        }
+        catch { }
+
+        return null;
     }
 }
