@@ -58,6 +58,12 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                 .Select(ua => ua.Address)
                 .ToList();
 
+            if (!string.IsNullOrEmpty(ipAddress) && IPAddress.TryParse(ipAddress, out var preferredTargetIp))
+            {
+                allIps.RemoveAll(i => i.Equals(preferredTargetIp));
+                allIps.Insert(0, preferredTargetIp);
+            }
+
             var hostAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 hostName,
@@ -271,17 +277,17 @@ public class MdnsAnnouncer : IMdnsAnnouncer
             return false;
         }
 
-        if (!vpnCompatibilityModeEnabled)
-        {
-            return true;
-        }
-
-        if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+        if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel || (int)ni.NetworkInterfaceType == 53)
         {
             return false;
         }
 
-        return !IsVirtualOrVpnInterface(ni);
+        if (IsVirtualOrVpnInterface(ni))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static bool IsVirtualOrVpnInterface(NetworkInterface ni)
@@ -305,6 +311,12 @@ public class MdnsAnnouncer : IMdnsAnnouncer
             "NDIS",
             "Wintun",
             "TAP",
+            "TUN",
+            "sing-tun",
+            "sing-box",
+            "ProxyControl",
+            "Proxy",
+            "Tunnel",
             "PPP");
     }
 

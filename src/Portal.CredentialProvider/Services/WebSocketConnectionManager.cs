@@ -23,14 +23,31 @@ public class WebSocketConnectionManager
     {
         if (_connectedClients.TryGetValue(clientId, out var existing) && !ReferenceEquals(existing, ws))
         {
-            _pendingApprovals.TryRemove(clientId, out var replacedPending);
-            replacedPending?.Completion.TrySetResult(null);
-            _ = CloseSocketFastAsync(existing, WebSocketCloseStatus.PolicyViolation, "Replaced by newer connection", CancellationToken.None);
-            Logger.Log($"[WebSocketManager] Replaced active socket for client: {clientId}");
+            _ = CloseSocketFastAsync(existing, WebSocketCloseStatus.NormalClosure, "Replaced by newer connection", CancellationToken.None);
+            Logger.Log($"[WebSocketManager] Replaced active socket for client: {clientId} (preserved in-flight approval)");
         }
 
         _connectedClients[clientId] = ws;
         Logger.Log($"[WebSocketManager] Client registered: {clientId}");
+
+        if (_pendingApprovals.TryGetValue(clientId, out var pending) && ws.State == WebSocketState.Open)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var reqMsg = new WsMessage("unlock_request", clientId, null, string.IsNullOrEmpty(pending.RequestId) ? null : pending.RequestId);
+                    var json = JsonSerializer.Serialize(reqMsg);
+                    var buffer = Encoding.UTF8.GetBytes(json);
+                    await ws.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                    Logger.Log($"[WebSocketManager] Resent in-flight unlock_request to {clientId} on reconnected socket. requestId='{pending.RequestId}'");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"[WebSocketManager] Failed to resend unlock_request on reconnected socket: {ex.Message}");
+                }
+            });
+        }
     }
 
     public bool IsClientConnected(string clientId)
