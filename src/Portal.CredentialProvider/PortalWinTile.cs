@@ -654,6 +654,12 @@ public class PortalWinTile : PortalWinTileBase
         if (useNet && tls != null) tls.NetworkConnectionChanged += onNet;
         if (useBt && bt != null) bt.BtConnectionChanged += onBt;
 
+        if ((useNet && tls != null && tls.IsNetworkClientConnected(clientId)) ||
+            (useBt && bt != null && bt.IsClientConnected(clientId)))
+        {
+            tcs.TrySetResult(true);
+        }
+
         try { await tcs.Task; }
         finally
         {

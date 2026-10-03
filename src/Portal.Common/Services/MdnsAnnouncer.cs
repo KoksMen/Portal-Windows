@@ -43,6 +43,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
             var instanceName = $"PortalWin-{config.HostId}";
 
             _profile = new ServiceProfile(instanceName, ServiceType, (ushort)port);
+            _profile.HostName = $"{hostName}.local";
             _profile.AddProperty("mode", mode);
             _profile.AddProperty("version", "1");
             _profile.AddProperty("hostname", hostName);
@@ -56,13 +57,22 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                 .Select(ua => ua.Address)
                 .ToList();
 
+            var localHostDomain = $"{hostName}.local";
+            var instanceLocalDomain = $"{instanceName}.local";
+
             foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
             {
                 _profile.Resources.Add(new ARecord { Name = _profile.HostName, Address = ip });
+                _profile.Resources.Add(new ARecord { Name = localHostDomain, Address = ip });
+                _profile.Resources.Add(new ARecord { Name = hostName, Address = ip });
+                _profile.Resources.Add(new ARecord { Name = instanceLocalDomain, Address = ip });
             }
             foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6))
             {
                 _profile.Resources.Add(new AAAARecord { Name = _profile.HostName, Address = ip });
+                _profile.Resources.Add(new AAAARecord { Name = localHostDomain, Address = ip });
+                _profile.Resources.Add(new AAAARecord { Name = hostName, Address = ip });
+                _profile.Resources.Add(new AAAARecord { Name = instanceLocalDomain, Address = ip });
             }
 
             if (!string.IsNullOrEmpty(ipAddress))
@@ -103,10 +113,10 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                     var targetNi = preferred.FirstOrDefault(ni =>
                         ni.GetIPProperties().UnicastAddresses.Any(ua => ua.Address.Equals(targetIp)));
 
-                    if (targetNi != null)
+                    if (targetNi != null && preferred.Remove(targetNi))
                     {
-                        Logger.Log($"[MdnsAnnouncer] Selected exact interface {targetNi.Name} for IP {targetIp}");
-                        return new[] { targetNi };
+                        preferred.Insert(0, targetNi);
+                        Logger.Log($"[MdnsAnnouncer] Prioritized interface {targetNi.Name} for IP {targetIp}");
                     }
                 }
 
@@ -129,12 +139,55 @@ public class MdnsAnnouncer : IMdnsAnnouncer
 
             Logger.Log($"[MdnsAnnouncer] {_mdns}");
 
-            // Log incoming queries for diagnostics
+            // Log incoming queries for diagnostics and directly answer host resolution queries
             _mdns.QueryReceived += (s, e) =>
             {
-                foreach (var q in e.Message.Questions)
+                try
                 {
-                    Logger.Log($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
+                    var responseRecords = new List<ResourceRecord>();
+                    foreach (var q in e.Message.Questions)
+                    {
+                        Logger.Log($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
+
+                        var qNameStr = q.Name.ToString().TrimEnd('.');
+                        bool isHostMatch = string.Equals(qNameStr, hostName, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(qNameStr, $"{hostName}.local", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(qNameStr, instanceName, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(qNameStr, $"{instanceName}.local", StringComparison.OrdinalIgnoreCase);
+
+                        if (isHostMatch)
+                        {
+                            if (q.Type == DnsType.A || q.Type == DnsType.ANY)
+                            {
+                                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
+                                {
+                                    responseRecords.Add(new ARecord { Name = q.Name, Address = ip, TTL = TimeSpan.FromSeconds(120) });
+                                }
+                            }
+                            if (q.Type == DnsType.AAAA || q.Type == DnsType.ANY)
+                            {
+                                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6))
+                                {
+                                    responseRecords.Add(new AAAARecord { Name = q.Name, Address = ip, TTL = TimeSpan.FromSeconds(120) });
+                                }
+                            }
+                        }
+                    }
+
+                    if (responseRecords.Count > 0)
+                    {
+                        var response = e.Message.CreateResponse();
+                        response.Answers.AddRange(responseRecords);
+                        _mdns.SendAnswer(response);
+                        foreach (var a in responseRecords)
+                        {
+                            Logger.Log($"[MdnsAnnouncer] Direct answer sent: {a.Name} ({a.Type}) -> {((AddressRecord)a).Address}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"[MdnsAnnouncer] Error handling QueryReceived: {ex.Message}");
                 }
             };
 
