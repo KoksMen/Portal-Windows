@@ -67,10 +67,10 @@ public class PortalWinConfig
 
     /// <summary>
     /// Duration in milliseconds the emergency hotkey must be held down to trigger rollback.
-    /// Default: 350 ms.
+    /// Default: 0 ms (immediate upon pressing Left Ctrl + Left Alt).
     /// </summary>
     [JsonPropertyName("emergencyCancelHoldDurationMs")]
-    public int EmergencyCancelHoldDurationMs { get; set; } = 350;
+    public int EmergencyCancelHoldDurationMs { get; set; } = 0;
 
     /// <summary>
     /// Key combination for emergency rollback. Default: "LeftCtrl+LeftAlt".

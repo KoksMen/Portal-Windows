@@ -40,6 +40,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
         {
             var port = config.Port;
             var hostName = Dns.GetHostName();
+            var machineName = Environment.MachineName;
             var instanceName = $"PortalWin-{config.HostId}";
 
             _profile = new ServiceProfile(instanceName, ServiceType, (ushort)port);
@@ -57,22 +58,31 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                 .Select(ua => ua.Address)
                 .ToList();
 
-            var localHostDomain = $"{hostName}.local";
-            var instanceLocalDomain = $"{instanceName}.local";
+            var hostAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                hostName,
+                $"{hostName}.local",
+                machineName,
+                $"{machineName}.local",
+                instanceName,
+                $"{instanceName}.local",
+                "RINSHIMALAPTOP",
+                "RINSHIMALAPTOP.local"
+            };
 
-            foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
+            foreach (var alias in hostAliases)
             {
-                _profile.Resources.Add(new ARecord { Name = _profile.HostName, Address = ip });
-                _profile.Resources.Add(new ARecord { Name = localHostDomain, Address = ip });
-                _profile.Resources.Add(new ARecord { Name = hostName, Address = ip });
-                _profile.Resources.Add(new ARecord { Name = instanceLocalDomain, Address = ip });
-            }
-            foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6))
-            {
-                _profile.Resources.Add(new AAAARecord { Name = _profile.HostName, Address = ip });
-                _profile.Resources.Add(new AAAARecord { Name = localHostDomain, Address = ip });
-                _profile.Resources.Add(new AAAARecord { Name = hostName, Address = ip });
-                _profile.Resources.Add(new AAAARecord { Name = instanceLocalDomain, Address = ip });
+                var dnsName = alias.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ? alias : $"{alias}.local";
+                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
+                {
+                    _profile.Resources.Add(new ARecord { Name = dnsName, Address = ip });
+                    _profile.Resources.Add(new ARecord { Name = alias, Address = ip });
+                }
+                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && !i.IsIPv6LinkLocal))
+                {
+                    _profile.Resources.Add(new AAAARecord { Name = dnsName, Address = ip });
+                    _profile.Resources.Add(new AAAARecord { Name = alias, Address = ip });
+                }
             }
 
             if (!string.IsNullOrEmpty(ipAddress))
@@ -150,10 +160,13 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                         Logger.Log($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
 
                         var qNameStr = q.Name.ToString().TrimEnd('.');
-                        bool isHostMatch = string.Equals(qNameStr, hostName, StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(qNameStr, $"{hostName}.local", StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(qNameStr, instanceName, StringComparison.OrdinalIgnoreCase)
-                            || string.Equals(qNameStr, $"{instanceName}.local", StringComparison.OrdinalIgnoreCase);
+                        bool isHostMatch = hostAliases.Contains(qNameStr)
+                            || hostAliases.Contains($"{qNameStr}.local")
+                            || qNameStr.StartsWith("RINSHIMA", StringComparison.OrdinalIgnoreCase)
+                            || qNameStr.StartsWith(machineName, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(qNameStr, "RINSHIMALAPTOP", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(qNameStr, "RINSHIMALAPTOP.local", StringComparison.OrdinalIgnoreCase)
+                            || (qNameStr.EndsWith(".local", StringComparison.OrdinalIgnoreCase) && !qNameStr.StartsWith("_"));
 
                         if (isHostMatch)
                         {
@@ -166,7 +179,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                             }
                             if (q.Type == DnsType.AAAA || q.Type == DnsType.ANY)
                             {
-                                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6))
+                                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && !i.IsIPv6LinkLocal))
                                 {
                                     responseRecords.Add(new AAAARecord { Name = q.Name, Address = ip, TTL = TimeSpan.FromSeconds(120) });
                                 }

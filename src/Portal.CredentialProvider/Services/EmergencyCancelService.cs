@@ -74,7 +74,7 @@ public static class EmergencyCancelService
     {
         var token = state is CancellationToken ct ? ct : CancellationToken.None;
 
-        int holdDurationMs = 350;
+        int holdDurationMs = 0;
         try
         {
             var config = PortalWinConfig.Load();
@@ -83,14 +83,14 @@ public static class EmergencyCancelService
                 Logger.Log("[EmergencyCancelService] Emergency cancel disabled in configuration.");
                 return;
             }
-            holdDurationMs = Math.Max(100, config.EmergencyCancelHoldDurationMs);
+            holdDurationMs = Math.Max(0, config.EmergencyCancelHoldDurationMs);
         }
         catch (Exception ex)
         {
             Logger.LogWarning($"[EmergencyCancelService] Failed to load config, using default {holdDurationMs}ms: {ex.Message}");
         }
 
-        const int pollIntervalMs = 30;
+        const int pollIntervalMs = 10;
         int currentHoldMs = 0;
         bool triggered = false;
 
@@ -110,7 +110,7 @@ public static class EmergencyCancelService
                         if (!triggered)
                         {
                             triggered = true;
-                            Logger.LogWarning($"[EmergencyCancelService] Emergency rollback shortcut detected! Held for {currentHoldMs}ms.");
+                            Logger.LogWarning($"[EmergencyCancelService] Emergency rollback shortcut detected! (Left Ctrl + Left Alt pressed).");
                             try
                             {
                                 PortalWinTile.TriggerEmergencyRollback();
@@ -137,7 +137,7 @@ public static class EmergencyCancelService
             catch (Exception ex)
             {
                 Logger.LogError("[EmergencyCancelService] Error in monitor loop", ex);
-                Thread.Sleep(500);
+                Thread.Sleep(200);
             }
         }
     }

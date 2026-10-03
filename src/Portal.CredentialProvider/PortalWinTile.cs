@@ -19,6 +19,7 @@ public class PortalWinTile : PortalWinTileBase
     private static readonly HashSet<PortalWinTile> _tiles = new();
     private static CancellationTokenSource? _globalActiveRequestCts;
     private static string? _globalActiveOwner;
+    private static volatile bool _isEmergencyRollbackActive;
     private bool _isRegisteredInTiles;
 
     private PortalWinProvider Provider => (PortalWinProvider)_providerBase;
@@ -309,6 +310,16 @@ public class PortalWinTile : PortalWinTileBase
 
     protected override CredentialResponseBase GetFallbackCredentials()
     {
+        if (_isEmergencyRollbackActive)
+        {
+            return new CredentialResponseInsecure
+            {
+                IsSuccess = false,
+                StatusText = Localization.T("Cancelled by shortcut (Left Ctrl + Left Alt)"),
+                StatusIcon = StatusIcon.None
+            };
+        }
+
         if (_activeRequestCts == null || _activeRequestCts.IsCancellationRequested)
         {
             UpdateStatus("No unlock request pending. Waiting...");
@@ -367,6 +378,7 @@ public class PortalWinTile : PortalWinTileBase
 
     private void StartUnlockRequest(bool forceTakeover, string source)
     {
+        _isEmergencyRollbackActive = false;
         if (!AllowsHostInitiated) return;
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested) return;
@@ -826,6 +838,7 @@ public class PortalWinTile : PortalWinTileBase
     public static void TriggerEmergencyRollback()
     {
         Logger.LogWarning("[PortalWinTile] TriggerEmergencyRollback invoked by emergency shortcut (Left Ctrl + Left Alt).");
+        _isEmergencyRollbackActive = true;
 
         lock (_requestSync)
         {
