@@ -13,6 +13,19 @@ public static class CredentialProviderBootstrapper
 
     private static WeakReference<Portal.CredentialProvider.Base.PortalWinProviderBase>? _currentProviderRef;
 
+    public static Portal.CredentialProvider.Base.PortalWinProviderBase? CurrentProvider
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _currentProviderRef != null && _currentProviderRef.TryGetTarget(out var provider)
+                    ? provider
+                    : null;
+            }
+        }
+    }
+
     public static void EnsureServicesStarted()
     {
         lock (_lock)
@@ -56,6 +69,15 @@ public static class CredentialProviderBootstrapper
         {
             Logger.LogError("[Bootstrapper] Failed to start BluetoothUnlockService", ex);
             ActivityJournal.Record("system", "⚠️", "Bluetooth unlock service failed", "Credential Provider could not start its Bluetooth unlock service.", false);
+        }
+
+        try
+        {
+            EmergencyCancelService.Start();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[Bootstrapper] Failed to start EmergencyCancelService", ex);
         }
 
         if (TlsService != null || BtService != null)
@@ -162,6 +184,15 @@ public static class CredentialProviderBootstrapper
             finally
             {
                 BtService = null;
+            }
+
+            try
+            {
+                EmergencyCancelService.Stop();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"[Bootstrapper] Failed to stop EmergencyCancelService. Reason='{reason}'", ex);
             }
 
             _servicesStarted = false;

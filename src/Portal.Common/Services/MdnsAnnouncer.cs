@@ -40,9 +40,11 @@ public class MdnsAnnouncer : IMdnsAnnouncer
         {
             var port = config.Port;
             var hostName = Dns.GetHostName();
+            var machineName = Environment.MachineName;
             var instanceName = $"PortalWin-{config.HostId}";
 
             _profile = new ServiceProfile(instanceName, ServiceType, (ushort)port);
+            _profile.HostName = $"{hostName}.local";
             _profile.AddProperty("mode", mode);
             _profile.AddProperty("version", "1");
             _profile.AddProperty("hostname", hostName);
@@ -54,15 +56,38 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                 .Where(ni => IsAdapterEligible(ni, config.VpnCompatibilityModeEnabled))
                 .SelectMany(ni => ni.GetIPProperties().UnicastAddresses)
                 .Select(ua => ua.Address)
+                .Where(ip => !IsLinkLocalOrLoopback(ip))
                 .ToList();
 
-            foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
+            if (!string.IsNullOrEmpty(ipAddress) && IPAddress.TryParse(ipAddress, out var preferredTargetIp))
             {
-                _profile.Resources.Add(new ARecord { Name = _profile.HostName, Address = ip });
+                allIps.Clear();
+                allIps.Add(preferredTargetIp);
             }
-            foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6))
+
+            var hostAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                _profile.Resources.Add(new AAAARecord { Name = _profile.HostName, Address = ip });
+                hostName,
+                $"{hostName}.local",
+                machineName,
+                $"{machineName}.local",
+                instanceName,
+                $"{instanceName}.local"
+            };
+
+            foreach (var alias in hostAliases)
+            {
+                var dnsName = alias.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ? alias : $"{alias}.local";
+                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
+                {
+                    _profile.Resources.Add(new ARecord { Name = dnsName, Address = ip });
+                    _profile.Resources.Add(new ARecord { Name = alias, Address = ip });
+                }
+                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && !i.IsIPv6LinkLocal))
+                {
+                    _profile.Resources.Add(new AAAARecord { Name = dnsName, Address = ip });
+                    _profile.Resources.Add(new AAAARecord { Name = alias, Address = ip });
+                }
             }
 
             if (!string.IsNullOrEmpty(ipAddress))
@@ -103,10 +128,10 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                     var targetNi = preferred.FirstOrDefault(ni =>
                         ni.GetIPProperties().UnicastAddresses.Any(ua => ua.Address.Equals(targetIp)));
 
-                    if (targetNi != null)
+                    if (targetNi != null && preferred.Remove(targetNi))
                     {
-                        Logger.Log($"[MdnsAnnouncer] Selected exact interface {targetNi.Name} for IP {targetIp}");
-                        return new[] { targetNi };
+                        preferred.Insert(0, targetNi);
+                        Logger.Log($"[MdnsAnnouncer] Prioritized interface {targetNi.Name} for IP {targetIp}");
                     }
                 }
 
@@ -129,12 +154,56 @@ public class MdnsAnnouncer : IMdnsAnnouncer
 
             Logger.Log($"[MdnsAnnouncer] {_mdns}");
 
-            // Log incoming queries for diagnostics
+            // Log incoming queries for diagnostics and directly answer host resolution queries
             _mdns.QueryReceived += (s, e) =>
             {
-                foreach (var q in e.Message.Questions)
+                try
                 {
-                    Logger.Log($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
+                    var responseRecords = new List<ResourceRecord>();
+                    foreach (var q in e.Message.Questions)
+                    {
+                        Logger.Log($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
+
+                        var qNameStr = q.Name.ToString().TrimEnd('.');
+                        bool isHostMatch = hostAliases.Contains(qNameStr)
+                            || hostAliases.Contains($"{qNameStr}.local")
+                            || qNameStr.StartsWith(machineName, StringComparison.OrdinalIgnoreCase)
+                            || qNameStr.StartsWith(hostName, StringComparison.OrdinalIgnoreCase)
+                            || (qNameStr.EndsWith(".local", StringComparison.OrdinalIgnoreCase) && !qNameStr.StartsWith("_"));
+
+                        if (isHostMatch)
+                        {
+                            if (q.Type == DnsType.A || q.Type == DnsType.ANY)
+                            {
+                                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork))
+                                {
+                                    responseRecords.Add(new ARecord { Name = q.Name, Address = ip, TTL = TimeSpan.FromSeconds(120) });
+                                }
+                            }
+                            if (q.Type == DnsType.AAAA || q.Type == DnsType.ANY)
+                            {
+                                foreach (var ip in allIps.Where(i => i.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 && !i.IsIPv6LinkLocal))
+                                {
+                                    responseRecords.Add(new AAAARecord { Name = q.Name, Address = ip, TTL = TimeSpan.FromSeconds(120) });
+                                }
+                            }
+                        }
+                    }
+
+                    if (responseRecords.Count > 0)
+                    {
+                        var response = e.Message.CreateResponse();
+                        response.Answers.AddRange(responseRecords);
+                        _mdns.SendAnswer(response);
+                        foreach (var a in responseRecords)
+                        {
+                            Logger.Log($"[MdnsAnnouncer] Direct answer sent: {a.Name} ({a.Type}) -> {((AddressRecord)a).Address}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"[MdnsAnnouncer] Error handling QueryReceived: {ex.Message}");
                 }
             };
 
@@ -205,17 +274,17 @@ public class MdnsAnnouncer : IMdnsAnnouncer
             return false;
         }
 
-        if (!vpnCompatibilityModeEnabled)
-        {
-            return true;
-        }
-
-        if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+        if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel || (int)ni.NetworkInterfaceType == 53)
         {
             return false;
         }
 
-        return !IsVirtualOrVpnInterface(ni);
+        if (IsVirtualOrVpnInterface(ni))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static bool IsVirtualOrVpnInterface(NetworkInterface ni)
@@ -239,6 +308,12 @@ public class MdnsAnnouncer : IMdnsAnnouncer
             "NDIS",
             "Wintun",
             "TAP",
+            "TUN",
+            "sing-tun",
+            "sing-box",
+            "ProxyControl",
+            "Proxy",
+            "Tunnel",
             "PPP");
     }
 
@@ -257,4 +332,16 @@ public class MdnsAnnouncer : IMdnsAnnouncer
         return false;
     }
 
+    private static bool IsLinkLocalOrLoopback(IPAddress ip)
+    {
+        if (ip.IsIPv6LinkLocal || IPAddress.IsLoopback(ip)) return true;
+        var bytes = ip.GetAddressBytes();
+        if (bytes.Length == 4)
+        {
+            if (bytes[0] == 169 && bytes[1] == 254) return true;
+            if (bytes[0] == 127) return true;
+            if (bytes[0] == 0) return true;
+        }
+        return false;
+    }
 }

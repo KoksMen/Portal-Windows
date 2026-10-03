@@ -26,6 +26,11 @@ public class FirewallService
             "CredentialUIBroker.exe"
         );
 
+        string consentPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "consent.exe"
+        );
+
         string hostAppPath = Environment.ProcessPath ?? string.Empty;
         if (string.IsNullOrEmpty(hostAppPath))
         {
@@ -34,7 +39,7 @@ public class FirewallService
         }
 
         string combinedPorts = string.Join(",", new[] { port.ToString(), "5353" }.Distinct(StringComparer.OrdinalIgnoreCase));
-        string[] programs = { logonUIPath, credUIBrokerPath, hostAppPath };
+        string[] programs = { logonUIPath, credUIBrokerPath, consentPath, hostAppPath };
         string[] directions = { "in", "out" };
         string[] protocols = { "TCP", "UDP" };
 
@@ -112,7 +117,9 @@ public class FirewallService
             ? "LogonUI Rule"
             : fileName.Equals("CredentialUIBroker", StringComparison.OrdinalIgnoreCase)
                 ? "CredUIBroker Rule"
-                : "HostApp Rule";
+                : fileName.Equals("consent", StringComparison.OrdinalIgnoreCase)
+                    ? "Consent Rule"
+                    : "HostApp Rule";
         return $"{RulePrefix} - {protocol} - {direction} - {appName} - {port}+5353";
     }
 
@@ -128,8 +135,13 @@ public class FirewallService
             "CredentialUIBroker.exe"
         );
 
+        string consentPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.System),
+            "consent.exe"
+        );
+
         string hostAppPath = Environment.ProcessPath ?? string.Empty;
-        string[] programs = { logonUIPath, credUIBrokerPath, hostAppPath };
+        string[] programs = { logonUIPath, credUIBrokerPath, consentPath, hostAppPath };
         string[] directions = { "in", "out" };
         string[] protocols = { "TCP", "UDP" };
 

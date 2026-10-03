@@ -18,19 +18,37 @@ public class WebSocketConnectionManager
 
     private readonly ConcurrentDictionary<string, WebSocket> _connectedClients = new();
     private readonly ConcurrentDictionary<string, PendingApprovalContext> _pendingApprovals = new();
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public void RegisterClient(string clientId, WebSocket ws)
     {
         if (_connectedClients.TryGetValue(clientId, out var existing) && !ReferenceEquals(existing, ws))
         {
-            _pendingApprovals.TryRemove(clientId, out var replacedPending);
-            replacedPending?.Completion.TrySetResult(null);
-            _ = CloseSocketFastAsync(existing, WebSocketCloseStatus.PolicyViolation, "Replaced by newer connection", CancellationToken.None);
-            Logger.Log($"[WebSocketManager] Replaced active socket for client: {clientId}");
+            _ = CloseSocketFastAsync(existing, WebSocketCloseStatus.NormalClosure, "Replaced by newer connection", CancellationToken.None);
+            Logger.Log($"[WebSocketManager] Replaced active socket for client: {clientId} (preserved in-flight approval)");
         }
 
         _connectedClients[clientId] = ws;
         Logger.Log($"[WebSocketManager] Client registered: {clientId}");
+
+        if (_pendingApprovals.TryGetValue(clientId, out var pending) && ws.State == WebSocketState.Open)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var reqMsg = new WsMessage("unlock_request", clientId, null, string.IsNullOrEmpty(pending.RequestId) ? null : pending.RequestId);
+                    var json = JsonSerializer.Serialize(reqMsg);
+                    var buffer = Encoding.UTF8.GetBytes(json);
+                    await ws.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                    Logger.Log($"[WebSocketManager] Resent in-flight unlock_request to {clientId} on reconnected socket. requestId='{pending.RequestId}'");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning($"[WebSocketManager] Failed to resend unlock_request on reconnected socket: {ex.Message}");
+                }
+            });
+        }
     }
 
     public bool IsClientConnected(string clientId)
@@ -262,20 +280,28 @@ public class WebSocketConnectionManager
                     break;
                 }
 
-                if (messageType == WebSocketMessageType.Text && !string.IsNullOrWhiteSpace(json))
+                if (!string.IsNullOrWhiteSpace(json))
                 {
-                    var msg = JsonSerializer.Deserialize<WsMessage>(json);
+                    var msg = JsonSerializer.Deserialize<WsMessage>(json, JsonOptions);
                     Logger.Log($"[WebSocketManager] Received WS message from {clientId}: type='{msg?.Type ?? "null"}' status='{msg?.Status ?? "null"}' requestId='{msg?.RequestId ?? "null"}'");
 
-                    if (msg?.Type == "unlock_response")
+                    if (msg != null && string.Equals(msg.Type, "unlock_response", StringComparison.OrdinalIgnoreCase))
                     {
                         if (_pendingApprovals.TryGetValue(clientId, out var pending))
                         {
+                            // If user explicitly approved on mobile, accept it immediately
+                            if (string.Equals(msg.Status, "ok", StringComparison.OrdinalIgnoreCase))
+                            {
+                                pending.Completion.TrySetResult("ok");
+                                Logger.Log($"[WebSocketManager] unlock_response 'ok' accepted for {clientId} (msgRequestId='{msg.RequestId}', pendingRequestId='{pending.RequestId}').");
+                                continue;
+                            }
+
                             if (!string.IsNullOrWhiteSpace(pending.RequestId) && !string.IsNullOrWhiteSpace(msg.RequestId))
                             {
                                 if (!string.Equals(msg.RequestId, pending.RequestId, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    Logger.LogWarning($"[WebSocketManager] Ignored stale unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{msg.RequestId}'.");
+                                    Logger.LogWarning($"[WebSocketManager] Ignored stale non-ok unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{msg.RequestId}' status='{msg.Status}'.");
                                     continue;
                                 }
 
@@ -301,6 +327,10 @@ public class WebSocketConnectionManager
                             pending.Completion.TrySetResult(msg.Status);
                             Logger.LogWarning($"[WebSocketManager] Accepted legacy unlock_response without requestId for {clientId}. expectedRequestId='{pending.RequestId}', ageMs={ageMs:0}.");
                         }
+                        else
+                        {
+                            Logger.LogWarning($"[WebSocketManager] Received unlock_response from {clientId} but no pending approval was registered (status='{msg.Status}', requestId='{msg.RequestId}').");
+                        }
                     }
                 }
             }
@@ -311,10 +341,9 @@ public class WebSocketConnectionManager
             }
         }
 
-        if (_pendingApprovals.TryGetValue(clientId, out var pendingTcs))
-        {
-            pendingTcs.Completion.TrySetResult(null);
-        }
+        // Socket loop ended (disconnected or replaced).
+        // In-flight approval (_pendingApprovals) is intentionally preserved so
+        // reconnected sockets or user tap on mobile can still complete the unlock.
     }
 
     private static async Task<(WebSocketMessageType MessageType, string? Text)> ReceiveTextMessageAsync(WebSocket ws, CancellationToken ct)
@@ -333,11 +362,8 @@ public class WebSocketConnectionManager
 
             if (result.EndOfMessage)
             {
-                if (result.MessageType != WebSocketMessageType.Text)
-                    return (result.MessageType, null);
-
                 var payload = Encoding.UTF8.GetString(ms.ToArray());
-                return (WebSocketMessageType.Text, payload);
+                return (result.MessageType, payload);
             }
         }
     }

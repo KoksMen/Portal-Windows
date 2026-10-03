@@ -8,10 +8,7 @@ public static class CredentialProviderTilePolicy
 {
     private const CredUIWinFlags UnsupportedCredUiFlags =
         CredUIWinFlags.CREDUIWIN_AUTHPACKAGE_ONLY
-        | CredUIWinFlags.CREDUIWIN_IN_CRED_ONLY
-        | CredUIWinFlags.CREDUIWIN_ENUMERATE_ADMINS
-        | CredUIWinFlags.CREDUIWIN_ENUMERATE_CURRENT_USER
-        | CredUIWinFlags.CREDUIWIN_SECURE_PROMPT;
+        | CredUIWinFlags.CREDUIWIN_IN_CRED_ONLY;
 
     public static bool IsUsageScenarioSupported(UsageScenario scenario, CredUIWinFlags flags)
     {
@@ -26,19 +23,19 @@ public static class CredentialProviderTilePolicy
 
     public static bool ShouldIncludeGenericTile(UsageScenario scenario)
     {
-        return scenario == UsageScenario.CredUI;
+        return false;
     }
 
     public static bool ShouldIncludeUserTile(UsageScenario scenario)
     {
         return scenario == UsageScenario.Logon
-            || scenario == UsageScenario.UnlockWorkstation;
+            || scenario == UsageScenario.UnlockWorkstation
+            || scenario == UsageScenario.CredUI;
     }
 
     private static bool IsPasswordCompatibleCredUi(CredUIWinFlags flags)
     {
-        return (flags == 0 || flags.HasFlag(CredUIWinFlags.CREDUIWIN_GENERIC))
-            && (flags & UnsupportedCredUiFlags) == 0;
+        return (flags & UnsupportedCredUiFlags) == 0;
     }
 
     public static DeviceAccount? ResolveApprovalAccount(

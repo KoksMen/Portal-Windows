@@ -420,11 +420,19 @@ public class BluetoothUnlockService : IDisposable
             return;
         }
 
+        // If user explicitly approved on mobile, accept it immediately
+        if (string.Equals(response.Status, "ok", StringComparison.OrdinalIgnoreCase))
+        {
+            pending.Completion.TrySetResult("ok");
+            Logger.Log($"[BtUnlock] host_unlock_response 'ok' accepted for {clientId} (msgRequestId='{response.RequestId}', pendingRequestId='{pending.RequestId}').");
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(pending.RequestId) && !string.IsNullOrWhiteSpace(response.RequestId))
         {
             if (!string.Equals(response.RequestId, pending.RequestId, StringComparison.OrdinalIgnoreCase))
             {
-                Logger.LogWarning($"[BtUnlock] Ignored stale host_unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{response.RequestId}'.");
+                Logger.LogWarning($"[BtUnlock] Ignored stale non-ok host_unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{response.RequestId}' status='{response.Status}'.");
                 return;
             }
 

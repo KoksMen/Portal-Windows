@@ -86,7 +86,7 @@ public class PortalWinProvider : PortalWinProviderBase
         // Host-initiated controls (shown only when needed)
         var reqButton = new CommandLinkControl("RequestButton", Localization.T("Request Remote Unlock"));
         reqButton.State = UnlockMode == UnlockMode.HostInitiated || UnlockMode == UnlockMode.Both
-            ? FieldState.DisplayInSelectedTile
+            ? (cpus == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
             : FieldState.Hidden;
         yield return reqButton;
 
@@ -187,7 +187,16 @@ public class PortalWinProvider : PortalWinProviderBase
     private string BuildStatusHeadline(string? headline = null)
     {
         var state = string.IsNullOrWhiteSpace(headline) ? "Searching device" : headline.Trim();
-        return $"{Localization.T("State: ")}{Localization.T(state)}";
+        var statePrefix = Localization.T("State: ");
+        if (state.StartsWith(statePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            state = state.Substring(statePrefix.Length).Trim();
+        }
+        if (state.StartsWith("State: ", StringComparison.OrdinalIgnoreCase))
+        {
+            state = state.Substring("State: ".Length).Trim();
+        }
+        return $"{statePrefix}{Localization.T(state)}";
     }
 
     private string BuildStatusDetails(string? stateOverride = null)
@@ -212,24 +221,49 @@ public class PortalWinProvider : PortalWinProviderBase
 
     private static string NormalizeState(string? rawStatus)
     {
+        if (PortalWinTile.IsEmergencyRollbackActive)
+        {
+            return "Emergency rollback: request cancelled";
+        }
+
         if (string.IsNullOrWhiteSpace(rawStatus))
         {
             return "Searching device";
         }
 
         var value = rawStatus.Trim().TrimEnd('.');
+        var statePrefix = Localization.T("State: ");
+        if (value.StartsWith(statePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            value = value.Substring(statePrefix.Length).Trim();
+        }
+        if (value.StartsWith("State: ", StringComparison.OrdinalIgnoreCase))
+        {
+            value = value.Substring("State: ".Length).Trim();
+        }
+
         var lower = value.ToLowerInvariant();
 
         return lower switch
         {
-            var text when text.Contains("timed out") => "Request timed out",
+            var text when text.Contains("emergency rollback") || text.Contains("аварийный") || text.Contains("откат")
+                => "Emergency rollback: request cancelled",
+            var text when text.Contains("timed out") || text.Contains("время истекло") || text.Contains("таймаут")
+                => "Request timed out",
             var text when text.Contains("denied")
                        || text.Contains("rejected")
                        || text.Contains("forbidden")
-                       || text.Contains("cancelled")
-                       || text.Contains("error") => "Request denied",
+                       || text.Contains("отклонен")
+                       || text.Contains("отклонён")
+                       || text.Contains("запрещен")
+                       || text.Contains("запрещён") => "Request denied",
+            var text when text.Contains("cancelled")
+                       || text.Contains("отменен")
+                       || text.Contains("отменён") => "Request cancelled",
             var text when text.Contains("awaiting approval")
-                       || text.Contains("approved") => "Awaiting unlock approval",
+                       || text.Contains("approved")
+                       || text.Contains("подтверждения")
+                       || text.Contains("подтверждено") => "Awaiting unlock approval",
             _ => "Searching device"
         };
     }

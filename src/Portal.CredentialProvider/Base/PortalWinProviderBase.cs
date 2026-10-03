@@ -19,6 +19,12 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
         DefaultTileAutoLogon = false;
     }
 
+    internal void CancelPendingAutoLogon()
+    {
+        UnlockState.Clear();
+        DefaultTileAutoLogon = false;
+    }
+
     public override void OnLoad()
     {
         Logger.Initialize("provider.log");
