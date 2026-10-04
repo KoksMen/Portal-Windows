@@ -54,6 +54,7 @@ public partial class App : Application
         services.AddSingleton<EncryptedBackupService>();
         services.AddSingleton<BackupFileAssociationService>();
         services.AddSingleton<UnlockTestService>();
+        services.AddSingleton<DiagnosticReportService>();
     }
 
     protected override void OnStartup(StartupEventArgs e)
