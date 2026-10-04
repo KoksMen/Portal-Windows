@@ -801,10 +801,9 @@ public class PortalWinTile : PortalWinTileBase
     {
         if (_requestButton != null)
         {
-            var config = PortalWinConfig.Load();
             _requestButton.Label = Localization.T("Retry");
             _requestButton.AsPushButton();
-            _requestButton.State = AllowsHostInitiated && FindHostInitiatedDevices(config).Count > 0
+            _requestButton.State = AllowsHostInitiated
                 ? (Provider.UsageScenario == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
                 : FieldState.Hidden;
         }

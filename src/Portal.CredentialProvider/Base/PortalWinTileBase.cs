@@ -174,12 +174,12 @@ public abstract class PortalWinTileBase : CredentialTile2
 
         if (_showDetailsButton != null)
         {
-            _showDetailsButton.State = _isDetailsVisible ? FieldState.Hidden : FieldState.DisplayInSelectedTile;
+            _showDetailsButton.State = FieldState.Hidden;
         }
 
         if (_hideDetailsButton != null)
         {
-            _hideDetailsButton.State = _isDetailsVisible ? FieldState.DisplayInSelectedTile : FieldState.Hidden;
+            _hideDetailsButton.State = FieldState.Hidden;
         }
     }
 

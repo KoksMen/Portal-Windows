@@ -509,5 +509,7 @@ public static class Localization
         ,["Cancelled by shortcut (Left Ctrl + Left Alt)"] = "Отменено комбинацией клавиш (Left Ctrl + Left Alt)"
         ,["Emergency rollback triggered"] = "Сработал аварийный откат"
         ,["The authorization process was cancelled via emergency shortcut (Left Ctrl + Left Alt)."] = "Процесс авторизации был отменён аварийной комбинацией клавиш (Left Ctrl + Left Alt)."
+        ,["Retry"] = "Повторить"
+        ,["Cancel Request"] = "Отменить запрос"
     };
 }
