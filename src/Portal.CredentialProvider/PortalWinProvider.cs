@@ -199,30 +199,13 @@ public class PortalWinProvider : PortalWinProviderBase
 
     private static int CalculateCenterPaddingSpaces(string baseText, string childText)
     {
-        try
+        double w1 = EstimateVisualWidth(baseText);
+        double w2 = EstimateVisualWidth(childText);
+        if (w1 > w2)
         {
-            using var font = new System.Drawing.Font("Segoe UI", 10f);
-            int w1 = System.Windows.Forms.TextRenderer.MeasureText(baseText, font).Width;
-            int w2 = System.Windows.Forms.TextRenderer.MeasureText(childText, font).Width;
-            if (w1 > w2)
-            {
-                int wSpace = System.Windows.Forms.TextRenderer.MeasureText("A A", font).Width 
-                           - System.Windows.Forms.TextRenderer.MeasureText("AA", font).Width;
-                if (wSpace <= 0) wSpace = 4;
-                return (int)Math.Round((double)(w1 - w2) / (2.0 * wSpace));
-            }
-            return 0;
+            return (int)Math.Round((w1 - w2) / 2.0);
         }
-        catch
-        {
-            double w1 = EstimateVisualWidth(baseText);
-            double w2 = EstimateVisualWidth(childText);
-            if (w1 > w2)
-            {
-                return (int)Math.Round((w1 - w2) / (2.0 * 4.0));
-            }
-            return 0;
-        }
+        return 0;
     }
 
     private static double EstimateVisualWidth(string s)
@@ -233,15 +216,18 @@ public class PortalWinProvider : PortalWinProviderBase
         {
             width += c switch
             {
-                ' ' => 4.0,
-                ':' or '.' or ',' or ';' or '!' or '\'' or '`' or '|' or 'i' or 'l' or 'I' => 3.0,
-                '[' or ']' or '(' or ')' or 't' or 'f' or 'r' or 'j' => 4.5,
-                >= '0' and <= '9' => 8.0,
-                '█' or '░' or '▒' or '▓' => 13.0,
-                '■' or '□' or '▣' or '◆' or '◇' => 12.0,
-                '∞' or 'W' or 'M' or 'w' or 'm' or 'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 11.5,
-                >= 'A' and <= 'Z' or (>= 'А' and <= 'Я') => 9.0,
-                _ => 7.5
+                ' ' => 1.0,
+                ':' or '.' or ',' or ';' or '!' or '\'' or '`' or '|' or 'i' or 'l' or 'I' => 0.7,
+                '[' or ']' or '(' or ')' or 't' or 'f' or 'r' or 'j' => 0.9,
+                '█' or '░' or '▒' or '▓' => 1.8,
+                '■' or '□' or '▣' or '◆' or '◇' => 1.7,
+                '∞' or 'W' or 'M' or 'w' or 'm' => 2.2,
+                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 2.5,
+                >= '0' and <= '9' => 1.35,
+                >= 'А' and <= 'Я' => 2.4,
+                >= 'а' and <= 'я' => 1.95,
+                >= 'A' and <= 'Z' => 2.1,
+                _ => 1.6
             };
         }
         return width;
