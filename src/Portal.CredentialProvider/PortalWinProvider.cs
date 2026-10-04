@@ -284,7 +284,7 @@ public class PortalWinProvider : PortalWinProviderBase
             var part = innerTag.Substring("infinite,".Length);
             if (int.TryParse(part, out int elapsedSeconds))
             {
-                string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}\u00A0(∞)";
+                string elapsedText = $"(∞)\u00A0{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}\u00A0(∞)";
                 double fixedWidth = EstimateVisualWidth($"[\u00A0\u00A0{elapsedText}\u00A0\u00A0]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
