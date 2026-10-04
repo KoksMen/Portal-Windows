@@ -145,8 +145,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
-    public string AppVersion => "v1.2.2";
-    public string AppReleaseVersion => "1.2.2-Rin";
+    public string AppVersion => "v1.3.1";
+    public string AppReleaseVersion => "1.3.1-Rin";
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.

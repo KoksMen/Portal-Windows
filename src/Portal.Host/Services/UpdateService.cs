@@ -746,7 +746,7 @@ public sealed class UpdateService
     private static string GetSafeVersionText()
     {
         var version = typeof(UpdateService).Assembly.GetName().Version;
-        return version?.ToString(3) ?? "1.2.2";
+        return version?.ToString(3) ?? "1.3.1";
     }
 
     private static string NormalizeRepository(string repository)
