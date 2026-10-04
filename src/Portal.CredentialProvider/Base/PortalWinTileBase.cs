@@ -61,6 +61,7 @@ public abstract class PortalWinTileBase : CredentialTile2
             if (_versionLabel != null)
             {
                 _versionLabel.Label = Localization.T("Ver: ") + GetProjectVersionText();
+                _versionLabel.State = FieldState.DisplayInBoth;
             }
 
             if (_showDetailsButton != null)
