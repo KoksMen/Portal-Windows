@@ -428,7 +428,7 @@ public class PortalWinTile : PortalWinTileBase
 
         Task.Run(async () =>
         {
-            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus);
+            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, timeoutMinutes, requestTimer, cts.Token);
             var anyRejection = false;
             var approvalCompleted = false;
 
@@ -589,14 +589,36 @@ public class PortalWinTile : PortalWinTileBase
 
     private sealed class UnlockStatusAggregator : IDisposable
     {
+        private static readonly string[] InfiniteFrames = new[]
+        {
+            "■□□□□",
+            "□■□□□",
+            "□□■□□",
+            "□□□■□",
+            "□□□□■",
+            "□□□■□",
+            "□□■□□",
+            "□■□□□"
+        };
+
         private readonly Action<string> _publishStatus;
+        private readonly int _timeoutMinutes;
+        private readonly Stopwatch _timer;
+        private readonly CancellationToken _ct;
+        private readonly CancellationTokenSource _tickerCts = new();
         private readonly object _sync = new();
         private UnlockTransportStage? _latestStage;
         private bool _disposed;
 
-        public UnlockStatusAggregator(Action<string> publishStatus)
+        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutMinutes, Stopwatch timer, CancellationToken ct)
         {
             _publishStatus = publishStatus;
+            _timeoutMinutes = timeoutMinutes;
+            _timer = timer;
+            _ct = ct;
+
+            PublishCurrentStatus();
+            _ = RunTickerAsync();
         }
 
         public void Report(UnlockTransportStage stage)
@@ -614,12 +636,48 @@ public class PortalWinTile : PortalWinTileBase
                 }
 
                 _latestStage = stage;
+                PublishCurrentStatusLocked();
+            }
+        }
 
-                var statusMessage = BuildStatusMessageLocked();
-                if (!string.IsNullOrWhiteSpace(statusMessage))
+        private void PublishCurrentStatus()
+        {
+            lock (_sync)
+            {
+                if (_disposed) return;
+                PublishCurrentStatusLocked();
+            }
+        }
+
+        private void PublishCurrentStatusLocked()
+        {
+            var statusMessage = BuildStatusMessageLocked();
+            if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                _publishStatus(statusMessage);
+            }
+        }
+
+        private async Task RunTickerAsync()
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_ct, _tickerCts.Token);
+            var token = linked.Token;
+
+            try
+            {
+                while (!token.IsCancellationRequested && !_disposed)
                 {
-                    _publishStatus(statusMessage);
+                    await Task.Delay(1000, token);
+                    PublishCurrentStatus();
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Stopped on cancellation or completion
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[UnlockStatusAggregator] Ticker error: {ex.Message}");
             }
         }
 
@@ -630,21 +688,49 @@ public class PortalWinTile : PortalWinTileBase
                 _disposed = true;
                 _latestStage = null;
             }
+
+            try
+            {
+                _tickerCts.Cancel();
+                _tickerCts.Dispose();
+            }
+            catch { }
         }
 
         private string BuildStatusMessageLocked()
         {
-            if (_latestStage == UnlockTransportStage.AwaitingApproval)
+            string baseKey = _latestStage switch
             {
-                return "Awaiting approval...";
-            }
+                UnlockTransportStage.AwaitingApproval => "Awaiting approval...",
+                UnlockTransportStage.Searching => "Searching device...",
+                _ => "Requesting unlock..."
+            };
 
-            if (_latestStage == UnlockTransportStage.Searching)
+            int elapsedSeconds = (int)(_timer.ElapsedMilliseconds / 1000);
+
+            if (_timeoutMinutes > 0)
             {
-                return "Searching device...";
-            }
+                int totalSeconds = _timeoutMinutes * 60;
+                int remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
 
-            return "Requesting unlock...";
+                const int totalBlocks = 8;
+                int filledBlocks = Math.Clamp((int)Math.Round((double)remainingSeconds / totalSeconds * totalBlocks), 0, totalBlocks);
+                string bar = new string('█', filledBlocks) + new string('░', totalBlocks - filledBlocks);
+
+                string timeText = remainingSeconds >= 60
+                    ? $"{remainingSeconds / 60}:{remainingSeconds % 60:D2}"
+                    : $"{remainingSeconds}s";
+
+                return $"{baseKey} [{bar}] {timeText}";
+            }
+            else
+            {
+                // Infinite / No timeout mode: animate a marquee pulse with elapsed time counter and infinity badge
+                string pulse = InfiniteFrames[elapsedSeconds % InfiniteFrames.Length];
+                string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}";
+
+                return $"{baseKey} [{pulse}] {elapsedText} (∞)";
+            }
         }
     }
 

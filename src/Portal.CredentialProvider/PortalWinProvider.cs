@@ -177,6 +177,18 @@ public class PortalWinProvider : PortalWinProviderBase
 
     internal string BuildStatusHeadlineForState(string? rawStatus)
     {
+        if (!string.IsNullOrWhiteSpace(rawStatus))
+        {
+            int bracketIndex = rawStatus.IndexOf('[');
+            if (bracketIndex > 0)
+            {
+                string basePart = rawStatus.Substring(0, bracketIndex).Trim();
+                string progressPart = rawStatus.Substring(bracketIndex).Trim();
+                string normalizedBase = BuildStatusHeadline(NormalizeHeadline(basePart));
+                return $"{normalizedBase} {progressPart}";
+            }
+        }
+
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
     }
 
