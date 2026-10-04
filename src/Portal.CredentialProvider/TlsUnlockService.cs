@@ -59,6 +59,37 @@ public class TlsUnlockService : IDisposable
         _mdns = mdns;
 
         _unlockHandler.UnlockRequested += (u, p, d) => UnlockRequested?.Invoke(u, p, d);
+
+        _wsManager.UnlockApprovedWithoutPending += (clientId, reqId) =>
+        {
+            try
+            {
+                Logger.Log($"[TlsUnlockService] Processing fallback unlock approval from client '{clientId}', reqId '{reqId}'");
+                var config = PortalWinConfig.Load();
+                var device = config.FindDeviceByClientId(clientId) ?? _config.FindDeviceByClientId(clientId);
+                if (device == null || !device.IsEnabled)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: device '{clientId}' not found or disabled.");
+                    return;
+                }
+
+                var account = device.Accounts.FirstOrDefault();
+                using var securePassword = account?.GetDecryptedSecurePassword();
+                if (account == null || securePassword == null || securePassword.Length == 0)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: no credentials for device '{device.Name}'.");
+                    return;
+                }
+
+                Logger.Log($"[TlsUnlockService] Fallback unlock APPROVED for user: {account.Username} from {device.Name}");
+                ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
+                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"[TlsUnlockService] Error processing fallback unlock approval for client '{clientId}'", ex);
+            }
+        };
     }
 
     public void Start()

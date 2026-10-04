@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Lithnet.CredentialProvider;
 using System.IO;
 using System.Drawing;
+using System.Windows.Forms;
 using System.Security;
 using Microsoft.Win32;
 using Portal.Common;
@@ -134,6 +135,7 @@ public class PortalWinProvider : PortalWinProviderBase
         Logger.Log($"[PortalWinProvider] OnUnlockRequested for user: '{username}', domain: '{domain}'");
         CredentialProviderBootstrapper.TlsService?.DisconnectAllWebSocketClients("Unlock approved");
         UnlockState.SetPending(username, password, domain);
+        PortalWinTile.CancelGlobalActiveRequest();
 
         try
         {
@@ -186,21 +188,41 @@ public class PortalWinProvider : PortalWinProviderBase
                 string progressPart = rawStatus.Substring(bracketIndex).Trim();
                 string normalizedBase = BuildStatusHeadline(NormalizeHeadline(basePart));
 
-                double w1 = EstimateVisualWidth(normalizedBase);
-                double w2 = EstimateVisualWidth(progressPart);
-                int spaceCount = 0;
-                if (w1 > w2)
-                {
-                    double diff = (w1 - w2) / 2.0;
-                    spaceCount = (int)Math.Round(diff / 0.36);
-                }
-
+                int spaceCount = CalculateCenterPaddingSpaces(normalizedBase, progressPart);
                 string padding = new string(' ', Math.Max(0, spaceCount));
                 return $"{normalizedBase}\n{padding}{progressPart}";
             }
         }
 
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
+    }
+
+    private static int CalculateCenterPaddingSpaces(string baseText, string childText)
+    {
+        try
+        {
+            using var font = new System.Drawing.Font("Segoe UI", 10f);
+            int w1 = System.Windows.Forms.TextRenderer.MeasureText(baseText, font).Width;
+            int w2 = System.Windows.Forms.TextRenderer.MeasureText(childText, font).Width;
+            if (w1 > w2)
+            {
+                int wSpace = System.Windows.Forms.TextRenderer.MeasureText("A A", font).Width 
+                           - System.Windows.Forms.TextRenderer.MeasureText("AA", font).Width;
+                if (wSpace <= 0) wSpace = 4;
+                return (int)Math.Round((double)(w1 - w2) / (2.0 * wSpace));
+            }
+            return 0;
+        }
+        catch
+        {
+            double w1 = EstimateVisualWidth(baseText);
+            double w2 = EstimateVisualWidth(childText);
+            if (w1 > w2)
+            {
+                return (int)Math.Round((w1 - w2) / (2.0 * 4.0));
+            }
+            return 0;
+        }
     }
 
     private static double EstimateVisualWidth(string s)
@@ -211,11 +233,15 @@ public class PortalWinProvider : PortalWinProviderBase
         {
             width += c switch
             {
-                ' ' => 0.36,
-                ':' or '.' or ',' or ';' or '!' or '\'' or '`' or '|' or '[' or ']' or '(' or ')' or 'i' or 'l' or 'I' => 0.4,
-                '█' or '░' or '▒' or '▓' or '■' or '□' or '▣' or '∞' or 'W' or 'M' or 'w' or 'm' or 'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 1.15,
-                >= '0' and <= '9' => 0.65,
-                _ => 0.95
+                ' ' => 4.0,
+                ':' or '.' or ',' or ';' or '!' or '\'' or '`' or '|' or 'i' or 'l' or 'I' => 3.0,
+                '[' or ']' or '(' or ')' or 't' or 'f' or 'r' or 'j' => 4.5,
+                >= '0' and <= '9' => 8.0,
+                '█' or '░' or '▒' or '▓' => 13.0,
+                '■' or '□' or '▣' or '◆' or '◇' => 12.0,
+                '∞' or 'W' or 'M' or 'w' or 'm' or 'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 11.5,
+                >= 'A' and <= 'Z' or (>= 'А' and <= 'Я') => 9.0,
+                _ => 7.5
             };
         }
         return width;

@@ -417,6 +417,23 @@ public class BluetoothUnlockService : IDisposable
     {
         if (!_pendingApprovals.TryGetValue(clientId, out var pending))
         {
+            if (string.Equals(response.Status, "ok", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Log($"[BtUnlock] Fallback accepting 'ok' host_unlock_response from {clientId} without registered pending context.");
+                var config = PortalWinConfig.Load();
+                var device = config.FindDeviceByClientId(clientId);
+                if (device != null && device.IsEnabled)
+                {
+                    var account = device.Accounts.FirstOrDefault();
+                    using var securePassword = account?.GetDecryptedSecurePassword();
+                    if (account != null && securePassword != null && securePassword.Length > 0)
+                    {
+                        Logger.Log($"[BtUnlock] Fallback unlock APPROVED for user: {account.Username} from {device.Name}");
+                        ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Bluetooth.", deviceName: device.Name, transport: "Bluetooth");
+                        UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+                    }
+                }
+            }
             return;
         }
 

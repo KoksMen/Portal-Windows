@@ -483,7 +483,7 @@ public class PortalWinTile : PortalWinTileBase
                     ActivityJournal.Record("unlock", "🚫", "Unlock request declined", "A paired device declined the remote unlock request.", false);
                     UpdateStatus("Denied by device.");
                 }
-                else if (cts.IsCancellationRequested && !approvalCompleted)
+                else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
                 {
                     var expectedTimeoutMs = timeoutMinutes > 0 ? timeoutMinutes * 60_000L : -1;
                     var reason = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 250)
@@ -503,11 +503,17 @@ public class PortalWinTile : PortalWinTileBase
             catch (Exception ex)
             {
                 Logger.LogError("[Tile] Global request loop error", ex);
-                UpdateStatus("Error occurred.");
+                if (!Provider.UnlockState.HasPendingUnlock)
+                {
+                    UpdateStatus("Error occurred.");
+                }
             }
             finally
             {
-                ShowRequestButton();
+                if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                {
+                    ShowRequestButton();
+                }
                 ReleaseActiveRequest(owner, cts);
                 if (_activeRequestCts == cts)
                 {
@@ -567,6 +573,14 @@ public class PortalWinTile : PortalWinTileBase
             _globalActiveOwner = owner;
             _globalActiveRequestCts = cts;
             return true;
+        }
+    }
+
+    public static void CancelGlobalActiveRequest()
+    {
+        lock (_requestSync)
+        {
+            try { _globalActiveRequestCts?.Cancel(); } catch { }
         }
     }
 
@@ -746,7 +760,7 @@ public class PortalWinTile : PortalWinTileBase
                     }
                     else if (i == activeIndex)
                     {
-                        blocks[i] = isBlink ? '□' : '█';
+                        blocks[i] = isBlink ? '▒' : '█';
                     }
                     else
                     {
@@ -763,8 +777,8 @@ public class PortalWinTile : PortalWinTileBase
             {
                 // Infinite / No timeout mode: animate pulse around centered elapsed time
                 int frame = (elapsedSeconds % 4);
-                string leftPulse = frame switch { 0 => "■□", 1 => "□■", 2 => "□□", _ => "■■" };
-                string rightPulse = frame switch { 0 => "□■", 1 => "■□", 2 => "■■", _ => "□□" };
+                string leftPulse = frame switch { 0 => "█░", 1 => "░█", 2 => "░░", _ => "██" };
+                string rightPulse = frame switch { 0 => "░█", 1 => "█░", 2 => "██", _ => "░░" };
                 string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}";
 
                 return $"{baseKey} [{leftPulse}  {elapsedText} (∞)  {rightPulse}]";

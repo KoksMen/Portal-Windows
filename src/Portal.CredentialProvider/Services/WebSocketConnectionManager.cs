@@ -20,6 +20,8 @@ public class WebSocketConnectionManager
     private readonly ConcurrentDictionary<string, PendingApprovalContext> _pendingApprovals = new();
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+    public event Action<string, string?>? UnlockApprovedWithoutPending;
+
     public void RegisterClient(string clientId, WebSocket ws)
     {
         if (_connectedClients.TryGetValue(clientId, out var existing) && !ReferenceEquals(existing, ws))
@@ -330,6 +332,11 @@ public class WebSocketConnectionManager
                         else
                         {
                             Logger.LogWarning($"[WebSocketManager] Received unlock_response from {clientId} but no pending approval was registered (status='{msg.Status}', requestId='{msg.RequestId}').");
+                            if (string.Equals(msg.Status, "ok", StringComparison.OrdinalIgnoreCase))
+                            {
+                                Logger.Log($"[WebSocketManager] Fallback accepting 'ok' unlock_response from {clientId} without registered pending context.");
+                                UnlockApprovedWithoutPending?.Invoke(clientId, msg.RequestId);
+                            }
                         }
                     }
                 }
