@@ -122,7 +122,7 @@ public abstract class PortalWinTileBase : CredentialTile2
         {
             try
             {
-                _statusLabel.Label = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.Trim();
+                _statusLabel.Label = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.TrimEnd();
             }
             catch
             {

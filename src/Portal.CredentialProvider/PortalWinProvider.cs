@@ -188,24 +188,28 @@ public class PortalWinProvider : PortalWinProviderBase
                 string progressPart = rawStatus.Substring(bracketIndex).Trim();
                 string normalizedBase = BuildStatusHeadline(NormalizeHeadline(basePart));
 
-                int spaceCount = CalculateCenterPaddingSpaces(normalizedBase, progressPart);
-                string padding = new string(' ', Math.Max(0, spaceCount));
-                return $"{normalizedBase}\n{padding}{progressPart}";
+                double w1 = EstimateVisualWidth(normalizedBase);
+                double w2 = EstimateVisualWidth(progressPart);
+                if (w1 > w2)
+                {
+                    int spaceCount = (int)Math.Round((w1 - w2) / 2.0);
+                    string padding = new string(' ', Math.Max(0, spaceCount));
+                    return $"{normalizedBase}\n{padding}{progressPart}";
+                }
+                else if (w2 > w1)
+                {
+                    int spaceCount = (int)Math.Round((w2 - w1) / 2.0);
+                    string padding = new string(' ', Math.Max(0, spaceCount));
+                    return $"{padding}{normalizedBase}\n{progressPart}";
+                }
+                else
+                {
+                    return $"{normalizedBase}\n{progressPart}";
+                }
             }
         }
 
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
-    }
-
-    private static int CalculateCenterPaddingSpaces(string baseText, string childText)
-    {
-        double w1 = EstimateVisualWidth(baseText);
-        double w2 = EstimateVisualWidth(childText);
-        if (w1 > w2)
-        {
-            return (int)Math.Round((w1 - w2) / 2.0);
-        }
-        return 0;
     }
 
     private static double EstimateVisualWidth(string s)
@@ -217,17 +221,17 @@ public class PortalWinProvider : PortalWinProviderBase
             width += c switch
             {
                 ' ' => 1.0,
-                ':' or '.' or ',' or ';' or '!' or '\'' or '`' or '|' or 'i' or 'l' or 'I' => 0.7,
-                '[' or ']' or '(' or ')' or 't' or 'f' or 'r' or 'j' => 0.9,
-                '█' or '░' or '▒' or '▓' => 1.8,
-                '■' or '□' or '▣' or '◆' or '◇' => 1.7,
-                '∞' or 'W' or 'M' or 'w' or 'm' => 2.2,
-                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 2.5,
-                >= '0' and <= '9' => 1.35,
-                >= 'А' and <= 'Я' => 2.4,
-                >= 'а' and <= 'я' => 1.95,
-                >= 'A' and <= 'Z' => 2.1,
-                _ => 1.6
+                ':' or '.' or ',' or ';' or '!' or '\'' or '`' or '|' or 'i' or 'l' or 'I' => 0.8,
+                '[' or ']' or '(' or ')' or 't' or 'f' or 'r' or 'j' => 1.1,
+                '█' or '░' or '▒' or '▓' => 2.88,
+                '■' or '□' or '▣' or '◆' or '◇' => 2.88,
+                '∞' or 'W' or 'M' or 'w' or 'm' => 2.5,
+                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 2.7,
+                >= '0' and <= '9' => 1.55,
+                >= 'А' and <= 'Я' => 2.45,
+                >= 'а' and <= 'я' => 2.55,
+                >= 'A' and <= 'Z' => 2.3,
+                _ => 1.8
             };
         }
         return width;

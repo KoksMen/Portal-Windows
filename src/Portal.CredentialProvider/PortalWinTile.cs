@@ -604,17 +604,6 @@ public class PortalWinTile : PortalWinTileBase
 
     private sealed class UnlockStatusAggregator : IDisposable
     {
-        private static readonly string[] InfiniteFrames = new[]
-        {
-            "■□□□□",
-            "□■□□□",
-            "□□■□□",
-            "□□□■□",
-            "□□□□■",
-            "□□□■□",
-            "□□■□□",
-            "□■□□□"
-        };
 
         private readonly Action<string> _publishStatus;
         private readonly int _timeoutMinutes;
@@ -742,8 +731,8 @@ public class PortalWinTile : PortalWinTileBase
                     ? $"{remainingSeconds / 60}:{remainingSeconds % 60:D2}"
                     : $"{remainingSeconds}s";
 
-                const int totalBlocks = 8;
-                const int halfBlocks = 4;
+                const int totalBlocks = 24;
+                const int halfBlocks = 12;
                 int filledBlocks = remainingSeconds > 0
                     ? Math.Clamp((int)Math.Ceiling((double)remainingSeconds / totalSeconds * totalBlocks), 1, totalBlocks)
                     : 0;
@@ -775,13 +764,22 @@ public class PortalWinTile : PortalWinTileBase
             }
             else
             {
-                // Infinite / No timeout mode: animate pulse around centered elapsed time
-                int frame = (elapsedSeconds % 4);
-                string leftPulse = frame switch { 0 => "█░", 1 => "░█", 2 => "░░", _ => "██" };
-                string rightPulse = frame switch { 0 => "░█", 1 => "█░", 2 => "██", _ => "░░" };
-                string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}";
+                // Infinite / No timeout mode: animate symmetric radar pulse across full width (10 blocks per side)
+                const int infHalf = 10;
+                int cycle = (infHalf - 1) * 2;
+                int step = elapsedSeconds % cycle;
+                int pulsePos = step < (infHalf - 1) ? step : cycle - step;
 
-                return $"{baseKey} [{leftPulse}  {elapsedText} (∞)  {rightPulse}]";
+                Span<char> leftBlocks = stackalloc char[infHalf];
+                Span<char> rightBlocks = stackalloc char[infHalf];
+                leftBlocks.Fill('░');
+                rightBlocks.Fill('░');
+
+                leftBlocks[infHalf - 1 - pulsePos] = '█';
+                rightBlocks[pulsePos] = '█';
+
+                string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}";
+                return $"{baseKey} [{new string(leftBlocks)}  {elapsedText} (∞)  {new string(rightBlocks)}]";
             }
         }
     }
