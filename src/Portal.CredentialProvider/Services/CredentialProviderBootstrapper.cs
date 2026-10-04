@@ -12,6 +12,7 @@ public static class CredentialProviderBootstrapper
     public static BluetoothUnlockService? BtService { get; private set; }
 
     private static WeakReference<Portal.CredentialProvider.Base.PortalWinProviderBase>? _currentProviderRef;
+    private static CancellationTokenSource? _stopServicesCts;
 
     public static Portal.CredentialProvider.Base.PortalWinProviderBase? CurrentProvider
     {
@@ -94,6 +95,18 @@ public static class CredentialProviderBootstrapper
     {
         lock (_lock)
         {
+            if (_stopServicesCts != null)
+            {
+                Logger.Log("[Bootstrapper] Cancelling scheduled services stop (new provider instance registered).");
+                try
+                {
+                    _stopServicesCts.Cancel();
+                    _stopServicesCts.Dispose();
+                }
+                catch { }
+                _stopServicesCts = null;
+            }
+
             if (_currentProviderRef != null && _currentProviderRef.TryGetTarget(out var oldProvider) && oldProvider != provider)
             {
                 Logger.Log("[Bootstrapper] Detaching events from previous provider instance.");
@@ -118,7 +131,24 @@ public static class CredentialProviderBootstrapper
 
             if (_currentProviderRef == null)
             {
-                StopServices("No active provider");
+                _stopServicesCts?.Cancel();
+                _stopServicesCts?.Dispose();
+                var cts = new CancellationTokenSource();
+                _stopServicesCts = cts;
+
+                _ = Task.Delay(TimeSpan.FromSeconds(2), cts.Token).ContinueWith(t =>
+                {
+                    if (t.IsCompletedSuccessfully && !cts.IsCancellationRequested)
+                    {
+                        lock (_lock)
+                        {
+                            if (_currentProviderRef == null)
+                            {
+                                StopServices("No active provider (debounced)");
+                            }
+                        }
+                    }
+                }, TaskScheduler.Default);
             }
         }
     }

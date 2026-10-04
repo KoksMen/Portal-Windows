@@ -37,10 +37,10 @@
         <Company>xXTeam</Company>
         <Product>Portal Host (Windows)</Product>
         <Copyright>Copyright © 2026</Copyright>
-		<Version>1.5.4</Version>
-		<AssemblyVersion>1.5.4.0</AssemblyVersion>
-		<FileVersion>1.5.4.0</FileVersion>
-		<InformationalVersion>1.5.4-Herta</InformationalVersion>
+		<Version>1.5.5</Version>
+		<AssemblyVersion>1.5.5.0</AssemblyVersion>
+		<FileVersion>1.5.5.0</FileVersion>
+		<InformationalVersion>1.5.5-Herta</InformationalVersion>
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     </PropertyGroup>
 
@@ -51,30 +51,50 @@
 
     <Target Name="CopyCredentialProviderOutput" AfterTargets="Build;Publish">
         <ItemGroup>
-            <CredentialProviderOutput Include="..\Portal.CredentialProvider\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+            <CredentialProviderOutput Include="..\Portal.CredentialProvider\bin\$(Configuration)\$(TargetFramework)\*.*" />
+            <CredentialProviderOutputRuntimes Include="..\Portal.CredentialProvider\bin\$(Configuration)\$(TargetFramework)\runtimes\**\*.*" />
         </ItemGroup>
         <Copy
             SourceFiles="@(CredentialProviderOutput)"
-            DestinationFiles="@(CredentialProviderOutput->'$(TargetDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
+            DestinationFolder="$(TargetDir)CredentialProvider"
+            SkipUnchangedFiles="true" />
+        <Copy
+            SourceFiles="@(CredentialProviderOutputRuntimes)"
+            DestinationFiles="@(CredentialProviderOutputRuntimes->'$(TargetDir)CredentialProvider\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true" />
         <Copy
             SourceFiles="@(CredentialProviderOutput)"
-            DestinationFiles="@(CredentialProviderOutput->'$(PublishDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
+            DestinationFolder="$(PublishDir)CredentialProvider"
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' != ''" />
+        <Copy
+            SourceFiles="@(CredentialProviderOutputRuntimes)"
+            DestinationFiles="@(CredentialProviderOutputRuntimes->'$(PublishDir)CredentialProvider\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true"
             Condition="'$(PublishDir)' != ''" />
     </Target>
 
     <Target Name="CopyUpdaterOutput" AfterTargets="Build;Publish">
         <ItemGroup>
-            <UpdaterOutput Include="..\Portal.Updater\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+            <UpdaterOutput Include="..\Portal.Updater\bin\$(Configuration)\$(TargetFramework)\*.*" />
+            <UpdaterOutputRuntimes Include="..\Portal.Updater\bin\$(Configuration)\$(TargetFramework)\runtimes\**\*.*" />
         </ItemGroup>
         <Copy
             SourceFiles="@(UpdaterOutput)"
-            DestinationFiles="@(UpdaterOutput->'$(TargetDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
+            DestinationFolder="$(TargetDir)Updater"
+            SkipUnchangedFiles="true" />
+        <Copy
+            SourceFiles="@(UpdaterOutputRuntimes)"
+            DestinationFiles="@(UpdaterOutputRuntimes->'$(TargetDir)Updater\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true" />
         <Copy
             SourceFiles="@(UpdaterOutput)"
-            DestinationFiles="@(UpdaterOutput->'$(PublishDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
+            DestinationFolder="$(PublishDir)Updater"
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' != ''" />
+        <Copy
+            SourceFiles="@(UpdaterOutputRuntimes)"
+            DestinationFiles="@(UpdaterOutputRuntimes->'$(PublishDir)Updater\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true"
             Condition="'$(PublishDir)' != ''" />
     </Target>

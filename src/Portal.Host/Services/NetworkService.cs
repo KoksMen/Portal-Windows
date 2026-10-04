@@ -11,8 +11,95 @@ namespace Portal.Host.Services;
 
 public record NetworkInterfaceAddress(string InterfaceName, string IpAddress);
 
-public class NetworkService
+public class NetworkService : IDisposable
 {
+    private static readonly TimeSpan NetworkChangeDebounce = TimeSpan.FromSeconds(2.0);
+    private CancellationTokenSource? _networkChangeCts;
+    private bool _isDisposed;
+
+    /// <summary>
+    /// Raised when an IP address, network adapter, or network availability changes on the system (debounced).
+    /// </summary>
+    public event EventHandler? NetworkTopologyChanged;
+
+    public NetworkService()
+    {
+        try
+        {
+            NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
+            NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
+            Logger.Log("[NetworkService] Subscribed to system NetworkAddressChanged and NetworkAvailabilityChanged events.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[NetworkService] Failed to subscribe to NetworkChange events: {ex.Message}");
+        }
+    }
+
+    private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
+    {
+        Logger.Log($"[NetworkService] NetworkAvailabilityChanged: IsAvailable={e.IsAvailable}");
+        ScheduleDebouncedNotification("availability changed");
+    }
+
+    private void OnNetworkAddressChanged(object? sender, EventArgs e)
+    {
+        ScheduleDebouncedNotification("address changed");
+    }
+
+    private void ScheduleDebouncedNotification(string reason)
+    {
+        if (_isDisposed) return;
+
+        var previous = Interlocked.Exchange(ref _networkChangeCts, new CancellationTokenSource());
+        previous?.Cancel();
+        previous?.Dispose();
+
+        var changeCts = _networkChangeCts;
+        if (changeCts == null) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(NetworkChangeDebounce, changeCts.Token);
+                if (_isDisposed || changeCts.IsCancellationRequested) return;
+
+                Logger.Log($"[NetworkService] Network topology change confirmed ({reason}) after debounce. Raising NetworkTopologyChanged event.");
+                NetworkTopologyChanged?.Invoke(this, EventArgs.Empty);
+            }
+            catch (OperationCanceledException)
+            {
+                // A newer change event superseded this notification
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"[NetworkService] Error notifying network topology change ({reason})", ex);
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed) return;
+        _isDisposed = true;
+
+        try
+        {
+            NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
+            NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[NetworkService] Error unsubscribing from network events: {ex.Message}");
+        }
+
+        var cts = Interlocked.Exchange(ref _networkChangeCts, null);
+        cts?.Cancel();
+        cts?.Dispose();
+        Logger.Log("[NetworkService] Disposed.");
+    }
+
     public async Task<List<NetworkInterfaceAddress>> GetLocalInterfaceAddressesAsync(bool vpnCompatibilityModeEnabled = true)
     {
         var result = new List<NetworkInterfaceAddress>();

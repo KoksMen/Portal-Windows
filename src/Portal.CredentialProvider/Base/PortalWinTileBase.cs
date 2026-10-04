@@ -107,9 +107,12 @@ public abstract class PortalWinTileBase : CredentialTile2
 
     internal void UpdateStatus(string text)
     {
-        _lastStatusRaw = string.IsNullOrWhiteSpace(text) ? "Waiting for remote command." : text.Trim();        if (_providerBase is PortalWinProvider provider)
+        _lastStatusRaw = string.IsNullOrWhiteSpace(text) ? "Waiting for remote command." : text.Trim();
+        if (_providerBase is PortalWinProvider provider)
         {
-            UpdateStatus(provider.BuildStatusHeadlineForState(_lastStatusRaw), provider.BuildStatusDetailsForState(_lastStatusRaw));
+            UpdateStatus(
+                provider.BuildStatusHeadlineForState(_lastStatusRaw),
+                provider.BuildStatusDetailsForState(_lastStatusRaw));
             return;
         }
 
@@ -118,11 +121,13 @@ public abstract class PortalWinTileBase : CredentialTile2
 
     internal void UpdateStatus(string headline, string? details)
     {
+        string cleanHeadline = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.TrimEnd();
+
         if (_statusLabel != null)
         {
             try
             {
-                _statusLabel.Label = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.Trim();
+                _statusLabel.Label = cleanHeadline;
             }
             catch
             {
@@ -150,7 +155,9 @@ public abstract class PortalWinTileBase : CredentialTile2
 
         if (_providerBase is PortalWinProvider provider)
         {
-            UpdateStatus(provider.BuildStatusHeadlineForState(_lastStatusRaw), provider.BuildStatusDetailsForState(_lastStatusRaw));
+            UpdateStatus(
+                provider.BuildStatusHeadlineForState(_lastStatusRaw),
+                provider.BuildStatusDetailsForState(_lastStatusRaw));
         }
     }
 

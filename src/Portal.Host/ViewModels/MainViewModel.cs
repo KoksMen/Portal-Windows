@@ -63,6 +63,7 @@ public partial class MainViewModel : ObservableObject
     private readonly UpdateService _updateService;
     private readonly EncryptedBackupService _encryptedBackupService;
     private readonly UnlockTestService _unlockTestService;
+    private readonly DiagnosticReportService _diagnosticReportService;
 
     private BluetoothPairingService? _btPairing;
     private PortalWinConfig _config;
@@ -151,8 +152,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
-    public string AppVersion => "v1.5.4";
-    public string AppReleaseVersion => "1.5.4-Herta";
+    public string AppVersion => "v1.5.5";
+    public string AppReleaseVersion => "1.5.5-Herta";
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.
@@ -194,7 +195,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFaqOverlayVisible))]
     private bool _showFaq;
-    [ObservableProperty] private bool _isDiagnosticsUnlocked;
+    [ObservableProperty] private bool _isDiagnosticsUnlocked = true;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowFaqSection))]
     [NotifyPropertyChangedFor(nameof(ShowUpdatesSection))]
@@ -357,6 +358,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _settingsPort = "29170";
     [ObservableProperty] private string _settingsDllPath = "";
     [ObservableProperty] private string _settingsHostRequestTimeoutMinutes = "2";
+    [ObservableProperty] private bool _isLockScreenProgressEnabled = true;
     [ObservableProperty] private bool _isVpnCompatibilityModeEnabled = true;
     [ObservableProperty] private string _restoreBackupFileText = Services.LocalizationService.T("No backup file selected");
     [ObservableProperty] private bool _showCreateBackupDialog;
@@ -606,7 +608,8 @@ public partial class MainViewModel : ObservableObject
         FaqContentService faqContentService,
         UpdateService updateService,
         EncryptedBackupService encryptedBackupService,
-        UnlockTestService unlockTestService)
+        UnlockTestService unlockTestService,
+        DiagnosticReportService diagnosticReportService)
     {
         _firewall = firewall;
         _providerSetup = providerSetup;
@@ -614,6 +617,7 @@ public partial class MainViewModel : ObservableObject
         _networkPairing = networkPairing;
         _networkPairing.AdvertisementAddressChanged += OnPairingAdvertisementAddressChanged;
         _networkService = networkService;
+        _networkService.NetworkTopologyChanged += OnNetworkTopologyChanged;
         _qrCodeService = qrCodeService;
         _providerLocator = providerLocator;
         _bluetoothService = bluetoothService;
@@ -622,6 +626,7 @@ public partial class MainViewModel : ObservableObject
         _updateService = updateService;
         _encryptedBackupService = encryptedBackupService;
         _unlockTestService = unlockTestService;
+        _diagnosticReportService = diagnosticReportService;
         _updateToastTimer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(10)
@@ -687,6 +692,7 @@ public partial class MainViewModel : ObservableObject
     {
         SettingsPort = _config.Port.ToString();
         SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+        IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
         IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
         AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
         UpdateSourceText = IsRussianUi ? $"Источник: {UpdateService.BuiltInSourceLabel}" : $"Source: {UpdateService.BuiltInSourceLabel}";
@@ -955,6 +961,7 @@ public partial class MainViewModel : ObservableObject
                 {
                     SettingsPort = _config.Port.ToString();
                     SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+                    IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
                     IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
                     _suppressDuplicateProtectionPrompt = true;
                     IsDuplicateAccountProtectionEnabled = _config.EnforceUniqueAccountPerTransport;
@@ -1420,6 +1427,77 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ExportDiagnosticReportAsync()
+    {
+        try
+        {
+            var defaultName = $"PortalWin-Diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.zip";
+            var saveDialog = new SaveFileDialog
+            {
+                Title = Services.LocalizationService.T("Export Diagnostic Report"),
+                FileName = defaultName,
+                DefaultExt = ".zip",
+                AddExtension = true,
+                Filter = "ZIP Archive (*.zip)|*.zip|All files (*.*)|*.*",
+                OverwritePrompt = true
+            };
+
+            var saveResult = saveDialog.ShowDialog();
+            if (saveResult != true || string.IsNullOrWhiteSpace(saveDialog.FileName))
+            {
+                return;
+            }
+
+            var targetZipPath = saveDialog.FileName;
+
+            var outcome = await RunBusyOperationAsync(
+                Services.LocalizationService.T("Exporting Diagnostic Report"),
+                Services.LocalizationService.T("Gathering system environment, health metrics, and logs..."),
+                async cancellationToken =>
+                {
+                    UpdateBusyOperationStatus(Services.LocalizationService.T("Archiving system report and log files..."));
+                    await _diagnosticReportService.CreateDiagnosticArchiveAsync(targetZipPath, _config, cancellationToken);
+                });
+
+            if (outcome == BusyOperationOutcome.Completed)
+            {
+                var openFolder = await _dialogService.ShowNotificationAsync(
+                    Services.LocalizationService.T("Diagnostic Archive Ready"),
+                    Services.LocalizationService.TF("Diagnostic report archive successfully created:\n{0}\n\nOpen containing folder in File Explorer?", targetZipPath),
+                    isQuestion: true);
+
+                if (openFolder)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{targetZipPath}\"")
+                        {
+                            UseShellExecute = true
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning($"[Diagnostics] Failed to launch explorer: {ex.Message}");
+                    }
+                }
+            }
+            else if (outcome == BusyOperationOutcome.Cancelled)
+            {
+                await ShowBusyResultAsync(
+                    Services.LocalizationService.T("Operation Cancelled"),
+                    Services.LocalizationService.T("Diagnostic report export was cancelled."));
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[Diagnostics] Failed to export diagnostic report", ex);
+            await _dialogService.ShowNotificationAsync(
+                Services.LocalizationService.T("Diagnostic Export Failed"),
+                ex.Message);
+        }
+    }
+
+    [RelayCommand]
     private async Task CancelBusyOperationAsync()
     {
         if (_busyOperationCts == null || _busyOperationCts.IsCancellationRequested || !IsBusyOperationActive)
@@ -1676,6 +1754,7 @@ public partial class MainViewModel : ObservableObject
                         _config.UnlockMode = mode;
                         _config.HostRequestTrigger = trigger;
                         _config.HostRequestTimeoutMinutes = hostRequestTimeoutMinutes;
+                        _config.ShowLockScreenProgress = IsLockScreenProgressEnabled;
                         _config.VpnCompatibilityModeEnabled = IsVpnCompatibilityModeEnabled;
                         _config.EnforceUniqueAccountPerTransport = IsDuplicateAccountProtectionEnabled;
                         _config.EnforceUniqueAccountAcrossTransports = IsDuplicateAccountProtectionEnabled && IsCrossTransportDuplicateProtectionEnabled;
@@ -3128,6 +3207,64 @@ public partial class MainViewModel : ObservableObject
         WizPairInfo = IsRussianUi ? "Сеть изменилась — QR-код обновлён для текущего подключения." : "Network changed — QR code updated for the current connection.";
     }
 
+    private void OnNetworkTopologyChanged(object? sender, EventArgs e)
+    {
+        if (Application.Current?.Dispatcher == null)
+        {
+            return;
+        }
+
+        _ = Application.Current.Dispatcher.InvokeAsync(async () =>
+        {
+            try
+            {
+                Logger.Log("[MainViewModel] Network topology change detected. Refreshing network state and health...");
+
+                if (StepPairingVis || WizShowNetworkInfo)
+                {
+                    var ipOptions = await _networkService.GetLocalInterfaceAddressesAsync(_config.VpnCompatibilityModeEnabled);
+                    var currentSelectedIp = SelectedPairIp?.IpAddress;
+
+                    AvailableLocalIps.Clear();
+                    foreach (var option in ipOptions)
+                    {
+                        AvailableLocalIps.Add(new NetworkIpOption
+                        {
+                            InterfaceName = option.InterfaceName,
+                            IpAddress = option.IpAddress
+                        });
+                    }
+
+                    if (AvailableLocalIps.Count == 0)
+                    {
+                        AvailableLocalIps.Add(new NetworkIpOption
+                        {
+                            InterfaceName = Services.LocalizationService.T("Unknown"),
+                            IpAddress = Services.LocalizationService.T("Unknown")
+                        });
+                    }
+
+                    if (!string.IsNullOrEmpty(currentSelectedIp))
+                    {
+                        var matching = AvailableLocalIps.FirstOrDefault(x => string.Equals(x.IpAddress, currentSelectedIp, StringComparison.OrdinalIgnoreCase));
+                        SelectedPairIp = matching ?? AvailableLocalIps.FirstOrDefault();
+                    }
+                    else
+                    {
+                        SelectedPairIp = AvailableLocalIps.FirstOrDefault();
+                    }
+                }
+
+                await RefreshStatusAsync();
+                Logger.Log("[MainViewModel] Network topology adaptation completed.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[MainViewModel] Error handling network topology change", ex);
+            }
+        });
+    }
+
     private void RefreshNetworkQrPayload(int? providedCode = null, string? providedHostName = null)
     {
         int codeInt = providedCode ?? (int.TryParse(_pairingContext.PairingCode, out var parsedCode) ? parsedCode : 0);
@@ -3676,6 +3813,7 @@ public partial class MainViewModel : ObservableObject
 
     public void OnWindowClosing()
     {
+        _networkService.NetworkTopologyChanged -= OnNetworkTopologyChanged;
         _networkPairing.AdvertisementAddressChanged -= OnPairingAdvertisementAddressChanged;
         _pairingCts?.Cancel();
         _networkPairing.StopPairing();

@@ -397,6 +397,7 @@ public class PortalWinTile : PortalWinTileBase
 
         ApplyHostInitiatedTlsPolicy(config, source);
         int timeoutMinutes = config.HostRequestTimeoutMinutes;
+        bool showProgress = config.ShowLockScreenProgress;
         // Host-Initiated flow must always carry requestId for cross-transport correlation.
         // Keep legacy acceptance on response side, but never omit requestId on request side.
         bool correlationEnabled = true;
@@ -428,7 +429,7 @@ public class PortalWinTile : PortalWinTileBase
 
         Task.Run(async () =>
         {
-            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus);
+            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, timeoutMinutes, requestTimer, cts.Token, showProgress);
             var anyRejection = false;
             var approvalCompleted = false;
 
@@ -482,7 +483,7 @@ public class PortalWinTile : PortalWinTileBase
                     ActivityJournal.Record("unlock", "🚫", "Unlock request declined", "A paired device declined the remote unlock request.", false);
                     UpdateStatus("Denied by device.");
                 }
-                else if (cts.IsCancellationRequested && !approvalCompleted)
+                else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
                 {
                     var expectedTimeoutMs = timeoutMinutes > 0 ? timeoutMinutes * 60_000L : -1;
                     var reason = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 250)
@@ -502,11 +503,17 @@ public class PortalWinTile : PortalWinTileBase
             catch (Exception ex)
             {
                 Logger.LogError("[Tile] Global request loop error", ex);
-                UpdateStatus("Error occurred.");
+                if (!Provider.UnlockState.HasPendingUnlock)
+                {
+                    UpdateStatus("Error occurred.");
+                }
             }
             finally
             {
-                ShowRequestButton();
+                if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                {
+                    ShowRequestButton();
+                }
                 ReleaseActiveRequest(owner, cts);
                 if (_activeRequestCts == cts)
                 {
@@ -569,6 +576,14 @@ public class PortalWinTile : PortalWinTileBase
         }
     }
 
+    public static void CancelGlobalActiveRequest()
+    {
+        lock (_requestSync)
+        {
+            try { _globalActiveRequestCts?.Cancel(); } catch { }
+        }
+    }
+
     private static void ReleaseActiveRequest(string owner, CancellationTokenSource cts)
     {
         lock (_requestSync)
@@ -589,14 +604,30 @@ public class PortalWinTile : PortalWinTileBase
 
     private sealed class UnlockStatusAggregator : IDisposable
     {
+
         private readonly Action<string> _publishStatus;
+        private readonly int _timeoutMinutes;
+        private readonly Stopwatch _timer;
+        private readonly CancellationToken _ct;
+        private readonly bool _showProgress;
+        private readonly CancellationTokenSource _tickerCts = new();
         private readonly object _sync = new();
         private UnlockTransportStage? _latestStage;
         private bool _disposed;
 
-        public UnlockStatusAggregator(Action<string> publishStatus)
+        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutMinutes, Stopwatch timer, CancellationToken ct, bool showProgress = true)
         {
             _publishStatus = publishStatus;
+            _timeoutMinutes = timeoutMinutes;
+            _timer = timer;
+            _ct = ct;
+            _showProgress = showProgress;
+
+            PublishCurrentStatus();
+            if (_showProgress)
+            {
+                _ = RunTickerAsync();
+            }
         }
 
         public void Report(UnlockTransportStage stage)
@@ -614,12 +645,48 @@ public class PortalWinTile : PortalWinTileBase
                 }
 
                 _latestStage = stage;
+                PublishCurrentStatusLocked();
+            }
+        }
 
-                var statusMessage = BuildStatusMessageLocked();
-                if (!string.IsNullOrWhiteSpace(statusMessage))
+        private void PublishCurrentStatus()
+        {
+            lock (_sync)
+            {
+                if (_disposed) return;
+                PublishCurrentStatusLocked();
+            }
+        }
+
+        private void PublishCurrentStatusLocked()
+        {
+            var statusMessage = BuildStatusMessageLocked();
+            if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                _publishStatus(statusMessage);
+            }
+        }
+
+        private async Task RunTickerAsync()
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(_ct, _tickerCts.Token);
+            var token = linked.Token;
+
+            try
+            {
+                while (!token.IsCancellationRequested && !_disposed)
                 {
-                    _publishStatus(statusMessage);
+                    await Task.Delay(1000, token);
+                    PublishCurrentStatus();
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // Stopped on cancellation or completion
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[UnlockStatusAggregator] Ticker error: {ex.Message}");
             }
         }
 
@@ -630,21 +697,41 @@ public class PortalWinTile : PortalWinTileBase
                 _disposed = true;
                 _latestStage = null;
             }
+
+            try
+            {
+                _tickerCts.Cancel();
+                _tickerCts.Dispose();
+            }
+            catch { }
         }
 
         private string BuildStatusMessageLocked()
         {
-            if (_latestStage == UnlockTransportStage.AwaitingApproval)
+            string baseKey = _latestStage switch
             {
-                return "Awaiting approval...";
+                UnlockTransportStage.AwaitingApproval => "Awaiting approval...",
+                UnlockTransportStage.Searching => "Searching device...",
+                _ => "Requesting unlock..."
+            };
+
+            if (!_showProgress)
+            {
+                return baseKey;
             }
 
-            if (_latestStage == UnlockTransportStage.Searching)
-            {
-                return "Searching device...";
-            }
+            int elapsedSeconds = (int)(_timer.ElapsedMilliseconds / 1000);
 
-            return "Requesting unlock...";
+            if (_timeoutMinutes > 0)
+            {
+                int totalSeconds = _timeoutMinutes * 60;
+                int remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
+                return $"{baseKey} [progress:countdown,{remainingSeconds},{totalSeconds},{elapsedSeconds}]";
+            }
+            else
+            {
+                return $"{baseKey} [progress:infinite,{elapsedSeconds}]";
+            }
         }
     }
 

@@ -417,14 +417,23 @@ public class BluetoothUnlockService : IDisposable
     {
         if (!_pendingApprovals.TryGetValue(clientId, out var pending))
         {
-            return;
-        }
-
-        // If user explicitly approved on mobile, accept it immediately
-        if (string.Equals(response.Status, "ok", StringComparison.OrdinalIgnoreCase))
-        {
-            pending.Completion.TrySetResult("ok");
-            Logger.Log($"[BtUnlock] host_unlock_response 'ok' accepted for {clientId} (msgRequestId='{response.RequestId}', pendingRequestId='{pending.RequestId}').");
+            if (string.Equals(response.Status, "ok", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Log($"[BtUnlock] Fallback accepting 'ok' host_unlock_response from {clientId} without registered pending context.");
+                var config = PortalWinConfig.Load();
+                var device = config.FindDeviceByClientId(clientId);
+                if (device != null && device.IsEnabled)
+                {
+                    var account = device.Accounts.FirstOrDefault();
+                    using var securePassword = account?.GetDecryptedSecurePassword();
+                    if (account != null && securePassword != null && securePassword.Length > 0)
+                    {
+                        Logger.Log($"[BtUnlock] Fallback unlock APPROVED for user: {account.Username} from {device.Name}");
+                        ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Bluetooth.", deviceName: device.Name, transport: "Bluetooth");
+                        UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+                    }
+                }
+            }
             return;
         }
 
@@ -432,19 +441,19 @@ public class BluetoothUnlockService : IDisposable
         {
             if (!string.Equals(response.RequestId, pending.RequestId, StringComparison.OrdinalIgnoreCase))
             {
-                Logger.LogWarning($"[BtUnlock] Ignored stale non-ok host_unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{response.RequestId}' status='{response.Status}'.");
+                Logger.LogWarning($"[BtUnlock] Ignored stale host_unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{response.RequestId}' status='{response.Status}'.");
                 return;
             }
 
             pending.Completion.TrySetResult(response.Status);
-            Logger.Log($"[BtUnlock] host_unlock_response accepted for {clientId} by requestId='{pending.RequestId}'.");
+            Logger.Log($"[BtUnlock] host_unlock_response accepted for {clientId} by requestId='{pending.RequestId}' (status='{response.Status}').");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(pending.RequestId))
         {
             pending.Completion.TrySetResult(response.Status);
-            Logger.Log($"[BtUnlock] host_unlock_response accepted for {clientId} in legacy mode without correlation.");
+            Logger.Log($"[BtUnlock] host_unlock_response accepted for {clientId} in legacy mode without correlation (status='{response.Status}').");
             return;
         }
 

@@ -1,5 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Security;
 using System.Security;
 using Microsoft.AspNetCore.Builder;
@@ -15,6 +16,8 @@ namespace Portal.CredentialProvider;
 
 public class TlsUnlockService : IDisposable
 {
+    private static readonly TimeSpan NetworkChangeDebounce = TimeSpan.FromSeconds(2.5);
+
     private readonly PortalWinConfig _config;
     private readonly UnlockRequestHandler _unlockHandler;
     private readonly WebSocketConnectionManager _wsManager;
@@ -27,6 +30,9 @@ public class TlsUnlockService : IDisposable
     private X509Certificate2? _hostCert;
     private HashSet<string> _allowedWsClientCertHashes = new(StringComparer.OrdinalIgnoreCase);
     private string? _wsPolicyOwner;
+    private CancellationTokenSource? _networkChangeCts;
+    private bool _isWatchingNetwork;
+    private string? _lastAdvertisedIp;
 
     public string? StartupError { get; private set; }
     public bool IsRunning { get; private set; }
@@ -53,6 +59,37 @@ public class TlsUnlockService : IDisposable
         _mdns = mdns;
 
         _unlockHandler.UnlockRequested += (u, p, d) => UnlockRequested?.Invoke(u, p, d);
+
+        _wsManager.UnlockApprovedWithoutPending += (clientId, reqId) =>
+        {
+            try
+            {
+                Logger.Log($"[TlsUnlockService] Processing fallback unlock approval from client '{clientId}', reqId '{reqId}'");
+                var config = PortalWinConfig.Load();
+                var device = config.FindDeviceByClientId(clientId) ?? _config.FindDeviceByClientId(clientId);
+                if (device == null || !device.IsEnabled)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: device '{clientId}' not found or disabled.");
+                    return;
+                }
+
+                var account = device.Accounts.FirstOrDefault();
+                using var securePassword = account?.GetDecryptedSecurePassword();
+                if (account == null || securePassword == null || securePassword.Length == 0)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: no credentials for device '{device.Name}'.");
+                    return;
+                }
+
+                Logger.Log($"[TlsUnlockService] Fallback unlock APPROVED for user: {account.Username} from {device.Name}");
+                ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
+                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"[TlsUnlockService] Error processing fallback unlock approval for client '{clientId}'", ex);
+            }
+        };
     }
 
     public void Start()
@@ -164,10 +201,12 @@ public class TlsUnlockService : IDisposable
                 StatusChanged?.Invoke();
 
                 var advertiseIp = ResolveLocalIPv4();
+                _lastAdvertisedIp = advertiseIp;
                 Logger.Log($"[TlsUnlockService] Resolved mDNS advertise IP: {advertiseIp ?? "(null)"}");
 
                 if (advertiseIp != null)
                 {
+                    _mdnsStarted = true;
                     _mdns.Start(_config, "locked", advertiseIp);
                     Logger.Log($"[TlsUnlockService] mDNS started with IP {advertiseIp}");
                 }
@@ -176,6 +215,7 @@ public class TlsUnlockService : IDisposable
                     Logger.LogWarning("[TlsUnlockService] No valid IP yet (DHCP not ready?). mDNS deferred.");
                 }
 
+                StartWatchingNetwork();
                 _ = MonitorIpAndReAdvertiseAsync(advertiseIp);
                 return;
             }
@@ -368,6 +408,7 @@ public class TlsUnlockService : IDisposable
 
     public void Dispose()
     {
+        StopWatchingNetwork();
         IsRunning = false;
         _mdns.Dispose();
         if (_app != null)
@@ -408,7 +449,7 @@ public class TlsUnlockService : IDisposable
 
     private void MapEndpoints(WebApplication app)
     {
-        app.MapPost("/api/unlock", async (UnlockRequest request, HttpContext context) =>
+        app.MapPost("/api/unlock", (UnlockRequest request, HttpContext context) =>
         {
             return _unlockHandler.HandleUnlockRequest(request, context);
         });
@@ -861,7 +902,10 @@ public class TlsUnlockService : IDisposable
                 if (currentIp != null)
                 {
                     Logger.Log($"[TlsUnlockService] Valid IP obtained: {currentIp}. Starting mDNS (after {attempt} checks).");
-                    _mdns.Start(_config, "locked", currentIp);
+                    _lastAdvertisedIp = currentIp;
+                    _mdnsStarted = true;
+                    _mdns.Start(_config, _currentState ?? "locked", currentIp, forceRefresh: true);
+                    StatusChanged?.Invoke();
                     return;
                 }
 
@@ -873,5 +917,114 @@ public class TlsUnlockService : IDisposable
         {
             Logger.LogWarning($"[TlsUnlockService] IP monitor error: {ex.Message}");
         }
+    }
+
+    private void StartWatchingNetwork()
+    {
+        if (_isWatchingNetwork) return;
+        try
+        {
+            NetworkChange.NetworkAddressChanged += OnNetworkChanged;
+            NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
+            _isWatchingNetwork = true;
+            Logger.Log("[TlsUnlockService] Subscribed to NetworkAddressChanged and NetworkAvailabilityChanged.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[TlsUnlockService] Failed to subscribe to network change events: {ex.Message}");
+        }
+    }
+
+    private void StopWatchingNetwork()
+    {
+        if (!_isWatchingNetwork) return;
+        try
+        {
+            NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
+            NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
+            _isWatchingNetwork = false;
+
+            var cts = Interlocked.Exchange(ref _networkChangeCts, null);
+            cts?.Cancel();
+            cts?.Dispose();
+            Logger.Log("[TlsUnlockService] Unsubscribed from network change events.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[TlsUnlockService] Error during network watcher cleanup: {ex.Message}");
+        }
+    }
+
+    private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)
+    {
+        Logger.Log($"[TlsUnlockService] NetworkAvailabilityChanged: IsAvailable={e.IsAvailable}");
+        ScheduleNetworkAdaptation("availability changed");
+    }
+
+    private void OnNetworkChanged(object? sender, EventArgs e)
+    {
+        ScheduleNetworkAdaptation("address changed");
+    }
+
+    private void ScheduleNetworkAdaptation(string reason)
+    {
+        if (!IsRunning || _app == null) return;
+
+        var previous = Interlocked.Exchange(ref _networkChangeCts, new CancellationTokenSource());
+        previous?.Cancel();
+        previous?.Dispose();
+
+        var changeCts = _networkChangeCts;
+        if (changeCts == null) return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(NetworkChangeDebounce, changeCts.Token);
+                await HandleNetworkChangeAsync(reason, changeCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // A newer network change superseded this scheduled adaptation
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"[TlsUnlockService] Error handling network change ({reason})", ex);
+            }
+        });
+    }
+
+    private async Task HandleNetworkChangeAsync(string reason, CancellationToken ct)
+    {
+        if (!IsRunning || ct.IsCancellationRequested) return;
+
+        var newIp = ResolveLocalIPv4();
+        Logger.Log($"[TlsUnlockService] Network change ({reason}) processed. Previous IP: '{_lastAdvertisedIp ?? "<none>"}', Detected IP: '{newIp ?? "<none>"}'.");
+
+        if (newIp != null)
+        {
+            if (!string.Equals(_lastAdvertisedIp, newIp, StringComparison.OrdinalIgnoreCase) || !_mdnsStarted)
+            {
+                Logger.Log($"[TlsUnlockService] IP changed or mDNS not started: '{_lastAdvertisedIp}' -> '{newIp}'. Re-advertising mDNS service.");
+                _lastAdvertisedIp = newIp;
+                _mdnsStarted = true;
+                _mdns.Start(_config, _currentState ?? "locked", newIp, forceRefresh: true);
+                StatusChanged?.Invoke();
+            }
+            else
+            {
+                // IP unchanged, but adapter interfaces might have shifted (e.g. Ethernet plug-in / Wi-Fi disconnected)
+                Logger.Log($"[TlsUnlockService] Re-advertising on network adapters for IP '{newIp}'.");
+                _mdns.ReAdvertise(_config, newIp);
+            }
+        }
+        else
+        {
+            Logger.LogWarning("[TlsUnlockService] Network disconnected or no valid IPv4 address assigned yet.");
+            StatusChanged?.Invoke();
+        }
+
+        await Task.CompletedTask;
     }
 }

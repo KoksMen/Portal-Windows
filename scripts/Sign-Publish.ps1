@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory = $false)]
     [string]$CertPassword = "",
 
@@ -29,10 +29,11 @@ if (-not (Test-Path $PublishDir)) {
     throw "Publish directory not found at: $PublishDir. Please run 'dotnet publish src\Portal.Host\Portal.Host.csproj -c Release -p:SkipSigning=true -o publish\' first."
 }
 
-if ([string]::IsNullOrWhiteSpace($CertPassword)) {
-    $sec = Read-Host "Enter certificate password" -AsSecureString
-    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
-    $CertPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+$thumbprintMap = @{
+    "F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B" = @("Portal.Host.exe", "Portal.Host.dll")
+    "110025BF33D9D8EEE632AD6C4F43618A24069B22" = @("Portal.CredentialProvider.dll", "Portal.CredentialProvider.comhost.dll")
+    "7492EFCAEAEFD328F405F05E0A6BCBF12402C7A8" = @("Portal.Common.dll")
+    "6B757026547640EBCDB08ACFD568F2A873D601F0" = @("Portal.Updater.exe", "Portal.Updater.dll")
 }
 
 $certMap = @{
@@ -44,33 +45,88 @@ $certMap = @{
 
 Write-Host "==> Signing publish output in: $PublishDir" -ForegroundColor Cyan
 
-foreach ($pfxName in $certMap.Keys) {
-    $pfxPath = Join-Path $CertDir $pfxName
-    if (-not (Test-Path $pfxPath)) {
-        Write-Warning "Certificate file missing: $pfxPath"
-        continue
+# Check if certificates are available in CurrentUser store
+$storeThumbprints = (Get-ChildItem Cert:\CurrentUser\My).Thumbprint
+$useStore = $true
+foreach ($tp in $thumbprintMap.Keys) {
+    if ($storeThumbprints -notcontains $tp) {
+        $useStore = $false
+        break
+    }
+}
+
+if ($useStore) {
+    Write-Host "--> Using certificates from Cert:\CurrentUser\My" -ForegroundColor Green
+    foreach ($sha1 in $thumbprintMap.Keys) {
+        $targetNames = $thumbprintMap[$sha1]
+        $matchedFiles = Get-ChildItem -Path $PublishDir -Recurse | Where-Object { $targetNames -contains $_.Name }
+
+        foreach ($file in $matchedFiles) {
+            Write-Host "--> Signing $($file.FullName) with SHA1 $sha1..." -ForegroundColor Yellow
+            $signArgs = @(
+                "sign",
+                "/sha1", $sha1,
+                "/tr", $TimestampUrl,
+                "/td", "sha256",
+                "/fd", "sha256",
+                $file.FullName
+            )
+
+            $signed = $false
+            $lastErr = 0
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+                & $SigntoolPath @signArgs
+                if ($LASTEXITCODE -eq 0) {
+                    $signed = $true
+                    break
+                }
+                $lastErr = $LASTEXITCODE
+                Write-Host "--> Timestamp attempt $attempt failed, retrying in 2 seconds..." -ForegroundColor DarkYellow
+                Start-Sleep -Seconds 2
+            }
+            if (-not $signed) {
+                $sig = Get-AuthenticodeSignature $file.FullName
+                if ($sig.Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
+                    Write-Host "--> File $($file.FullName) could not be re-signed (file in use), but already has an existing signature. Continuing." -ForegroundColor DarkYellow
+                    continue
+                }
+                throw "Failed to sign $($file.FullName) with SHA1 $sha1 (exit code $lastErr)"
+            }
+        }
+    }
+} else {
+    if ([string]::IsNullOrWhiteSpace($CertPassword)) {
+        $sec = Read-Host "Enter certificate password" -AsSecureString
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+        $CertPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
     }
 
-    $targetNames = $certMap[$pfxName]
+    foreach ($pfxName in $certMap.Keys) {
+        $pfxPath = Join-Path $CertDir $pfxName
+        if (-not (Test-Path $pfxPath)) {
+            Write-Warning "Certificate file missing: $pfxPath"
+            continue
+        }
 
-    # Find matching files in root and subdirectories of PublishDir
-    $matchedFiles = Get-ChildItem -Path $PublishDir -Recurse | Where-Object { $targetNames -contains $_.Name }
+        $targetNames = $certMap[$pfxName]
+        $matchedFiles = Get-ChildItem -Path $PublishDir -Recurse | Where-Object { $targetNames -contains $_.Name }
 
-    foreach ($file in $matchedFiles) {
-        Write-Host "--> Signing $($file.FullName) with $pfxName..." -ForegroundColor Yellow
-        $signArgs = @(
-            "sign",
-            "/f", $pfxPath,
-            "/p", $CertPassword,
-            "/tr", $TimestampUrl,
-            "/td", "sha256",
-            "/fd", "sha256",
-            $file.FullName
-        )
+        foreach ($file in $matchedFiles) {
+            Write-Host "--> Signing $($file.FullName) with $pfxName..." -ForegroundColor Yellow
+            $signArgs = @(
+                "sign",
+                "/f", $pfxPath,
+                "/p", $CertPassword,
+                "/tr", $TimestampUrl,
+                "/td", "sha256",
+                "/fd", "sha256",
+                $file.FullName
+            )
 
-        & $SigntoolPath @signArgs
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to sign $($file.FullName) with $pfxName (exit code $LASTEXITCODE)"
+            & $SigntoolPath @signArgs
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to sign $($file.FullName) with $pfxName (exit code $LASTEXITCODE)"
+            }
         }
     }
 }

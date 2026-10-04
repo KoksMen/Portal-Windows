@@ -2253,6 +2253,9 @@
                                             Text="Request validity time (minutes)" />
                                         <TextBox
                                             MaxLength="5"
+                                            Width="140"
+                                            HorizontalAlignment="Center"
+                                            TextAlignment="Center"
                                             Text="{Binding SettingsHostRequestTimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" />
                                         <TextBlock
                                             Margin="0,6,0,0"
@@ -2260,6 +2263,12 @@
                                             Foreground="#8fa2cf"
                                             Text="How long Host waits for device approval. Use 0 to wait until manual cancellation."
                                             TextWrapping="Wrap" />
+                                        <CheckBox
+                                            Margin="0,10,0,0"
+                                            IsChecked="{Binding IsLockScreenProgressEnabled}"
+                                            Style="{StaticResource PortalCheckBox}"
+                                            Foreground="#e6edff"
+                                            Content="Show progress bar and countdown on lock screen" />
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -2417,14 +2426,31 @@
                                 Margin="0,0,0,10"
                                 FontSize="12"
                                 Foreground="{StaticResource TextMuted}"
-                                Text="Troubleshooting tools."
+                                Text="Troubleshooting tools and diagnostic archive export."
                                 TextWrapping="Wrap" />
-                            <Button
-                                Background="#1f2d4f"
-                                Command="{Binding OpenLogsWindowCommand}"
-                                Content="View Logs"
-                                Foreground="#e3ecff"
-                                Style="{StaticResource SecondaryButton}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Button
+                                    Grid.Column="0"
+                                    Background="#1f2d4f"
+                                    Command="{Binding OpenLogsWindowCommand}"
+                                    Content="View Logs"
+                                    Foreground="#e3ecff"
+                                    Style="{StaticResource SecondaryButton}" />
+
+                                <Button
+                                    Grid.Column="2"
+                                    Background="#1f3b2f"
+                                    Command="{Binding ExportDiagnosticReportCommand}"
+                                    Content="Export Diagnostic Report"
+                                    Foreground="#e6fff5"
+                                    Style="{StaticResource SecondaryButton}" />
+                            </Grid>
                         </StackPanel>
                     </Expander>
 

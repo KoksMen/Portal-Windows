@@ -82,6 +82,8 @@ public static class Localization
         ["On click + PC startup"] = "По нажатию и при запуске ПК",
         ["On click + any lock screen"] = "По нажатию и на любом экране блокировки",
         ["Request validity time (minutes)"] = "Время ожидания запроса (мин.)",
+        ["How long Host waits for device approval. Use 0 to wait until manual cancellation."] = "Сколько времени Host ожидает подтверждения устройства. Значение 0 — ожидать до ручной отмены.",
+        ["Show progress bar and countdown on lock screen"] = "Показывать прогресс-бар и таймер на экране блокировки",
         ["Block duplicate account pairing on same transport"] = "Запретить повторную привязку аккаунта в том же канале",
         ["Also block pairing this account on another transport"] = "Также запретить привязку этого аккаунта в другом канале",
         ["VPN compatibility mode (ignore VPN/virtual adapters)"] = "Режим совместимости с VPN (игнорировать VPN/виртуальные адаптеры)",
@@ -154,7 +156,17 @@ public static class Localization
         ["Test Connection / Проверить связь"] = "Проверить связь с телефоном",
         ["Please approve the unlock prompt on your phone..."] = "Подтвердите запрос разблокировки на телефоне...",
         ["Waiting for device response..."] = "Ожидание ответа от смартфона...",
-        ["Preparing connection test..."] = "Подготовка теста связи..."
+        ["Preparing connection test..."] = "Подготовка теста связи...",
+        ["Export Diagnostic Report"] = "Экспорт отчёта диагностики",
+        ["Export Diagnostic Report (ZIP)"] = "Собрать диагностический архив (ZIP)",
+        ["Exporting Diagnostic Report"] = "Создание диагностического отчёта",
+        ["Gathering system environment, health metrics, and logs..."] = "Сбор информации о системе, проверках и журналах...",
+        ["Archiving system report and log files..."] = "Архивация отчёта и файлов журналов...",
+        ["Diagnostic Export Failed"] = "Ошибка экспорта диагностики",
+        ["Failed to export diagnostic archive: {0}"] = "Не удалось создать диагностический архив: {0}",
+        ["Diagnostic Archive Ready"] = "Диагностический архив готов",
+        ["Diagnostic report archive successfully created:\n{0}\n\nOpen containing folder in File Explorer?"] = "Диагностический архив успешно создан:\n{0}\n\nОткрыть папку с файлом в Проводнике?",
+        ["Troubleshooting tools and diagnostic archive export."] = "Инструменты устранения неполадок и сбор архива диагностики."
         ,["+ Add Another Device"] = "+ Добавить устройство"
         ,["⚠ Reset & Re-create All"] = "⚠ Сбросить и настроить заново"
         ,["⚠ Setup Required"] = "⚠ Требуется настройка"

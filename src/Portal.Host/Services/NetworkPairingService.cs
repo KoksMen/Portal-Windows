@@ -65,7 +65,7 @@ public class NetworkPairingService
         _app = builder.Build();
 
         // ONLY the Pairing Endpoint
-        _app.MapPost("/api/pair", async (PairRequest request, HttpContext context) =>
+        _app.MapPost("/api/pair", (PairRequest request, HttpContext context) =>
         {
             return HandlePairRequest(request, context, config);
         });
@@ -124,8 +124,9 @@ public class NetworkPairingService
         }
 
         NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
+        NetworkChange.NetworkAvailabilityChanged += OnNetworkAvailabilityChanged;
         _isWatchingNetwork = true;
-        Logger.Log("[NetworkPairingService] Watching for network-address changes while pairing listener is active.");
+        Logger.Log("[NetworkPairingService] Watching for network-address and availability changes while pairing listener is active.");
     }
 
     private void StopWatchingNetwork()
@@ -136,10 +137,16 @@ public class NetworkPairingService
         }
 
         NetworkChange.NetworkAddressChanged -= OnNetworkAddressChanged;
+        NetworkChange.NetworkAvailabilityChanged -= OnNetworkAvailabilityChanged;
         _isWatchingNetwork = false;
         _networkChangeCts?.Cancel();
         _networkChangeCts?.Dispose();
         _networkChangeCts = null;
+    }
+
+    private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs args)
+    {
+        OnNetworkAddressChanged(sender, EventArgs.Empty);
     }
 
     private void OnNetworkAddressChanged(object? sender, EventArgs args)
