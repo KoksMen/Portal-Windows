@@ -48,7 +48,7 @@
         <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(TargetDir)$(TargetName).exe&quot;" Condition="Exists('$(TargetDir)$(TargetName).exe')" />
     </Target>
 
-    <Target Name="CopyCredentialProviderOutput" AfterTargets="Build">
+    <Target Name="CopyCredentialProviderOutput" AfterTargets="Build;Publish">
         <ItemGroup>
             <CredentialProviderOutput Include="..\Portal.CredentialProvider\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
         </ItemGroup>
@@ -56,9 +56,14 @@
             SourceFiles="@(CredentialProviderOutput)"
             DestinationFiles="@(CredentialProviderOutput->'$(TargetDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true" />
+        <Copy
+            SourceFiles="@(CredentialProviderOutput)"
+            DestinationFiles="@(CredentialProviderOutput->'$(PublishDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' != ''" />
     </Target>
 
-    <Target Name="CopyUpdaterOutput" AfterTargets="Build">
+    <Target Name="CopyUpdaterOutput" AfterTargets="Build;Publish">
         <ItemGroup>
             <UpdaterOutput Include="..\Portal.Updater\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
         </ItemGroup>
@@ -66,6 +71,11 @@
             SourceFiles="@(UpdaterOutput)"
             DestinationFiles="@(UpdaterOutput->'$(TargetDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true" />
+        <Copy
+            SourceFiles="@(UpdaterOutput)"
+            DestinationFiles="@(UpdaterOutput->'$(PublishDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' != ''" />
     </Target>
 
 </Project>
