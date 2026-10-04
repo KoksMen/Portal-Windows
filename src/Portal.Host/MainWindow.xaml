@@ -9,19 +9,19 @@
     Height="760"
     MinWidth="480"
     MinHeight="560"
-    AllowsTransparency="True"
+    AllowsTransparency="False"
     Background="Transparent"
     Closing="Window_Closing"
     Icon="/Assets/portal-icon.png"
     PreviewKeyDown="Window_PreviewKeyDown"
-    ResizeMode="CanResizeWithGrip"
+    ResizeMode="CanResize"
     WindowStyle="None"
     WindowStartupLocation="CenterScreen">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome
             CaptionHeight="0"
             CornerRadius="0"
-            GlassFrameThickness="0"
+            GlassFrameThickness="-1"
             ResizeBorderThickness="6"
             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
@@ -576,12 +576,13 @@
             <Setter Property="Foreground" Value="{StaticResource TextMain}" />
             <Setter Property="Background" Value="#222233" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="15,10" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border
                             x:Name="bd"
-                            Padding="15,10"
+                            Padding="{TemplateBinding Padding}"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1"
@@ -917,6 +918,160 @@
             </Setter>
         </Style>
 
+        <Style x:Key="DeviceCardActionButton" TargetType="Button">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.95" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.70" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DeviceCardInfoButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#132238" />
+            <Setter Property="BorderBrush" Value="#2a4269" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1c355c" />
+                    <Setter Property="BorderBrush" Value="#4a78c2" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardTestButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#1a2938" />
+            <Setter Property="BorderBrush" Value="#2d5175" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#253e5e" />
+                    <Setter Property="BorderBrush" Value="#4ba3ff" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardTestButtonWide" TargetType="Button">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Background" Value="#172b42" />
+            <Setter Property="BorderBrush" Value="#29517d" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#223e61" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#4384d1" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.75" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DeviceCardEditButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#182333" />
+            <Setter Property="BorderBrush" Value="#30435f" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#25364e" />
+                    <Setter Property="BorderBrush" Value="#5473a3" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardDeleteButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#2b141c" />
+            <Setter Property="BorderBrush" Value="#632737" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#451925" />
+                    <Setter Property="BorderBrush" Value="#a83b51" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardPowerButton" TargetType="Button">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="9,0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Background" Value="#122a1b" />
+            <Setter Property="BorderBrush" Value="#25663a" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                    <Setter Property="Background" Value="#1e1c24" />
+                    <Setter Property="BorderBrush" Value="#3f3b4d" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="StatusDot" TargetType="Ellipse">
             <Setter Property="Width" Value="10" />
             <Setter Property="Height" Value="10" />
@@ -1172,160 +1327,159 @@
             </Ellipse.Fill>
         </Ellipse>
 
-        <Grid
-            x:Name="ViewDashboard"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
+        <ScrollViewer
+            x:Name="ViewDashboardScroll"
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Disabled"
             Visibility="{Binding ShowDashboard, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel Width="320">
-                <Border
-                    Width="176"
-                    Height="176"
-                    Margin="0,0,0,20"
-                    HorizontalAlignment="Center"
-                    CornerRadius="44"
-                    ClipToBounds="True">
-                    <Image
-                        Width="176"
-                        Height="176"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        RenderOptions.BitmapScalingMode="HighQuality"
-                        SnapsToDevicePixels="True"
-                        Source="/Assets/portal-icon.png"
-                        Stretch="Uniform" />
-                </Border>
-
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    FontSize="32"
-                    FontWeight="Bold"
-                    Foreground="White"
-                    Text="Portal" />
-                <TextBlock
-                    Margin="0,5,0,40"
-                    HorizontalAlignment="Center"
-                    FontSize="14"
-                    Foreground="{StaticResource TextMuted}"
-                    Text="Remote Unlock System" />
-
-                <!--  Setup State  -->
-                <StackPanel x:Name="PanelSetup" Visibility="{Binding ShowSetupPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid
+                x:Name="ViewDashboard"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="0,16,0,16">
+                <StackPanel Width="320">
                     <Border
-                        Margin="0,0,0,15"
-                        Padding="12"
-                        Background="#2A1117"
-                        BorderBrush="#A33A4F"
-                        BorderThickness="1"
-                        CornerRadius="10"
-                        Visibility="{Binding HasSetupIssues, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Foreground="#FF9FB3"
-                                Text="⚠ Setup Required" />
-                            <TextBlock
-                                Margin="0,6,0,0"
-                                FontSize="12"
-                                Foreground="#FFD7DF"
-                                Text="{Binding SetupIssueTitle}"
-                                TextWrapping="Wrap" />
-                            <TextBlock
-                                Margin="0,6,0,0"
-                                FontSize="11"
-                                Foreground="#F6B8C7"
-                                Text="{Binding SetupIssueHint}"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
+                        Width="100"
+                        Height="100"
+                        Margin="0,0,0,12"
+                        HorizontalAlignment="Center"
+                        CornerRadius="25"
+                        ClipToBounds="True">
+                        <Image
+                            Width="100"
+                            Height="100"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            RenderOptions.BitmapScalingMode="HighQuality"
+                            SnapsToDevicePixels="True"
+                            Source="/Assets/portal-icon.png"
+                            Stretch="Uniform" />
                     </Border>
 
-                    <Button
-                        Height="55"
-                        Margin="0,0,0,15"
-                        Command="{Binding StartWizardCommand}"
-                        Content="START / ACTIVATE"
-                        IsEnabled="{Binding CanStartWizardButton}"
-                        Style="{StaticResource PrimaryButton}" />
-                </StackPanel>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="28"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Portal" />
+                    <TextBlock
+                        Margin="0,3,0,16"
+                        HorizontalAlignment="Center"
+                        FontSize="13"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="{Binding RemoteUnlockSystemSubtitleText, FallbackValue='Remote Unlock System'}" />
 
-                <!--  Connected State  -->
-                <StackPanel x:Name="PanelConnected" Visibility="{Binding ShowConnectedPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Button
-                        Height="50"
-                        Margin="0,0,0,10"
-                        Command="{Binding AddDeviceCommand}"
-                        Content="+ Add Another Device"
-                        Style="{StaticResource PrimaryButton}" />
+                    <!--  Setup State  -->
+                    <StackPanel x:Name="PanelSetup" Visibility="{Binding ShowSetupPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Border
+                            Margin="0,0,0,12"
+                            Padding="12,10"
+                            Background="#2A1117"
+                            BorderBrush="#A33A4F"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Visibility="{Binding HasSetupIssues, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="#FF9FB3"
+                                    Text="{Binding SetupRequiredTitleText, FallbackValue='⚠ Setup Required'}" />
+                                <TextBlock
+                                    Margin="0,5,0,0"
+                                    FontSize="12"
+                                    Foreground="#FFD7DF"
+                                    Text="{Binding SetupIssueTitle}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    Margin="0,4,0,0"
+                                    FontSize="11"
+                                    Foreground="#F6B8C7"
+                                    Text="{Binding SetupIssueHint}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Button
+                            Height="50"
+                            Margin="0,0,0,12"
+                            Command="{Binding StartWizardCommand}"
+                            Content="{Binding StartActivateButtonText, FallbackValue='START / ACTIVATE'}"
+                            IsEnabled="{Binding CanStartWizardButton}"
+                            Style="{StaticResource PrimaryButton}" />
+                    </StackPanel>
+
+                    <!--  Connected State  -->
+                    <StackPanel x:Name="PanelConnected" Visibility="{Binding ShowConnectedPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Button
+                            Height="46"
+                            Margin="0,0,0,10"
+                            Command="{Binding AddDeviceCommand}"
+                            Content="{Binding AddDeviceButtonText, FallbackValue='+ Add Another Device'}"
+                            Style="{StaticResource PrimaryButton}" />
+
+                        <Button
+                            Height="38"
+                            Margin="0,0,0,12"
+                            Background="#221111"
+                            Command="{Binding ResetAllCommand}"
+                            Content="{Binding ResetAllButtonText, FallbackValue='⚠ Reset &amp; Re-create All'}"
+                            Foreground="#ff6666"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        x:Name="LblMainStatus"
+                        HorizontalAlignment="Center"
+                        FontSize="12"
+                        Text="{Binding MainStatusText}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceActive}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasSetupIssues}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
                     <Button
-                        Height="40"
-                        Margin="0,0,0,15"
-                        Background="#221111"
-                        Command="{Binding ResetAllCommand}"
-                        Content="⚠ Reset &amp; Re-create All"
-                        Foreground="#ff6666"
+                        Height="38"
+                        Margin="0,16,0,0"
+                        Background="#172743"
+                        BorderBrush="#35598E"
+                        Command="{Binding ShowActivityCommand}"
+                        Content="{Binding RecentActivityButtonText, FallbackValue='✨  Recent Activity'}"
+                        Foreground="#DCE9FF"
+                        Style="{StaticResource SecondaryButton}" />
+
+                    <Button
+                        Margin="0,10,0,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ShowSettingsCommand}"
+                        Content="{Binding AdvancedSettingsButtonText, FallbackValue='⚙  Advanced Settings'}"
+                        FontSize="12"
+                        Foreground="#666688"
+                        Style="{StaticResource SecondaryButton}" />
+
+                    <Button
+                        Margin="0,8,0,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ShowAboutCommand}"
+                        Content="{Binding AboutPortalButtonText, FallbackValue='About Portal'}"
+                        FontSize="12"
+                        Foreground="#7b88b6"
                         Style="{StaticResource SecondaryButton}" />
                 </StackPanel>
-
-                <TextBlock
-                    x:Name="LblMainStatus"
-                    HorizontalAlignment="Center"
-                    FontSize="12"
-                    Text="{Binding MainStatusText}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsServiceActive}" Value="True">
-                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-
-                <Button
-                    Height="40"
-                    Margin="0,24,0,0"
-                    Background="#172743"
-                    BorderBrush="#35598E"
-                    Command="{Binding ShowActivityCommand}"
-                    Content="✨  Recent Activity"
-                    Foreground="#DCE9FF"
-                    Style="{StaticResource SecondaryButton}" />
-
-                <Button
-                    Margin="0,12,0,0"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Command="{Binding ShowSettingsCommand}"
-                    Content="⚙  Advanced Settings"
-                    FontSize="12"
-                    Foreground="#666688"
-                    Style="{StaticResource SecondaryButton}" />
-
-                <Button
-                    Margin="0,10,0,0"
-                    Background="#18311f"
-                    BorderBrush="#2f5b3a"
-                    Command="{Binding OpenExternalLinkCommand}"
-                    CommandParameter="{Binding AboutMobileClientUrl}"
-                    Content="Download Mobile Client"
-                    Foreground="#d8ffe1"
-                    Style="{StaticResource SecondaryButton}" />
-
-                <Button
-                    Margin="0,10,0,0"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Command="{Binding ShowAboutCommand}"
-                    Content="About Portal"
-                    FontSize="12"
-                    Foreground="#7b88b6"
-                    Style="{StaticResource SecondaryButton}" />
-            </StackPanel>
-        </Grid>
+            </Grid>
+        </ScrollViewer>
 
         <Grid
             x:Name="ViewSettings"
@@ -1397,135 +1551,307 @@
                                 Foreground="{StaticResource TextMuted}"
                                 Text="{Binding ClientCountText}" />
 
-                            <ListView
+                            <ItemsControl
                                 x:Name="ListClients"
-                                MaxHeight="200"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Foreground="White"
-                                ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                ScrollViewer.CanContentScroll="False"
-                                VirtualizingPanel.IsVirtualizing="False"
+                                PreviewMouseWheel="ListClients_PreviewMouseWheel"
                                 ItemsSource="{Binding Devices}">
-                                <ListView.ItemContainerStyle>
-                                    <Style TargetType="ListViewItem">
-                                        <Setter Property="Background" Value="Transparent" />
-                                        <Setter Property="BorderThickness" Value="0" />
-                                        <Setter Property="Padding" Value="0" />
-                                        <Setter Property="Focusable" Value="False" />
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ListViewItem">
-                                                    <ContentPresenter />
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </ListView.ItemContainerStyle>
-                                <ListView.ItemTemplate>
+                                <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border
-                                            Margin="0,6,0,0"
-                                            Padding="12,10"
-                                            Background="#101626"
-                                            BorderBrush="#28334d"
+                                            Margin="0,0,0,10"
+                                            Padding="14,12"
+                                            Background="#101726"
+                                            BorderBrush="#253452"
                                             BorderThickness="1"
                                             CornerRadius="10">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Opacity" Value="1.0" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.72" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="Auto" />
-                                                </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
 
-                                                <StackPanel>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock
-                                                            Margin="0,0,8,0"
-                                                            VerticalAlignment="Center"
-                                                            FontSize="15"
-                                                            Text="🖥️" />
+                                                <!-- Row 0: Header (Device info on left, Power switch on right) -->
+                                                <Grid Grid.Row="0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Left: Device Icon, Name, Transport Badge -->
+                                                    <StackPanel
+                                                        Grid.Column="0"
+                                                        Orientation="Horizontal"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,8,0">
+                                                        <Border
+                                                            Width="32"
+                                                            Height="32"
+                                                            CornerRadius="8"
+                                                            Background="#18243c"
+                                                            BorderBrush="#2c3e66"
+                                                            BorderThickness="1"
+                                                            Margin="0,0,9,0"
+                                                            VerticalAlignment="Center">
+                                                            <Path
+                                                                Width="14"
+                                                                Height="16"
+                                                                Data="M5 2C3.9 2 3 2.9 3 4v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2H5zm0 3h10v12H5V5zm4 13.5a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"
+                                                                Fill="#7aa2f7"
+                                                                Stretch="Uniform"
+                                                                HorizontalAlignment="Center"
+                                                                VerticalAlignment="Center" />
+                                                        </Border>
                                                         <TextBlock
                                                             VerticalAlignment="Center"
                                                             FontSize="14"
-                                                            FontWeight="Bold"
+                                                            FontWeight="SemiBold"
                                                             Foreground="White"
+                                                            TextTrimming="CharacterEllipsis"
+                                                            MaxWidth="200"
+                                                            ToolTip="{Binding Name}"
                                                             Text="{Binding Name}" />
                                                         <Border
                                                             Margin="8,0,0,0"
-                                                            Padding="6,1"
-                                                            Background="#1b2f4f"
-                                                            CornerRadius="6">
-                                                            <TextBlock
-                                                                FontSize="10"
-                                                                Foreground="#9ec1ff"
-                                                                Text="{Binding TransportType}" />
+                                                            Padding="7,3"
+                                                            Background="#162544"
+                                                            BorderBrush="#29406e"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            VerticalAlignment="Center">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <Path
+                                                                    Width="11"
+                                                                    Height="11"
+                                                                    Margin="0,0,5,0"
+                                                                    Data="{Binding TransportIconData}"
+                                                                    Fill="#8cb8ff"
+                                                                    Stretch="Uniform"
+                                                                    VerticalAlignment="Center" />
+                                                                <TextBlock
+                                                                    FontSize="10"
+                                                                    FontWeight="Medium"
+                                                                    Foreground="#8cb8ff"
+                                                                    VerticalAlignment="Center"
+                                                                    Text="{Binding TransportBadgeText}" />
+                                                            </StackPanel>
                                                         </Border>
                                                     </StackPanel>
-                                                    <TextBlock
-                                                        Margin="23,3,0,0"
-                                                        FontSize="12"
-                                                        Foreground="#c0caea"
-                                                        Text="{Binding Accounts[0].Username, FallbackValue=No account}" />
-                                                    <TextBlock
-                                                        Margin="23,5,0,0"
-                                                        FontSize="10"
-                                                        Foreground="#8f9bbf"
-                                                        Text="{Binding PairedAt, StringFormat='Paired: {0:yyyy-MM-dd HH:mm}'}" />
-                                                    <TextBlock
-                                                        Margin="23,2,0,0"
-                                                        FontSize="9"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        Foreground="#6f7ca1"
-                                                        Text="{Binding ClientId}" />
-                                                </StackPanel>
 
-                                                <StackPanel
-                                                    Grid.Column="1"
-                                                    VerticalAlignment="Center"
-                                                    Orientation="Horizontal">
-                                                    <CheckBox
-                                                        Margin="0,0,8,0"
+                                                    <!-- Right: Power Toggle Switch Button -->
+                                                    <Button
+                                                        Grid.Column="1"
                                                         VerticalAlignment="Center"
+                                                        HorizontalAlignment="Right"
                                                         Command="{Binding DataContext.ToggleDeviceEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
-                                                        Content="Enabled"
-                                                        FontSize="11"
-                                                        Foreground="#cfe0ff"
-                                                        IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                        Style="{StaticResource PortalCheckBox}" />
+                                                        Style="{StaticResource DeviceCardPowerButton}"
+                                                        ToolTip="{Binding StateToolTip}">
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Path
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,6,0"
+                                                                Data="M11 2h2v10h-2zm-3.5 3.5l1.42 1.42A7.003 7.003 0 0 0 12 20a7 7 0 0 0 5.08-13.08l1.42-1.42A9 9 0 1 1 7.5 5.5z"
+                                                                Stretch="Uniform">
+                                                                <Path.Style>
+                                                                    <Style TargetType="Path">
+                                                                        <Setter Property="Fill" Value="#4cd964" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                                <Setter Property="Fill" Value="#8c8c9e" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Path.Style>
+                                                            </Path>
+                                                            <TextBlock
+                                                                VerticalAlignment="Center"
+                                                                FontSize="11"
+                                                                FontWeight="SemiBold"
+                                                                Text="{Binding StateText}">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground" Value="#4cd964" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                                <Setter Property="Foreground" Value="#8c8c9e" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </Button>
+                                                </Grid>
+
+                                                <!-- Row 1: Subtle Divider -->
+                                                <Border Grid.Row="1" Height="1" Background="#1c2842" Margin="0,10,0,10" />
+
+                                                <!-- Row 2: Metadata Details Section (Full Width, never clipped!) -->
+                                                <Border
+                                                    Grid.Row="2"
+                                                    Padding="12,10"
+                                                    Background="#0c121e"
+                                                    BorderBrush="#1b2944"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8">
+                                                    <Grid>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- Account -->
+                                                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,6">
+                                                            <Path
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,5,0"
+                                                                VerticalAlignment="Center"
+                                                                Data="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                                                                Fill="#8a99be"
+                                                                Stretch="Uniform" />
+                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Margin="0,0,6,0" Text="{Binding AccountLabel, FallbackValue='Account:'}" VerticalAlignment="Center" />
+                                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#d4e0f7" TextTrimming="CharacterEllipsis" Text="{Binding AccountValue, FallbackValue='—'}" VerticalAlignment="Center" />
+                                                        </StackPanel>
+
+                                                        <!-- Paired Date -->
+                                                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,6">
+                                                            <Path
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,5,0"
+                                                                VerticalAlignment="Center"
+                                                                Data="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"
+                                                                Fill="#8a99be"
+                                                                Stretch="Uniform" />
+                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Margin="0,0,6,0" Text="{Binding PairedLabel, FallbackValue='Paired:'}" VerticalAlignment="Center" />
+                                                            <TextBlock FontSize="11" Foreground="#c0caea" Text="{Binding PairedValue}" VerticalAlignment="Center" />
+                                                        </StackPanel>
+
+                                                        <!-- Client ID (Full Width) -->
+                                                        <DockPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Center">
+                                                            <Path
+                                                                DockPanel.Dock="Left"
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,5,0"
+                                                                VerticalAlignment="Center"
+                                                                Data="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+                                                                Fill="#66779d"
+                                                                Stretch="Uniform" />
+                                                            <TextBlock DockPanel.Dock="Left" Text="ID:" FontSize="10" Foreground="#6f7ca1" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                            <TextBlock
+                                                                Text="{Binding ClientId}"
+                                                                FontSize="10"
+                                                                FontFamily="Consolas, monospace"
+                                                                Foreground="#7a8bb8"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                ToolTip="{Binding ClientId}"
+                                                                VerticalAlignment="Center" />
+                                                        </DockPanel>
+                                                    </Grid>
+                                                </Border>
+
+                                                <!-- Row 3: Action Toolbar -->
+                                                <Grid Grid.Row="3" Margin="0,4,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Left: Prominent Test Connection Button -->
                                                     <Button
-                                                        Margin="0,0,6,0"
-                                                        Command="{Binding DataContext.ShowDeviceCertificateInfoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        Grid.Column="0"
+                                                        HorizontalAlignment="Left"
+                                                        Command="{Binding DataContext.TestDeviceUnlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
-                                                        Content="i"
-                                                        Style="{StaticResource InfoIconButton}"
-                                                        ToolTip="Certificate information" />
-                                                    <Button
-                                                        Margin="0,0,6,0"
-                                                        Background="#1b2842"
-                                                        BorderBrush="#405681"
-                                                        Command="{Binding DataContext.EditDeviceAccountCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding ClientId}"
-                                                        Content="✏️"
-                                                        FontSize="14"
-                                                        Style="{StaticResource TileIconButton}"
-                                                        ToolTip="Edit Account" />
-                                                    <Button
-                                                        Background="#2b1620"
-                                                        BorderBrush="#6a2f48"
-                                                        Command="{Binding DataContext.RemoveDeviceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding ClientId}"
-                                                        Content="❌"
-                                                        FontSize="12"
-                                                        Foreground="#ff5555"
-                                                        Style="{StaticResource TileIconButton}"
-                                                        ToolTip="Remove Device / Удалить" />
-                                                </StackPanel>
+                                                        Style="{StaticResource DeviceCardTestButtonWide}"
+                                                        ToolTip="{Binding TestToolTip}">
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Path
+                                                                Width="11"
+                                                                Height="14"
+                                                                Margin="0,0,7,0"
+                                                                Data="M11 2 L4 13 L9 13 L7 22 L16 10 L11 10 Z"
+                                                                Fill="#ffcc00"
+                                                                Stretch="Uniform"
+                                                                VerticalAlignment="Center" />
+                                                            <TextBlock
+                                                                Text="{Binding TestButtonText}"
+                                                                FontSize="11"
+                                                                FontWeight="SemiBold"
+                                                                Foreground="#ffe680"
+                                                                VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                     </Button>
+
+                                                    <!-- Right: Secondary Utility Action Buttons -->
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button
+                                                            Margin="0,0,6,0"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding DataContext.ShowDeviceCertificateInfoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{StaticResource DeviceCardInfoButton}"
+                                                            ToolTip="{Binding InfoToolTip}">
+                                                            <Path
+                                                                Width="14"
+                                                                Height="14"
+                                                                Data="M11 7h2v2h-2zm0 4h2v6h-2z M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                                                                Fill="#8cb8ff"
+                                                                Stretch="Uniform" />
+                                                        </Button>
+                                                        <Button
+                                                            Margin="0,0,6,0"
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding DataContext.EditDeviceAccountCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding ClientId}"
+                                                            Style="{StaticResource DeviceCardEditButton}"
+                                                            ToolTip="{Binding EditToolTip}">
+                                                            <Path
+                                                                Width="13"
+                                                                Height="13"
+                                                                Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                                                                Fill="#d4e0f7"
+                                                                Stretch="Uniform" />
+                                                        </Button>
+                                                        <Button
+                                                            VerticalAlignment="Center"
+                                                            Command="{Binding DataContext.RemoveDeviceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            CommandParameter="{Binding ClientId}"
+                                                            Style="{StaticResource DeviceCardDeleteButton}"
+                                                            ToolTip="{Binding DeleteToolTip}">
+                                                            <Path
+                                                                Width="13"
+                                                                Height="13"
+                                                                Data="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
+                                                                Fill="#ff6666"
+                                                                Stretch="Uniform" />
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
                         </StackPanel>
                     </Expander>
@@ -1535,216 +1861,286 @@
                         Header="System Health &amp; Maintenance"
                         Style="{StaticResource SettingsSectionExpander}">
                         <StackPanel>
-                            <!--  Provider  -->
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="Credential Provider" />
-                                </StackPanel>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="0,0,15,0"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
-                                                    <Setter Property="Text" Value="Installed" />
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                    <Button
-                                        Margin="0,0,5,0"
-                                        Padding="8,4"
-                                        Command="{Binding InstallProviderCommand}"
-                                        Content="{Binding ProviderInstallButtonText}"
-                                        FontSize="10"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                    <Button
-                                        Padding="8,4"
-                                        Command="{Binding UninstallProviderCommand}"
-                                        Content="Uninstall"
-                                        FontSize="10"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                </StackPanel>
-                            </Grid>
+                            <!--  1. Provider  -->
+                            <Border
+                                Margin="0,0,0,8"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="Credential Provider" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding ProviderStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Padding="8,4"
+                                            Command="{Binding InstallProviderCommand}"
+                                            Content="{Binding ProviderInstallButtonText}"
+                                            FontSize="11"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Padding="8,4"
+                                            Command="{Binding UninstallProviderCommand}"
+                                            Content="Uninstall"
+                                            FontSize="11"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                            <!--  Firewall  -->
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="Firewall Rule" />
-                                </StackPanel>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="0,0,15,0"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
-                                                    <Setter Property="Text" Value="Active" />
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                    <Button
-                                        Margin="0,0,5,0"
-                                        Padding="8,4"
-                                        Command="{Binding FixFirewallCommand}"
-                                        Content="Fix / Update"
-                                        FontSize="10"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                    <Button
-                                        Padding="8,4"
-                                        Background="#331111"
-                                        Command="{Binding RemoveFirewallRulesCommand}"
-                                        Content="Delete Rules"
-                                        FontSize="10"
-                                        Foreground="#ffb0b0"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                </StackPanel>
-                            </Grid>
+                            <!--  2. Firewall  -->
+                            <Border
+                                Margin="0,0,0,8"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="Firewall Rule" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding FirewallStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Padding="8,4"
+                                            Command="{Binding FixFirewallCommand}"
+                                            Content="Fix / Update"
+                                            FontSize="11"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Padding="8,4"
+                                            Background="#331111"
+                                            Command="{Binding RemoveFirewallRulesCommand}"
+                                            Content="Delete Rules"
+                                            FontSize="11"
+                                            Foreground="#ffb0b0"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                            <!--  Url / Cert  -->
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCertOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="SSL Certificate" />
-                                </StackPanel>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="0,0,15,0"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsCertOk}" Value="True">
-                                                    <Setter Property="Text" Value="Reserved" />
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                    <Button
-                                        Margin="0,0,6,0"
-                                        Command="{Binding ShowHostCertificateInfoCommand}"
-                                        Content="i"
-                                        Style="{StaticResource InfoIconButton}"
-                                        ToolTip="Host certificate information" />
-                                    <Button
-                                        Padding="8,4"
-                                        Background="#5a1f28"
-                                        Command="{Binding FixCertCommand}"
-                                        Content="Regenerate"
-                                        FontSize="10"
-                                        Foreground="#ffe6ea"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                </StackPanel>
-                            </Grid>
+                            <!--  3. SSL Certificate  -->
+                            <Border
+                                Margin="0,0,0,8"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="SSL Certificate" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding CertStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Command="{Binding ShowHostCertificateInfoCommand}"
+                                            Content="i"
+                                            Style="{StaticResource InfoIconButton}"
+                                            ToolTip="Host certificate information" />
+                                        <Button
+                                            Padding="8,4"
+                                            Background="#5a1f28"
+                                            Command="{Binding FixCertCommand}"
+                                            Content="Regenerate"
+                                            FontSize="11"
+                                            Foreground="#ffe6ea"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                            <Grid Margin="0,0,0,12">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="DLL Files" />
-                                </StackPanel>
-                                <TextBlock HorizontalAlignment="Right">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
-                                                    <Setter Property="Text" Value="OK" />
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Grid>
+                            <!--  4. DLL Files  -->
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="DLL Files" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding FilesStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
                             <Button
                                 Margin="0,10,0,0"
@@ -1919,6 +2315,60 @@
                                 </StackPanel>
                             </Border>
 
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander
+                        Header="Appearance &amp; Styling"
+                        Style="{StaticResource SettingsSectionExpander}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,8"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Window Backdrop Material" />
+
+                            <RadioButton
+                                Content="Mica (Windows 11)"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropMica}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Subtle, dynamic blur sampled from desktop wallpaper." />
+
+                            <RadioButton
+                                Content="Acrylic"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropAcrylic}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Translucent frosted glass blur material." />
+
+                            <RadioButton
+                                Content="Mica Alt (Tabbed)"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropMicaAlt}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Deeper, high-contrast desktop wallpaper blur." />
+
+                            <RadioButton
+                                Content="Solid Dark (Classic)"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropNone}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Opaque dark background. Automatic fallback on Windows 10." />
+
+                            <Border
+                                Margin="0,8,0,0"
+                                Padding="10"
+                                Background="#101728"
+                                BorderBrush="#2c3f66"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <TextBlock
+                                    FontSize="11"
+                                    Foreground="#8fa2cf"
+                                    Text="{Binding BackdropStatusText}"
+                                    TextWrapping="Wrap" />
+                            </Border>
                         </StackPanel>
                     </Expander>
 

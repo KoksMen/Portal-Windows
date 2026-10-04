@@ -62,6 +62,7 @@ public partial class MainViewModel : ObservableObject
     private readonly FaqContentService _faqContentService;
     private readonly UpdateService _updateService;
     private readonly EncryptedBackupService _encryptedBackupService;
+    private readonly UnlockTestService _unlockTestService;
 
     private BluetoothPairingService? _btPairing;
     private PortalWinConfig _config;
@@ -119,6 +120,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isFirewallOk;
     [ObservableProperty] private bool _isCertOk;
 
+    [ObservableProperty] private string _providerStatusText = Services.LocalizationService.T("Missing");
+    [ObservableProperty] private string _firewallStatusText = Services.LocalizationService.T("Missing");
+    [ObservableProperty] private string _certStatusText = Services.LocalizationService.T("Missing");
+    [ObservableProperty] private string _filesStatusText = Services.LocalizationService.T("Missing");
+
     [ObservableProperty] private string _clientCountText = Services.LocalizationService.TF("{0} trusted devices", 0);
     [ObservableProperty] private string _ipAddressText = Services.LocalizationService.T("IP: Unknown");
 
@@ -145,8 +151,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
-    public string AppVersion => "v1.5.3";
-    public string AppReleaseVersion => "1.5.3-Herta";
+    public string AppVersion => "v1.5.4";
+    public string AppReleaseVersion => "1.5.4-Herta";
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.
@@ -244,6 +250,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _showUpdateToast;
     [ObservableProperty] private string _updateToastTitle = Services.LocalizationService.T("Update available");
     [ObservableProperty] private string _updateToastMessage = "";
+
+    [ObservableProperty] private string _startActivateButtonText = Services.LocalizationService.T("START / ACTIVATE");
+    [ObservableProperty] private string _addDeviceButtonText = Services.LocalizationService.T("+ Add Another Device");
+    [ObservableProperty] private string _resetAllButtonText = Services.LocalizationService.T("⚠ Reset & Re-create All");
+    [ObservableProperty] private string _recentActivityButtonText = Services.LocalizationService.T("✨  Recent Activity");
+    [ObservableProperty] private string _advancedSettingsButtonText = Services.LocalizationService.T("⚙  Advanced Settings");
+    [ObservableProperty] private string _aboutPortalButtonText = Services.LocalizationService.T("About Portal");
+    [ObservableProperty] private string _setupRequiredTitleText = Services.LocalizationService.T("⚠ Setup Required");
+    [ObservableProperty] private string _remoteUnlockSystemSubtitleText = Services.LocalizationService.T("Remote Unlock System");
 
     private AppUpdateManifest? _availableUpdateManifest;
     private readonly System.Windows.Threading.DispatcherTimer _updateToastTimer;
@@ -410,6 +425,56 @@ public partial class MainViewModel : ObservableObject
         _ = ConfirmDisableDuplicateProtectionAsync();
     }
 
+    public PortalWinConfig Config => _config;
+
+    // Window Backdrop (Fluent UI Mica / Acrylic)
+    [ObservableProperty] private bool _isBackdropMica = true;
+    [ObservableProperty] private bool _isBackdropAcrylic;
+    [ObservableProperty] private bool _isBackdropMicaAlt;
+    [ObservableProperty] private bool _isBackdropNone;
+    [ObservableProperty] private bool _isWindows11BackdropSupported = Helpers.DwmBackdropHelper.IsWindows11OrGreater;
+    [ObservableProperty] private string _backdropStatusText = string.Empty;
+
+    public event Action<Helpers.BackdropType>? WindowBackdropChanged;
+
+    private bool _suppressBackdropChangeNotification;
+
+    partial void OnIsBackdropMicaChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.Mica);
+    }
+
+    partial void OnIsBackdropAcrylicChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.Acrylic);
+    }
+
+    partial void OnIsBackdropMicaAltChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.MicaAlt);
+    }
+
+    partial void OnIsBackdropNoneChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.None);
+    }
+
+    private void ApplyBackdropSelection(Helpers.BackdropType type)
+    {
+        if (_suppressBackdropChangeNotification)
+        {
+            return;
+        }
+
+        if (_config != null)
+        {
+            _config.WindowBackdrop = type.ToString();
+            _config.Save();
+        }
+
+        WindowBackdropChanged?.Invoke(type);
+    }
+
     // Loading State for System Health & Maintenance actions
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotWorkingHealth))]
@@ -540,7 +605,8 @@ public partial class MainViewModel : ObservableObject
         IDialogService dialogService,
         FaqContentService faqContentService,
         UpdateService updateService,
-        EncryptedBackupService encryptedBackupService)
+        EncryptedBackupService encryptedBackupService,
+        UnlockTestService unlockTestService)
     {
         _firewall = firewall;
         _providerSetup = providerSetup;
@@ -555,6 +621,7 @@ public partial class MainViewModel : ObservableObject
         _faqContentService = faqContentService;
         _updateService = updateService;
         _encryptedBackupService = encryptedBackupService;
+        _unlockTestService = unlockTestService;
         _updateToastTimer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(10)
@@ -648,6 +715,18 @@ public partial class MainViewModel : ObservableObject
         IsDuplicateAccountProtectionEnabled = _config.EnforceUniqueAccountPerTransport;
         IsCrossTransportDuplicateProtectionEnabled = _config.EnforceUniqueAccountAcrossTransports && IsDuplicateAccountProtectionEnabled;
         _suppressDuplicateProtectionPrompt = false;
+
+        _suppressBackdropChangeNotification = true;
+        var backdrop = _config.WindowBackdrop?.Trim() ?? "Mica";
+        IsBackdropMica = string.Equals(backdrop, "Mica", StringComparison.OrdinalIgnoreCase);
+        IsBackdropAcrylic = string.Equals(backdrop, "Acrylic", StringComparison.OrdinalIgnoreCase);
+        IsBackdropMicaAlt = string.Equals(backdrop, "MicaAlt", StringComparison.OrdinalIgnoreCase);
+        IsBackdropNone = string.Equals(backdrop, "None", StringComparison.OrdinalIgnoreCase) || (!IsBackdropMica && !IsBackdropAcrylic && !IsBackdropMicaAlt);
+        _suppressBackdropChangeNotification = false;
+
+        BackdropStatusText = Helpers.DwmBackdropHelper.IsWindows11OrGreater
+            ? Services.LocalizationService.T("Windows 11 detected: Native Fluent Mica / Acrylic backdrops active")
+            : Services.LocalizationService.T("Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)");
 
         RefreshDevicesList();
     }
@@ -829,22 +908,35 @@ public partial class MainViewModel : ObservableObject
                 IsServiceActive = providerHealth.IsHealthy;
                 ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install";
 
+                ProviderStatusText = IsRegisteredOk
+                    ? Services.LocalizationService.T("Installed")
+                    : Services.LocalizationService.T("Missing");
+                FirewallStatusText = IsFirewallOk
+                    ? Services.LocalizationService.T("Active")
+                    : Services.LocalizationService.T("Missing");
+                CertStatusText = IsCertOk
+                    ? Services.LocalizationService.T("Reserved")
+                    : Services.LocalizationService.T("Missing");
+                FilesStatusText = IsFilesOk
+                    ? Services.LocalizationService.T("OK")
+                    : Services.LocalizationService.T("Missing");
+
                 MainStatusText = IsServiceActive
-                    ? IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready"
-                    : $"⚠ {(providerHealth.FailureReasons.FirstOrDefault() ?? "Service Not Installed")}";
+                    ? (IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready")
+                    : (IsRussianUi ? "⚠ Требуется настройка службы" : "⚠ Service Setup Required");
 
                 var setupIssues = new List<string>();
-                if (!providerHealth.IsHealthy) setupIssues.Add("Credential Provider is not installed or is damaged.");
-                if (!isFirewallOk) setupIssues.Add("Firewall rules are missing.");
-                if (!isCertOk) setupIssues.Add("Host SSL certificate is missing.");
+                if (!providerHealth.IsHealthy) setupIssues.Add(Services.LocalizationService.T("Credential Provider is not installed or is damaged."));
+                if (!isFirewallOk) setupIssues.Add(Services.LocalizationService.T("Firewall rules are missing."));
+                if (!isCertOk) setupIssues.Add(Services.LocalizationService.T("Host SSL certificate is missing."));
 
                 HasSetupIssues = setupIssues.Count > 0;
                 SetupIssueTitle = setupIssues.Count > 0
                     ? setupIssues[0]
-                    : "All core components are configured.";
+                    : Services.LocalizationService.T("All core components are configured.");
                 SetupIssueHint = setupIssues.Count > 0
-                    ? "Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate."
-                    : "No setup actions required.";
+                    ? Services.LocalizationService.T("Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate.")
+                    : Services.LocalizationService.T("No setup actions required.");
 
                 ClientCountText = Services.LocalizationService.TF("{0} trusted devices", _config.Devices.Count);
                 RefreshDevicesList();
@@ -943,6 +1035,18 @@ public partial class MainViewModel : ObservableObject
     {
         // Dashboard / status area (async: MainStatusText, SetupIssue*, ClientCountText, IpAddressText, ProviderInstallButtonText).
         _ = RefreshStatusAsync();
+        ProviderStatusText = IsRegisteredOk
+            ? Services.LocalizationService.T("Installed")
+            : Services.LocalizationService.T("Missing");
+        FirewallStatusText = IsFirewallOk
+            ? Services.LocalizationService.T("Active")
+            : Services.LocalizationService.T("Missing");
+        CertStatusText = IsCertOk
+            ? Services.LocalizationService.T("Reserved")
+            : Services.LocalizationService.T("Missing");
+        FilesStatusText = IsFilesOk
+            ? Services.LocalizationService.T("OK")
+            : Services.LocalizationService.T("Missing");
         if (!string.IsNullOrEmpty(_pairingStatusRaw))
             WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
         if (StepPairingVis)
@@ -983,6 +1087,10 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedFaqTagsText));
         OnPropertyChanged(nameof(SelectedFaqUpdatedAtText));
         OnPropertyChanged(nameof(UpdateProgressHintText));
+
+        BackdropStatusText = Helpers.DwmBackdropHelper.IsWindows11OrGreater
+            ? Services.LocalizationService.T("Windows 11 detected: Native Fluent Mica / Acrylic backdrops active")
+            : Services.LocalizationService.T("Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)");
 
         // Certificate info dialog (if open).
         if (ShowCertificateInfoDialog)
@@ -1414,6 +1522,60 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task TestDeviceUnlockAsync(DeviceModel? device)
+    {
+        if (device == null)
+        {
+            return;
+        }
+
+        var deviceName = device.Name;
+        UnlockTestResult? testResult = null;
+
+        BusyOperationHintText = Services.LocalizationService.T("Make sure your phone is connected to the same Wi-Fi network or Bluetooth is enabled.");
+        var outcome = await RunBusyOperationAsync(
+            Services.LocalizationService.T("Testing device connection"),
+            string.Format(Services.LocalizationService.T("Waiting for response from '{0}'... Please confirm on your phone."), deviceName),
+            async cancellationToken =>
+            {
+                testResult = await _unlockTestService.TestDeviceAsync(
+                    device,
+                    status =>
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            BusyOperationStatus = status;
+                        });
+                    },
+                    cancellationToken);
+            },
+            keepOverlayForResult: true);
+
+        if (outcome == BusyOperationOutcome.Completed && testResult != null)
+        {
+            if (testResult.IsSuccess)
+            {
+                await ShowBusyResultAsync(
+                    Services.LocalizationService.T("Connection test passed!"),
+                    string.Format(Services.LocalizationService.T("Successfully verified connection with '{0}'!\nTransport: {1}\nResponse time: {2} ms"),
+                        deviceName, testResult.Transport ?? "Wi-Fi", testResult.LatencyMs));
+            }
+            else
+            {
+                await ShowBusyResultAsync(
+                    Services.LocalizationService.T("Connection test failed"),
+                    testResult.Message);
+            }
+        }
+        else if (outcome == BusyOperationOutcome.Cancelled)
+        {
+            await ShowBusyResultAsync(
+                Services.LocalizationService.T("Test cancelled"),
+                Services.LocalizationService.T("Device connection test was cancelled."));
+        }
+    }
+
+    [RelayCommand]
     private void ToggleDeviceEnabled(DeviceModel? device)
     {
         if (device == null)
@@ -1427,7 +1589,8 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        configDevice.IsEnabled = device.IsEnabled;
+        configDevice.IsEnabled = !configDevice.IsEnabled;
+        device.IsEnabled = configDevice.IsEnabled;
         _config.Save();
         RefreshDevicesList();
         _ = RefreshStatusAsync();
@@ -1516,6 +1679,13 @@ public partial class MainViewModel : ObservableObject
                         _config.VpnCompatibilityModeEnabled = IsVpnCompatibilityModeEnabled;
                         _config.EnforceUniqueAccountPerTransport = IsDuplicateAccountProtectionEnabled;
                         _config.EnforceUniqueAccountAcrossTransports = IsDuplicateAccountProtectionEnabled && IsCrossTransportDuplicateProtectionEnabled;
+
+                        var preferredBackdrop = Helpers.BackdropType.Mica;
+                        if (IsBackdropAcrylic) preferredBackdrop = Helpers.BackdropType.Acrylic;
+                        else if (IsBackdropMicaAlt) preferredBackdrop = Helpers.BackdropType.MicaAlt;
+                        else if (IsBackdropNone) preferredBackdrop = Helpers.BackdropType.None;
+                        _config.WindowBackdrop = preferredBackdrop.ToString();
+
                         _config.Save();
                     }, cancellationToken);
                 },

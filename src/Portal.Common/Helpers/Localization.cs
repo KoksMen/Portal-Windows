@@ -95,6 +95,30 @@ public static class Localization
         ["Save Configuration"] = "Сохранить настройки",
         ["Save Changes"] = "Сохранить изменения",
         ["Enabled"] = "Включено",
+        ["Disabled"] = "Отключено",
+        ["Active"] = "Активно",
+        ["Enabled (click to disable)"] = "Включено (нажмите, чтобы отключить)",
+        ["Disabled (click to enable)"] = "Отключено (нажмите, чтобы включить)",
+        ["Wi-Fi / LAN"] = "Wi-Fi / Сеть",
+        ["Account:"] = "Аккаунт:",
+        ["Paired:"] = "Привязан:",
+        ["Test Connection"] = "Проверить связь",
+        ["Test connection"] = "Проверить связь",
+        ["Test Connection / Проверить связь с телефоном"] = "Проверить связь с телефоном",
+        ["Certificate details"] = "Сведения о сертификате",
+        ["Edit account"] = "Изменить аккаунт",
+        ["Remove device"] = "Удалить устройство",
+        ["Successfully verified connection with '{0}'!\nTransport: {1}\nResponse time: {2} ms"] = "Связь с «{0}» успешно подтверждена!\nКанал: {1}\nВремя отклика: {2} мс",
+        ["Waiting for response from '{0}'... Please confirm on your phone."] = "Ожидание ответа от «{0}»... Подтвердите запрос на телефоне.",
+        ["Make sure your phone is connected to the same Wi-Fi network or Bluetooth is enabled."] = "Убедитесь, что телефон подключён к той же сети Wi‑Fi или включён Bluetooth.",
+        ["Credential Provider is not installed or is damaged."] = "Поставщик учётных данных не установлен или повреждён.",
+        ["Firewall rules are missing."] = "Правила брандмауэра отсутствуют.",
+        ["Host SSL certificate is missing."] = "SSL-сертификат компьютера отсутствует.",
+        ["All core components are configured."] = "Все основные компоненты настроены.",
+        ["Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate."] = "Нажмите «ЗАПУСТИТЬ / АКТИВИРОВАТЬ» для исправления или перейдите в «Расширенные настройки» → «Состояние системы».",
+        ["No setup actions required."] = "Действий по настройке не требуется.",
+        ["Service Not Installed"] = "Служба не установлена",
+        ["Service Setup Required"] = "Требуется настройка службы",
         ["Install"] = "Установить",
         ["Reinstall"] = "Переустановить",
         ["Uninstall"] = "Удалить",
@@ -121,9 +145,19 @@ public static class Localization
         ["PC unlock approved"] = "Разблокировка ПК подтверждена",
         ["Unlock request cancelled"] = "Запрос разблокировки отменён",
         ["Unlock request declined"] = "Запрос разблокировки отклонён",
-        ["Portal started"] = "Portal запущен"
+        ["Portal started"] = "Portal запущен",
+        ["Testing device connection"] = "Проверка связи с устройством",
+        ["Connection test passed!"] = "Тест связи успешно пройден!",
+        ["Connection test failed"] = "Ошибка проверки связи",
+        ["Test cancelled"] = "Тест отменен",
+        ["Device connection test was cancelled."] = "Проверка связи с устройством была отменена.",
+        ["Test Connection / Проверить связь"] = "Проверить связь с телефоном",
+        ["Please approve the unlock prompt on your phone..."] = "Подтвердите запрос разблокировки на телефоне...",
+        ["Waiting for device response..."] = "Ожидание ответа от смартфона...",
+        ["Preparing connection test..."] = "Подготовка теста связи..."
         ,["+ Add Another Device"] = "+ Добавить устройство"
         ,["⚠ Reset & Re-create All"] = "⚠ Сбросить и настроить заново"
+        ,["⚠ Setup Required"] = "⚠ Требуется настройка"
         ,["✓ Service Active & Ready"] = "✓ Служба активна и готова"
         ,["✨ Recent Activity"] = "✨ Последняя активность"
         ,["✨ Recent activity"] = "✨ Последняя активность"
@@ -498,6 +532,20 @@ public static class Localization
         ,["unknown"] = "неизвестно"
         ,["Initializing..."] = "Инициализация..."
 
+        // --- Appearance & Fluent Backdrop ---
+        ,["Appearance & Styling"] = "Внешний вид и стиль"
+        ,["Window Backdrop Material"] = "Эффект фона окна"
+        ,["Mica (Windows 11)"] = "Mica / Слюда (Windows 11)"
+        ,["Subtle, dynamic blur sampled from desktop wallpaper."] = "Тонкое динамическое размытие фона рабочего стола."
+        ,["Acrylic"] = "Acrylic / Акрил"
+        ,["Translucent frosted glass blur material."] = "Полупрозрачное матовое стекло."
+        ,["Mica Alt (Tabbed)"] = "Mica Alt / Вкладки"
+        ,["Deeper, high-contrast desktop wallpaper blur."] = "Глубокое контрастное размытие обоев рабочего стола."
+        ,["Solid Dark (Classic)"] = "Сплошной темный (Классика)"
+        ,["Opaque dark background. Automatic fallback on Windows 10."] = "Сплошной темный фон. Автоматический режим на Windows 10."
+        ,["Windows 11 detected: Native Fluent Mica / Acrylic backdrops active"] = "Обнаружена Windows 11: активны нативные эффекты Mica / Acrylic"
+        ,["Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)"] = "Обнаружена Windows 10: активен сплошной темный фон (Mica доступна только на Windows 11)"
+
         // --- Credential Provider (lock screen) ---
         ,["PortalWin Remote Unlock"] = "PortalWin — Удалённая разблокировка"
         ,["Ver: "] = "Версия: "
@@ -572,5 +620,29 @@ public static class Localization
         ,["Cancel Request"] = "Отменить запрос"
         ,["Show details"] = "Подробнее"
         ,["Hide details"] = "Скрыть"
+        ,["Testing device connection"] = "Проверка подключения устройства"
+        ,["Waiting for response from '{0}'... Please confirm on your phone."] = "Ожидание ответа от '{0}'... Пожалуйста, подтвердите на телефоне."
+        ,["Make sure your phone is connected to the same Wi-Fi network or Bluetooth is enabled."] = "Убедитесь, что телефон подключен к той же сети Wi-Fi или включен Bluetooth."
+        ,["Connection test passed!"] = "Тест подключения успешно пройден!"
+        ,["Connection test passed"] = "Тест подключения успешно пройден"
+        ,["Connection test failed"] = "Ошибка проверки подключения"
+        ,["Connection test timed out"] = "Время ожидания проверки подключения истекло"
+        ,["Connection test error"] = "Ошибка при проверке подключения"
+        ,["Successfully verified connection with '{0}'!\nTransport: {1}\nResponse time: {2} ms"] = "Связь с '{0}' успешно подтверждена!\nТранспорт: {1}\nВремя отклика: {2} мс"
+        ,["Preparing connection test..."] = "Подготовка теста подключения..."
+        ,["Waiting for device response..."] = "Ожидание ответа от устройства..."
+        ,["Please approve the unlock prompt on your phone..."] = "Пожалуйста, подтвердите запрос разблокировки на телефоне..."
+        ,["Biometric authentication was rejected or cancelled on the device."] = "Биометрическая аутентификация была отклонена или отменена на устройстве."
+        ,["Test cancelled or timed out."] = "Тест отменен или превышено время ожидания."
+        ,["Test timed out. The phone did not respond in time."] = "Превышено время ожидания. Телефон не ответил вовремя."
+        ,["Device connection test was cancelled."] = "Проверка подключения устройства была отменена."
+        ,["Connection verified successfully! Latency: {0} ms"] = "Связь успешно проверена! Задержка: {0} мс"
+        ,["Active"] = "Активно"
+        ,["Enabled"] = "Включено"
+        ,["Disabled"] = "Отключено"
+        ,["Enabled (click to disable)"] = "Включено (нажмите, чтобы отключить)"
+        ,["Disabled (click to enable)"] = "Отключено (нажмите, чтобы включить)"
+        ,["Click to disable device"] = "Нажмите, чтобы отключить устройство"
+        ,["Click to enable device"] = "Нажмите, чтобы включить устройство"
     };
 }
