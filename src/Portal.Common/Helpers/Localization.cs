@@ -20,13 +20,47 @@ public static class Localization
 
     /// <summary>Translates an English UI string into the currently selected language.</summary>
     public static string T(string english)
-        => IsRussian && Russian.TryGetValue(english, out var translated) ? translated : english;
+    {
+        if (!IsRussian || string.IsNullOrWhiteSpace(english))
+        {
+            return english;
+        }
+
+        if (Russian.TryGetValue(english, out var translated))
+        {
+            return translated;
+        }
+
+        var trimmed = english.Trim();
+        if (Russian.TryGetValue(trimmed, out translated))
+        {
+            return translated;
+        }
+
+        var withoutDots = trimmed.TrimEnd('.');
+        if (Russian.TryGetValue(withoutDots, out translated))
+        {
+            return translated;
+        }
+
+        if (Russian.TryGetValue(withoutDots + ".", out translated))
+        {
+            return translated;
+        }
+
+        if (Russian.TryGetValue(withoutDots + "...", out translated))
+        {
+            return translated;
+        }
+
+        return english;
+    }
 
     /// <summary>Translates a format template first, then formats it with arguments.</summary>
     public static string TF(string template, params object[] args)
         => string.Format(T(template), args);
 
-    internal static readonly IReadOnlyDictionary<string, string> Russian = new Dictionary<string, string>(StringComparer.Ordinal)
+    internal static readonly IReadOnlyDictionary<string, string> Russian = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         // --- Settings / dashboard ---
         ["Interface language"] = "Язык интерфейса",
@@ -471,6 +505,7 @@ public static class Localization
         ,["Hide details"] = "Скрыть подробности"
         ,["Request Remote Unlock"] = "Запросить разблокировку"
         ,["Cancel Request"] = "Отменить запрос"
+        ,["Retry"] = "Повторить"
         ,["Username"] = "Пользователь"
         ,["Unlock"] = "Разблокировать"
         ,["State: "] = "Состояние: "
@@ -491,22 +526,51 @@ public static class Localization
         ,["Approved! Loading credentials..."] = "Подтверждено! Загрузка учётных данных..."
         ,["Approved, but no credentials found."] = "Подтверждено, но учётные данные не найдены."
         ,["Approved, but no account matched."] = "Подтверждено, но подходящий аккаунт не найден."
+        ,["Request cancelled"] = "Запрос отменён"
         ,["Request cancelled."] = "Запрос отменён."
+        ,["Request canceled"] = "Запрос отменён"
+        ,["Request canceled."] = "Запрос отменён."
         ,["Request cancelled by user"] = "Запрос отменён пользователем"
+        ,["Request canceled by user"] = "Запрос отменён пользователем"
         ,["Request cancelled or timed out."] = "Запрос отменён или истёк."
+        ,["Request canceled or timed out."] = "Запрос отменён или истёк."
+        ,["Request cancelled or timed out"] = "Запрос отменён или истёк"
+        ,["Request canceled or timed out"] = "Запрос отменён или истёк"
         ,["Denied by device."] = "Отклонено устройством."
+        ,["Denied by device"] = "Отклонено устройством"
         ,["Error occurred."] = "Произошла ошибка."
+        ,["Error occurred"] = "Произошла ошибка"
         ,["Unlock request timed out"] = "Время запроса разблокировки истекло"
+        ,["Unlock request timed out."] = "Время запроса разблокировки истекло."
         ,["Unlock request cancelled"] = "Запрос разблокировки отменён"
+        ,["Unlock request cancelled."] = "Запрос разблокировки отменён."
+        ,["Unlock request canceled"] = "Запрос разблокировки отменён"
+        ,["Unlock request canceled."] = "Запрос разблокировки отменён."
         ,["A paired device declined the remote unlock request."] = "Привязанное устройство отклонило запрос удалённой разблокировки."
         ,["No paired device responded before the request expired."] = "Ни одно привязанное устройство не ответило до истечения запроса."
         ,["The remote unlock request was cancelled."] = "Запрос удалённой разблокировки был отменён."
+        ,["The remote unlock request was canceled."] = "Запрос удалённой разблокировки был отменён."
+        ,["The remote unlock request was cancelled"] = "Запрос удалённой разблокировки был отменён"
+        ,["The remote unlock request was canceled"] = "Запрос удалённой разблокировки был отменён"
         ,["Remote unlock approved"] = "Удалённая разблокировка подтверждена"
+        ,["Remote unlock approved."] = "Удалённая разблокировка подтверждена."
         ,["Preparing Windows sign-in..."] = "Подготовка входа в Windows..."
+        ,["Preparing Windows sign-in"] = "Подготовка входа в Windows"
         ,["Emergency rollback: request cancelled"] = "Аварийный откат: запрос отменён"
+        ,["Emergency rollback: request canceled"] = "Аварийный откат: запрос отменён"
         ,["Emergency rollback"] = "Аварийный откат"
         ,["Cancelled by shortcut (Left Ctrl + Left Alt)"] = "Отменено комбинацией клавиш (Left Ctrl + Left Alt)"
+        ,["Canceled by shortcut (Left Ctrl + Left Alt)"] = "Отменено комбинацией клавиш (Left Ctrl + Left Alt)"
+        ,["Cancelled"] = "Отменено"
+        ,["Cancelled."] = "Отменено."
+        ,["Canceled"] = "Отменено"
+        ,["Canceled."] = "Отменено."
         ,["Emergency rollback triggered"] = "Сработал аварийный откат"
         ,["The authorization process was cancelled via emergency shortcut (Left Ctrl + Left Alt)."] = "Процесс авторизации был отменён аварийной комбинацией клавиш (Left Ctrl + Left Alt)."
+        ,["The authorization process was canceled via emergency shortcut (Left Ctrl + Left Alt)."] = "Процесс авторизации был отменён аварийной комбинацией клавиш (Left Ctrl + Left Alt)."
+        ,["Retry"] = "Повторить"
+        ,["Cancel Request"] = "Отменить запрос"
+        ,["Show details"] = "Подробнее"
+        ,["Hide details"] = "Скрыть"
     };
 }

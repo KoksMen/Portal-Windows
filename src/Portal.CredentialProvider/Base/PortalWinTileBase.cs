@@ -46,6 +46,18 @@ public abstract class PortalWinTileBase : CredentialTile2
             _requestButton = Controls.GetControl<CommandLinkControl>("RequestButton");
             _cancelButton = Controls.GetControl<CommandLinkControl>("CancelButton");
 
+            _requestButton?.AsPushButton();
+            if (_requestButton != null)
+            {
+                _requestButton.Label = Localization.T("Retry");
+            }
+
+            _cancelButton?.AsPushButton();
+            if (_cancelButton != null)
+            {
+                _cancelButton.Label = Localization.T("Cancel Request");
+            }
+
             if (_versionLabel != null)
             {
                 _versionLabel.Label = Localization.T("Ver: ") + GetProjectVersionText();

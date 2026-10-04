@@ -48,7 +48,7 @@
         <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(TargetDir)$(TargetName).exe&quot;" Condition="Exists('$(TargetDir)$(TargetName).exe')" />
     </Target>
 
-    <Target Name="CopyCredentialProviderOutput" AfterTargets="Build">
+    <Target Name="CopyCredentialProviderOutput" AfterTargets="Build;Publish">
         <ItemGroup>
             <CredentialProviderOutput Include="..\Portal.CredentialProvider\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
         </ItemGroup>
@@ -56,9 +56,14 @@
             SourceFiles="@(CredentialProviderOutput)"
             DestinationFiles="@(CredentialProviderOutput->'$(TargetDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true" />
+        <Copy
+            SourceFiles="@(CredentialProviderOutput)"
+            DestinationFiles="@(CredentialProviderOutput->'$(PublishDir)CredentialProvider\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' != ''" />
     </Target>
 
-    <Target Name="CopyUpdaterOutput" AfterTargets="Build">
+    <Target Name="CopyUpdaterOutput" AfterTargets="Build;Publish">
         <ItemGroup>
             <UpdaterOutput Include="..\Portal.Updater\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
         </ItemGroup>
@@ -66,6 +71,18 @@
             SourceFiles="@(UpdaterOutput)"
             DestinationFiles="@(UpdaterOutput->'$(TargetDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
             SkipUnchangedFiles="true" />
+        <Copy
+            SourceFiles="@(UpdaterOutput)"
+            DestinationFiles="@(UpdaterOutput->'$(PublishDir)Updater\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' != ''" />
+    </Target>
+
+    <Target Name="SignPublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release' And '$(SkipSigning)' != 'true'">
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)$(TargetName).dll&quot;" Condition="Exists('$(PublishDir)$(TargetName).dll')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)$(TargetName).exe&quot;" Condition="Exists('$(PublishDir)$(TargetName).exe')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;6B757026547640EBCDB08ACFD568F2A873D601F0&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Portal.Updater.exe&quot;" Condition="Exists('$(PublishDir)Portal.Updater.exe')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;110025BF33D9D8EEE632AD6C4F43618A24069B22&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Portal.CredentialProvider.comhost.dll&quot;" Condition="Exists('$(PublishDir)Portal.CredentialProvider.comhost.dll')" />
     </Target>
 
 </Project>

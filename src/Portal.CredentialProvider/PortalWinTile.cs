@@ -495,7 +495,7 @@ public class PortalWinTile : PortalWinTileBase
                         reason == "timeout" ? "Unlock request timed out" : "Unlock request cancelled",
                         reason == "timeout" ? "No paired device responded before the request expired." : "The remote unlock request was cancelled.",
                         false);
-                    UpdateStatus("Request cancelled or timed out.");
+                    UpdateStatus(reason == "timeout" ? "Request timed out." : "Request cancelled.");
                 }
             }
             catch (OperationCanceledException) { }
@@ -801,8 +801,10 @@ public class PortalWinTile : PortalWinTileBase
     {
         if (_requestButton != null)
         {
-            var config = PortalWinConfig.Load();
-            _requestButton.State = AllowsHostInitiated && FindHostInitiatedDevices(config).Count > 0
+            _requestButton.Label = Localization.T("Retry");
+            _requestButton.OnClick = OnRequestUnlockClicked;
+            _requestButton.AsPushButton();
+            _requestButton.State = AllowsHostInitiated
                 ? (Provider.UsageScenario == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
                 : FieldState.Hidden;
         }
@@ -811,13 +813,25 @@ public class PortalWinTile : PortalWinTileBase
 
     private void ShowCancelButton()
     {
-        if (_requestButton != null) _requestButton.State = FieldState.Hidden;
-        if (_cancelButton != null)
+        if (_requestButton != null)
         {
+            _requestButton.Label = Localization.T("Cancel Request");
+            _requestButton.OnClick = OnCancelUnlockClicked;
+            _requestButton.AsPushButton();
+            _requestButton.State = Provider.UsageScenario == UsageScenario.CredUI
+                ? FieldState.DisplayInBoth
+                : FieldState.DisplayInSelectedTile;
+        }
+        else if (_cancelButton != null)
+        {
+            _cancelButton.Label = Localization.T("Cancel Request");
+            _cancelButton.OnClick = OnCancelUnlockClicked;
+            _cancelButton.AsPushButton();
             _cancelButton.State = Provider.UsageScenario == UsageScenario.CredUI
                 ? FieldState.DisplayInBoth
                 : FieldState.DisplayInSelectedTile;
         }
+        if (_cancelButton != null && _requestButton != null) _cancelButton.State = FieldState.Hidden;
     }
 
     private bool IsForUser(string username)

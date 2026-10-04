@@ -67,13 +67,13 @@ public class PortalWinProvider : PortalWinProviderBase
         statusLabel.State = FieldState.DisplayInBoth;
         yield return statusLabel;
 
-        var versionLabel = new SmallLabelControl("VersionLabel", Localization.T("Ver: ") + GetProjectVersionText());
-        versionLabel.State = FieldState.DisplayInBoth;
-        yield return versionLabel;
-
         var statusDetailsLabel = new SmallLabelControl("StatusDetailsLabel", statusDetails);
         statusDetailsLabel.State = FieldState.Hidden;
         yield return statusDetailsLabel;
+
+        var versionLabel = new SmallLabelControl("VersionLabel", Localization.T("Ver: ") + GetProjectVersionText());
+        versionLabel.State = FieldState.Hidden;
+        yield return versionLabel;
 
         var showDetailsButton = new CommandLinkControl("ShowDetailsButton", Localization.T("Show details"));
         showDetailsButton.State = FieldState.DisplayInSelectedTile;
@@ -82,17 +82,6 @@ public class PortalWinProvider : PortalWinProviderBase
         var hideDetailsButton = new CommandLinkControl("HideDetailsButton", Localization.T("Hide details"));
         hideDetailsButton.State = FieldState.Hidden;
         yield return hideDetailsButton;
-
-        // Host-initiated controls (shown only when needed)
-        var reqButton = new CommandLinkControl("RequestButton", Localization.T("Request Remote Unlock"));
-        reqButton.State = UnlockMode == UnlockMode.HostInitiated || UnlockMode == UnlockMode.Both
-            ? (cpus == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
-            : FieldState.Hidden;
-        yield return reqButton;
-
-        var cancelButton = new CommandLinkControl("CancelButton", Localization.T("Cancel Request"));
-        cancelButton.State = FieldState.Hidden;
-        yield return cancelButton;
 
         var usernameField = new TextboxControl("UsernameField", Localization.T("Username"));
         usernameField.State = cpus == UsageScenario.CredUI
@@ -105,6 +94,18 @@ public class PortalWinProvider : PortalWinProviderBase
         yield return passwordField;
 
         yield return new SubmitButtonControl("SubmitButton", Localization.T("Unlock"), passwordField);
+
+        // Host-initiated action push buttons placed AFTER password and submit button
+        // so Windows LogonUI styles them with CredentialActionButtonStyle (native rounded button)
+        var reqButton = new CommandLinkControl("RequestButton", Localization.T("Retry")).AsPushButton();
+        reqButton.State = UnlockMode == UnlockMode.HostInitiated || UnlockMode == UnlockMode.Both
+            ? (cpus == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
+            : FieldState.Hidden;
+        yield return reqButton;
+
+        var cancelButton = new CommandLinkControl("CancelButton", Localization.T("Cancel Request")).AsPushButton();
+        cancelButton.State = FieldState.Hidden;
+        yield return cancelButton;
     }
 
     public override bool ShouldIncludeGenericTile() => CredentialProviderTilePolicy.ShouldIncludeGenericTile(UsageScenario);
@@ -248,6 +249,9 @@ public class PortalWinProvider : PortalWinProviderBase
         {
             var text when text.Contains("emergency rollback") || text.Contains("аварийный") || text.Contains("откат")
                 => "Emergency rollback: request cancelled",
+            var text when (text.Contains("cancelled") || text.Contains("canceled") || text.Contains("отменен") || text.Contains("отменён"))
+                       && !(text.Contains("timed out") || text.Contains("время истекло") || text.Contains("таймаут"))
+                => "Request cancelled",
             var text when text.Contains("timed out") || text.Contains("время истекло") || text.Contains("таймаут")
                 => "Request timed out",
             var text when text.Contains("denied")
@@ -258,6 +262,7 @@ public class PortalWinProvider : PortalWinProviderBase
                        || text.Contains("запрещен")
                        || text.Contains("запрещён") => "Request denied",
             var text when text.Contains("cancelled")
+                       || text.Contains("canceled")
                        || text.Contains("отменен")
                        || text.Contains("отменён") => "Request cancelled",
             var text when text.Contains("awaiting approval")
