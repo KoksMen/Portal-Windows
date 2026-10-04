@@ -51,9 +51,22 @@ public class UnlockTestService
         Logger.Log($"[UnlockTestService] Starting test for device: {device.IdsSafe()} (Transport: {device.TransportType})");
 
         var config = PortalWinConfig.Load();
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(35));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+        var effectiveCt = linkedCts.Token;
+
         var tcs = new TaskCompletionSource<UnlockTestResult>(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var reg = ct.Register(() => tcs.TrySetResult(
-            new UnlockTestResult(false, Localization.T("Test cancelled or timed out."), stopwatch.ElapsedMilliseconds, null, device.Name)));
+        using var reg = effectiveCt.Register(() =>
+        {
+            if (ct.IsCancellationRequested)
+            {
+                tcs.TrySetResult(new UnlockTestResult(false, Localization.T("Test cancelled."), stopwatch.ElapsedMilliseconds, null, device.Name));
+            }
+            else
+            {
+                tcs.TrySetResult(new UnlockTestResult(false, Localization.T("Test timed out. The phone did not respond in time."), stopwatch.ElapsedMilliseconds, null, device.Name));
+            }
+        });
 
         WebApplication? app = null;
 
@@ -85,7 +98,10 @@ public class UnlockTestService
 
             builder.Services.AddLogging();
             app = builder.Build();
-            app.UseWebSockets();
+            app.UseWebSockets(new WebSocketOptions
+            {
+                KeepAliveInterval = TimeSpan.FromSeconds(2)
+            });
 
             var testRequestId = Guid.NewGuid().ToString("N");
 
@@ -93,12 +109,24 @@ public class UnlockTestService
             app.MapPost("/api/unlock", (UnlockRequest request, HttpContext context) =>
             {
                 var clientCert = context.Connection.ClientCertificate;
-                var clientThumbprint = clientCert?.Thumbprint ?? string.Empty;
+                if (clientCert == null)
+                {
+                    Logger.LogWarning("[UnlockTestService] REST rejected: no client certificate.");
+                    return Results.Json(new UnlockResponse(false, "Unauthorized"), statusCode: 401);
+                }
 
-                Logger.Log($"[UnlockTestService] Received /api/unlock request from client: {request.ClientId}, Cert: {clientThumbprint}");
+                var clientCertHash = CertificateService.GetCertHash(clientCert);
+                var clientThumbprint = clientCert.Thumbprint ?? string.Empty;
 
-                bool isCertMatched = string.IsNullOrEmpty(device.CertHash) ||
-                                     string.Equals(device.CertHash, clientThumbprint, StringComparison.OrdinalIgnoreCase);
+                Logger.Log($"[UnlockTestService] Received /api/unlock request from client: {request.ClientId}, CertHash: {clientCertHash} (SHA1: {clientThumbprint})");
+
+                var targetCertClean = (device.CertHash ?? string.Empty).Replace("-", "").Replace(":", "").Trim();
+                var clientSha256Clean = clientCertHash.Replace("-", "").Replace(":", "").Trim();
+                var clientSha1Clean = clientThumbprint.Replace("-", "").Replace(":", "").Trim();
+
+                bool isCertMatched = string.IsNullOrEmpty(targetCertClean) ||
+                                     string.Equals(targetCertClean, clientSha256Clean, StringComparison.OrdinalIgnoreCase) ||
+                                     string.Equals(targetCertClean, clientSha1Clean, StringComparison.OrdinalIgnoreCase);
 
                 if (isCertMatched && (string.Equals(device.ClientId, request.ClientId, StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(request.ClientId)))
                 {
@@ -116,7 +144,7 @@ public class UnlockTestService
                     return Results.Ok(new UnlockResponse(true, null));
                 }
 
-                Logger.LogWarning($"[UnlockTestService] Certificate mismatch or invalid client ID. Expected: {device.CertHash}");
+                Logger.LogWarning($"[UnlockTestService] Certificate mismatch or invalid client ID. Expected: {device.CertHash}, Got SHA256={clientCertHash}");
                 return Results.Json(new UnlockResponse(false, "Unauthorized"), statusCode: 403);
             });
 
@@ -130,14 +158,27 @@ public class UnlockTestService
                 }
 
                 var clientCert = context.Connection.ClientCertificate;
-                var clientThumbprint = clientCert?.Thumbprint ?? string.Empty;
+                if (clientCert == null)
+                {
+                    Logger.LogWarning("[UnlockTestService] WS rejected: no client certificate.");
+                    context.Response.StatusCode = 401;
+                    return;
+                }
 
-                bool isCertMatched = string.IsNullOrEmpty(device.CertHash) ||
-                                     string.Equals(device.CertHash, clientThumbprint, StringComparison.OrdinalIgnoreCase);
+                var clientCertHash = CertificateService.GetCertHash(clientCert);
+                var clientThumbprint = clientCert.Thumbprint ?? string.Empty;
+
+                var targetCertClean = (device.CertHash ?? string.Empty).Replace("-", "").Replace(":", "").Trim();
+                var clientSha256Clean = clientCertHash.Replace("-", "").Replace(":", "").Trim();
+                var clientSha1Clean = clientThumbprint.Replace("-", "").Replace(":", "").Trim();
+
+                bool isCertMatched = string.IsNullOrEmpty(targetCertClean) ||
+                                     string.Equals(targetCertClean, clientSha256Clean, StringComparison.OrdinalIgnoreCase) ||
+                                     string.Equals(targetCertClean, clientSha1Clean, StringComparison.OrdinalIgnoreCase);
 
                 if (!isCertMatched)
                 {
-                    Logger.LogWarning($"[UnlockTestService] WS rejected: cert hash mismatch. Got {clientThumbprint}, expected {device.CertHash}");
+                    Logger.LogWarning($"[UnlockTestService] WS rejected: cert hash mismatch. Got SHA256={clientCertHash} (SHA1={clientThumbprint}), expected {device.CertHash}");
                     context.Response.StatusCode = 403;
                     return;
                 }
@@ -145,22 +186,23 @@ public class UnlockTestService
                 using var ws = await context.WebSockets.AcceptWebSocketAsync();
                 Logger.Log($"[UnlockTestService] WebSocket accepted from {device.Name}. Sending test unlock request...");
 
-                // Send test unlock request over WS
-                var reqMsg = new WsMessage("unlock_request", device.ClientId, "test", testRequestId);
+                // Send test unlock request over WS (matching Credential Provider format, Status is null)
+                var reqMsg = new WsMessage("unlock_request", device.ClientId, null, testRequestId);
                 var sendBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(reqMsg));
-                await ws.SendAsync(new ArraySegment<byte>(sendBytes), WebSocketMessageType.Text, true, ct);
+                await ws.SendAsync(new ArraySegment<byte>(sendBytes), WebSocketMessageType.Text, true, effectiveCt);
+                Logger.Log($"[UnlockTestService] Sent unlock_request to {device.Name} (ClientId: {device.ClientId}, RequestId: {testRequestId})");
 
-                // Await response
-                var buffer = new byte[4096];
-                while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
+                statusCallback?.Invoke(Localization.T("Please approve the unlock prompt on your phone..."));
+
+                // Await response using chunk-safe reader
+                while (ws.State == WebSocketState.Open && !effectiveCt.IsCancellationRequested)
                 {
-                    var recvResult = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
-                    if (recvResult.MessageType == WebSocketMessageType.Close)
+                    var (messageType, json) = await ReceiveTextMessageAsync(ws, effectiveCt);
+                    if (messageType == WebSocketMessageType.Close || string.IsNullOrWhiteSpace(json))
                     {
                         break;
                     }
 
-                    var json = Encoding.UTF8.GetString(buffer, 0, recvResult.Count);
                     Logger.Log($"[UnlockTestService] WS message received: {json}");
 
                     try
@@ -175,10 +217,28 @@ public class UnlockTestService
                         {
                             stopwatch.Stop();
                             var latency = stopwatch.ElapsedMilliseconds;
+                            Logger.Log($"[UnlockTestService] Unlock approved on mobile device for {device.Name} in {latency} ms");
 
                             tcs.TrySetResult(new UnlockTestResult(
                                 true,
                                 string.Format(Localization.T("Connection verified successfully! Latency: {0} ms"), latency),
+                                latency,
+                                "Wi-Fi (WebSocket)",
+                                device.Name));
+                            break;
+                        }
+                        else if (string.Equals(status, "denied", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(status, "rejected", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(status, "failed", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(type, "unlock_denied", StringComparison.OrdinalIgnoreCase))
+                        {
+                            stopwatch.Stop();
+                            var latency = stopwatch.ElapsedMilliseconds;
+                            Logger.LogWarning($"[UnlockTestService] Unlock rejected on mobile device for {device.Name}");
+
+                            tcs.TrySetResult(new UnlockTestResult(
+                                false,
+                                Localization.T("Biometric authentication was rejected or cancelled on the device."),
                                 latency,
                                 "Wi-Fi (WebSocket)",
                                 device.Name));
@@ -192,8 +252,7 @@ public class UnlockTestService
                 }
             });
 
-            await app.StartAsync(ct);
-            statusCallback?.Invoke(Localization.T("Please approve the unlock prompt on your phone..."));
+            await app.StartAsync(effectiveCt);
 
             var result = await tcs.Task;
 
@@ -234,5 +293,29 @@ public class UnlockTestService
                 catch { }
             }
         }
+    }
+
+    private static async Task<(WebSocketMessageType MessageType, string? Text)> ReceiveTextMessageAsync(WebSocket ws, CancellationToken ct)
+    {
+        var buffer = new byte[4096];
+        using var ms = new MemoryStream();
+
+        while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
+        {
+            var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
+            if (result.MessageType == WebSocketMessageType.Close)
+                return (WebSocketMessageType.Close, null);
+
+            if (result.Count > 0)
+                ms.Write(buffer, 0, result.Count);
+
+            if (result.EndOfMessage)
+            {
+                var payload = Encoding.UTF8.GetString(ms.ToArray());
+                return (result.MessageType, payload);
+            }
+        }
+
+        return (WebSocketMessageType.Close, null);
     }
 }
