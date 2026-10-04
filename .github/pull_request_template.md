@@ -1,55 +1,49 @@
-## 🚀 Summary of Changes / Описание изменений
+## 🚀 Portal-Windows v1.5.5 Herta — Release Summary / Описание изменений
 
-This Pull Request brings a major set of performance optimizations, interactive device diagnostics, modern Windows 11 Fluent UI backdrops, and an extensive UI/UX polish across the entire application:
+### 🇷🇺 Описание релиза
 
----
+В данное обновление вошли ключевые улучшения стабильности сети, визуального взаимодействия на экране блокировки и инструменты для решения проблем:
 
-### 1. ⚡ Interactive Device Unlock Test (UnlockTestService)
-- **mTLS Host Listener:** Temporary lightweight Kestrel listener on a dynamic loopback/LAN port with mDNS advertising (`_portal-test._tcp.local.`, `test=true`).
-- **Bidirectional Test:** Supports both WebSocket (/ws) and REST (/api/unlock) endpoints with client certificate thumbprint/hash verification.
-- **Accurate RTT Latency:** Measures Round-Trip Time latency in milliseconds and reports it in the completion dialog and activity journal.
-- **Zero-Latency Shutdown:** Resolved Kestrel socket-draining freeze by immediately aborting active sockets on first approval and setting a 500 ms shutdown timeout.
-- **Robust Message Parsing:** Case-insensitive JSON deserialization supporting both PascalCase and camelCase payloads from mobile devices.
+1. **⏳ Визуальный центрированный прогресс-бар и индикатор ожидания (Lock Screen Tile):**
+   - На плитке экрана блокировки таймер теперь встроен строго по центру графической шкалы: `[████  38s  ░░░░]`.
+   - Для бесконечного режима ожидания (`0` мин) добавлен анимированный пульс с секундомером и знаком бесконечности: `[■□  0:42 (∞)  □■]`.
+   - Текст статуса и индикатор разнесены на две сбалансированные строки, исключая прилипание к левому краю.
+   - Поле «Время ожидания ответа» в настройках выровнено по центру карточки.
 
-### 2. 🚀 LogonUI Performance Optimization (ReadyToRun & Tiered Compilation)
-- **ReadyToRun (AOT):** Added <PublishReadyToRun>true</PublishReadyToRun> in Portal.CredentialProvider.csproj to eliminate JIT compilation pauses when Windows loads logonui.exe.
-- **Tiered Compilation:** Enabled CLR <TieredCompilation> and <TieredCompilationQuickJit> for near-instant first-frame rendering on the lock screen.
-- **COM Compatibility:** Maintained non-composite DLL output without trimming, ensuring 100% reliable COM registration of Portal.CredentialProvider.comhost.dll.
+2. **📦 Экспорт отчёта для решения проблем («Собрать диагностический архив» в ZIP):**
+   - В секции **Settings $\rightarrow$ Diagnostics** добавлена кнопка **«Export Diagnostic Report»**.
+   - В один клик собирает ZIP-архив с краткой сводкой `summary.txt`, техническим отчётом `system_environment.json` (сборка Windows, статус компонентов, сеть, Bluetooth) и полными логами `host*.log`, `provider*.log`, `activity.journal.jsonl`.
+   - Конфигурация полностью обезличена: пароли учетных записей, приватные ключи сертификатов и токены обновлений исключены.
+   - Предлагает сразу открыть папку с готовым архивом в Проводнике.
 
-### 3. 🪟 Windows 11 Fluent UI (Mica & Acrylic Backdrops)
-- Added native Windows 11 DWM backdrop effects (Mica Alt, Acrylic) with an automatic dark-mode fallback on Windows 10.
-- Modern visual depth and polished window chrome.
+3. **🌐 Динамическая адаптация к смене сети (NetworkChange):**
+   - Интеграция с `NetworkChange.NetworkAddressChanged` и `NetworkAvailabilityChanged`.
+   - Автоматическое обнаружение изменений IP при переключении между Wi-Fi сетями, кабелем и VPN с дебаунсом 750 мс.
+   - Автоматическое переоповещение службы mDNS (`_portal._tcp.local.`) без необходимости перезапуска хоста.
 
-### 4. 📱 Full Device Card Redesign & SVG Vector Polish
-- **SVG Vector Graphics:** Replaced Segoe UI emoji glyphs (which rendered as a retro calculator/pager 🖩 and monochrome stairs 📶) with crisp, resolution-independent vector paths (smartphone outline, Wi-Fi waves, Bluetooth geometry, user, calendar, key).
-- **Full-Width Metadata Container:** Placed Client ID GUID in a dedicated full-width container so it never gets clipped or truncated.
-- **Proper Label Gutters:** Added clean margins (`Margin="0,0,6,0"`) between labels and values to prevent text concatenation (`Аккаунт: rinshima`).
-- **Integrated Power Switch:** Added a dedicated [ ⏻ Включено ] / [ ⏻ Отключено ] toggle switch with emerald glow and responsive tooltip.
-- **Prominent Test Button:** Styled golden [ ⚡ Проверить связь ] button for immediate access to connection diagnostics.
-
-### 5. 📐 Adaptive Root Dashboard (ViewDashboard)
-- **ScrollViewer:** Wrapped the entire dashboard in an adaptive ScrollViewer to eliminate vertical overflow on low-resolution or high-DPI scaled displays.
-- **Balanced Proportions:** Rescaled the main logo from 176×176 to 100×100 px and tightened subtitle margins.
-- **De-cluttered Navigation:** Removed redundant Download Mobile Client button from the root screen (already accessible in About and Settings).
-- **Clean Localized Status:** Replaced raw internal COM registration paths under the START button with clean localized status labels (⚠ Требуется настройка службы) and hid duplicate error strings when the error card is displayed.
-
-### 6. 📊 Responsive System Health Layout
-- Rebuilt component list using independent micro-cards, preventing text collisions between component titles, status indicators, and action buttons.
-
-### 7. 🌐 Full Russian & English Localization
-- Added comprehensive dictionary translations for all new buttons, diagnostics, setup issues, hints, and tooltips.
+4. **✍️ Цифровая подпись и сборка:**
+   - Все бинарники подписаны сертификатами xXTeam и меткой времени Sectigo RFC 3161 SHA-256.
+   - Сформирован релизный архив: `PortalWin-1.5.5-win-x64.zip`.
 
 ---
 
-## 🔍 Verification & Testing
-- [x] **Debug Build:** dotnet build src/Portal.Host/Portal.Host.csproj -c Debug -> 0 errors.
-- [x] **Release Build & Publish:** dotnet publish src/Portal.Host/Portal.Host.csproj -c Release -o publish/ -> 0 errors.
-- [x] **Digital Signing:** All binaries in publish/, publish/CredentialProvider/, and publish/Updater/ signed with authentic certificates and Sectigo RFC 3161 timestamps.
-- [x] **Release Packaging:** Created PortalWin-1.5.4-win-x64.zip (31 MB) containing all signed components and runtimes.
-- [x] **Device Connection Test:** Tested against real mobile client over Wi-Fi, RTT verified, instant completion without UI hangs.
+### 🇬🇧 Release Summary
 
----
+1. **⏳ Centered Lock Screen Progress Bar & Timer:**
+   - Countdown is rendered directly in the center of the unicode bar: `[████  38s  ░░░░]`.
+   - Animated marquee pulse with elapsed stopwatch and infinity badge for infinite wait mode: `[■□  0:42 (∞)  □■]`.
+   - Centered timeout duration input in Host settings.
 
-## 🔄 Compatibility
-- **Backward Compatible:** 100% compatible with existing Portal Android and Wear OS apps.
-- **Breaking Changes:** None.
+2. **📦 Diagnostic Report ZIP Export:**
+   - One-click diagnostic export in **Settings $\rightarrow$ Diagnostics**.
+   - Collects `summary.txt`, `system_environment.json`, and all active logs (`host*.log`, `provider*.log`, `activity.journal.jsonl`).
+   - Secure and sanitized: passwords, private keys, and tokens are never included.
+
+3. **🌐 Dynamic Network Adaptation:**
+   - Proactive network monitoring via `NetworkChange.NetworkAddressChanged`.
+   - 750 ms debounce for smooth transitions between Wi-Fi, Ethernet, and VPN interfaces.
+   - Automatic mDNS service re-advertisement on address change.
+
+4. **✍️ Code Signing & Packaging:**
+   - Authenticode signatures with trusted Sectigo RFC 3161 timestamps.
+   - Packaged artifact: `PortalWin-1.5.5-win-x64.zip`.
