@@ -111,6 +111,14 @@ public static class Localization
         ["Successfully verified connection with '{0}'!\nTransport: {1}\nResponse time: {2} ms"] = "Связь с «{0}» успешно подтверждена!\nКанал: {1}\nВремя отклика: {2} мс",
         ["Waiting for response from '{0}'... Please confirm on your phone."] = "Ожидание ответа от «{0}»... Подтвердите запрос на телефоне.",
         ["Make sure your phone is connected to the same Wi-Fi network or Bluetooth is enabled."] = "Убедитесь, что телефон подключён к той же сети Wi‑Fi или включён Bluetooth.",
+        ["Credential Provider is not installed or is damaged."] = "Поставщик учётных данных не установлен или повреждён.",
+        ["Firewall rules are missing."] = "Правила брандмауэра отсутствуют.",
+        ["Host SSL certificate is missing."] = "SSL-сертификат компьютера отсутствует.",
+        ["All core components are configured."] = "Все основные компоненты настроены.",
+        ["Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate."] = "Нажмите «ЗАПУСТИТЬ / АКТИВИРОВАТЬ» для исправления или перейдите в «Расширенные настройки» → «Состояние системы».",
+        ["No setup actions required."] = "Действий по настройке не требуется.",
+        ["Service Not Installed"] = "Служба не установлена",
+        ["Service Setup Required"] = "Требуется настройка службы",
         ["Install"] = "Установить",
         ["Reinstall"] = "Переустановить",
         ["Uninstall"] = "Удалить",
@@ -149,6 +157,7 @@ public static class Localization
         ["Preparing connection test..."] = "Подготовка теста связи..."
         ,["+ Add Another Device"] = "+ Добавить устройство"
         ,["⚠ Reset & Re-create All"] = "⚠ Сбросить и настроить заново"
+        ,["⚠ Setup Required"] = "⚠ Требуется настройка"
         ,["✓ Service Active & Ready"] = "✓ Служба активна и готова"
         ,["✨ Recent Activity"] = "✨ Последняя активность"
         ,["✨ Recent activity"] = "✨ Последняя активность"

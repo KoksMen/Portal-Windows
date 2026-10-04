@@ -251,6 +251,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _updateToastTitle = Services.LocalizationService.T("Update available");
     [ObservableProperty] private string _updateToastMessage = "";
 
+    [ObservableProperty] private string _startActivateButtonText = Services.LocalizationService.T("START / ACTIVATE");
+    [ObservableProperty] private string _addDeviceButtonText = Services.LocalizationService.T("+ Add Another Device");
+    [ObservableProperty] private string _resetAllButtonText = Services.LocalizationService.T("⚠ Reset & Re-create All");
+    [ObservableProperty] private string _recentActivityButtonText = Services.LocalizationService.T("✨  Recent Activity");
+    [ObservableProperty] private string _advancedSettingsButtonText = Services.LocalizationService.T("⚙  Advanced Settings");
+    [ObservableProperty] private string _aboutPortalButtonText = Services.LocalizationService.T("About Portal");
+    [ObservableProperty] private string _setupRequiredTitleText = Services.LocalizationService.T("⚠ Setup Required");
+    [ObservableProperty] private string _remoteUnlockSystemSubtitleText = Services.LocalizationService.T("Remote Unlock System");
+
     private AppUpdateManifest? _availableUpdateManifest;
     private readonly System.Windows.Threading.DispatcherTimer _updateToastTimer;
     private int _aboutVersionTapCount;
@@ -913,21 +922,21 @@ public partial class MainViewModel : ObservableObject
                     : Services.LocalizationService.T("Missing");
 
                 MainStatusText = IsServiceActive
-                    ? IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready"
-                    : $"⚠ {(providerHealth.FailureReasons.FirstOrDefault() ?? "Service Not Installed")}";
+                    ? (IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready")
+                    : (IsRussianUi ? "⚠ Требуется настройка службы" : "⚠ Service Setup Required");
 
                 var setupIssues = new List<string>();
-                if (!providerHealth.IsHealthy) setupIssues.Add("Credential Provider is not installed or is damaged.");
-                if (!isFirewallOk) setupIssues.Add("Firewall rules are missing.");
-                if (!isCertOk) setupIssues.Add("Host SSL certificate is missing.");
+                if (!providerHealth.IsHealthy) setupIssues.Add(Services.LocalizationService.T("Credential Provider is not installed or is damaged."));
+                if (!isFirewallOk) setupIssues.Add(Services.LocalizationService.T("Firewall rules are missing."));
+                if (!isCertOk) setupIssues.Add(Services.LocalizationService.T("Host SSL certificate is missing."));
 
                 HasSetupIssues = setupIssues.Count > 0;
                 SetupIssueTitle = setupIssues.Count > 0
                     ? setupIssues[0]
-                    : "All core components are configured.";
+                    : Services.LocalizationService.T("All core components are configured.");
                 SetupIssueHint = setupIssues.Count > 0
-                    ? "Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate."
-                    : "No setup actions required.";
+                    ? Services.LocalizationService.T("Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate.")
+                    : Services.LocalizationService.T("No setup actions required.");
 
                 ClientCountText = Services.LocalizationService.TF("{0} trusted devices", _config.Devices.Count);
                 RefreshDevicesList();

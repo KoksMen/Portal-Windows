@@ -1327,160 +1327,159 @@
             </Ellipse.Fill>
         </Ellipse>
 
-        <Grid
-            x:Name="ViewDashboard"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
+        <ScrollViewer
+            x:Name="ViewDashboardScroll"
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Disabled"
             Visibility="{Binding ShowDashboard, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel Width="320">
-                <Border
-                    Width="176"
-                    Height="176"
-                    Margin="0,0,0,20"
-                    HorizontalAlignment="Center"
-                    CornerRadius="44"
-                    ClipToBounds="True">
-                    <Image
-                        Width="176"
-                        Height="176"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        RenderOptions.BitmapScalingMode="HighQuality"
-                        SnapsToDevicePixels="True"
-                        Source="/Assets/portal-icon.png"
-                        Stretch="Uniform" />
-                </Border>
-
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    FontSize="32"
-                    FontWeight="Bold"
-                    Foreground="White"
-                    Text="Portal" />
-                <TextBlock
-                    Margin="0,5,0,40"
-                    HorizontalAlignment="Center"
-                    FontSize="14"
-                    Foreground="{StaticResource TextMuted}"
-                    Text="Remote Unlock System" />
-
-                <!--  Setup State  -->
-                <StackPanel x:Name="PanelSetup" Visibility="{Binding ShowSetupPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid
+                x:Name="ViewDashboard"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="0,16,0,16">
+                <StackPanel Width="320">
                     <Border
-                        Margin="0,0,0,15"
-                        Padding="12"
-                        Background="#2A1117"
-                        BorderBrush="#A33A4F"
-                        BorderThickness="1"
-                        CornerRadius="10"
-                        Visibility="{Binding HasSetupIssues, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                Foreground="#FF9FB3"
-                                Text="⚠ Setup Required" />
-                            <TextBlock
-                                Margin="0,6,0,0"
-                                FontSize="12"
-                                Foreground="#FFD7DF"
-                                Text="{Binding SetupIssueTitle}"
-                                TextWrapping="Wrap" />
-                            <TextBlock
-                                Margin="0,6,0,0"
-                                FontSize="11"
-                                Foreground="#F6B8C7"
-                                Text="{Binding SetupIssueHint}"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
+                        Width="100"
+                        Height="100"
+                        Margin="0,0,0,12"
+                        HorizontalAlignment="Center"
+                        CornerRadius="25"
+                        ClipToBounds="True">
+                        <Image
+                            Width="100"
+                            Height="100"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            RenderOptions.BitmapScalingMode="HighQuality"
+                            SnapsToDevicePixels="True"
+                            Source="/Assets/portal-icon.png"
+                            Stretch="Uniform" />
                     </Border>
 
-                    <Button
-                        Height="55"
-                        Margin="0,0,0,15"
-                        Command="{Binding StartWizardCommand}"
-                        Content="START / ACTIVATE"
-                        IsEnabled="{Binding CanStartWizardButton}"
-                        Style="{StaticResource PrimaryButton}" />
-                </StackPanel>
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="28"
+                        FontWeight="Bold"
+                        Foreground="White"
+                        Text="Portal" />
+                    <TextBlock
+                        Margin="0,3,0,16"
+                        HorizontalAlignment="Center"
+                        FontSize="13"
+                        Foreground="{StaticResource TextMuted}"
+                        Text="{Binding RemoteUnlockSystemSubtitleText, FallbackValue='Remote Unlock System'}" />
 
-                <!--  Connected State  -->
-                <StackPanel x:Name="PanelConnected" Visibility="{Binding ShowConnectedPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Button
-                        Height="50"
-                        Margin="0,0,0,10"
-                        Command="{Binding AddDeviceCommand}"
-                        Content="+ Add Another Device"
-                        Style="{StaticResource PrimaryButton}" />
+                    <!--  Setup State  -->
+                    <StackPanel x:Name="PanelSetup" Visibility="{Binding ShowSetupPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Border
+                            Margin="0,0,0,12"
+                            Padding="12,10"
+                            Background="#2A1117"
+                            BorderBrush="#A33A4F"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Visibility="{Binding HasSetupIssues, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="#FF9FB3"
+                                    Text="{Binding SetupRequiredTitleText, FallbackValue='⚠ Setup Required'}" />
+                                <TextBlock
+                                    Margin="0,5,0,0"
+                                    FontSize="12"
+                                    Foreground="#FFD7DF"
+                                    Text="{Binding SetupIssueTitle}"
+                                    TextWrapping="Wrap" />
+                                <TextBlock
+                                    Margin="0,4,0,0"
+                                    FontSize="11"
+                                    Foreground="#F6B8C7"
+                                    Text="{Binding SetupIssueHint}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Button
+                            Height="50"
+                            Margin="0,0,0,12"
+                            Command="{Binding StartWizardCommand}"
+                            Content="{Binding StartActivateButtonText, FallbackValue='START / ACTIVATE'}"
+                            IsEnabled="{Binding CanStartWizardButton}"
+                            Style="{StaticResource PrimaryButton}" />
+                    </StackPanel>
+
+                    <!--  Connected State  -->
+                    <StackPanel x:Name="PanelConnected" Visibility="{Binding ShowConnectedPanel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Button
+                            Height="46"
+                            Margin="0,0,0,10"
+                            Command="{Binding AddDeviceCommand}"
+                            Content="{Binding AddDeviceButtonText, FallbackValue='+ Add Another Device'}"
+                            Style="{StaticResource PrimaryButton}" />
+
+                        <Button
+                            Height="38"
+                            Margin="0,0,0,12"
+                            Background="#221111"
+                            Command="{Binding ResetAllCommand}"
+                            Content="{Binding ResetAllButtonText, FallbackValue='⚠ Reset &amp; Re-create All'}"
+                            Foreground="#ff6666"
+                            Style="{StaticResource SecondaryButton}" />
+                    </StackPanel>
+
+                    <TextBlock
+                        x:Name="LblMainStatus"
+                        HorizontalAlignment="Center"
+                        FontSize="12"
+                        Text="{Binding MainStatusText}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsServiceActive}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasSetupIssues}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
 
                     <Button
-                        Height="40"
-                        Margin="0,0,0,15"
-                        Background="#221111"
-                        Command="{Binding ResetAllCommand}"
-                        Content="⚠ Reset &amp; Re-create All"
-                        Foreground="#ff6666"
+                        Height="38"
+                        Margin="0,16,0,0"
+                        Background="#172743"
+                        BorderBrush="#35598E"
+                        Command="{Binding ShowActivityCommand}"
+                        Content="{Binding RecentActivityButtonText, FallbackValue='✨  Recent Activity'}"
+                        Foreground="#DCE9FF"
+                        Style="{StaticResource SecondaryButton}" />
+
+                    <Button
+                        Margin="0,10,0,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ShowSettingsCommand}"
+                        Content="{Binding AdvancedSettingsButtonText, FallbackValue='⚙  Advanced Settings'}"
+                        FontSize="12"
+                        Foreground="#666688"
+                        Style="{StaticResource SecondaryButton}" />
+
+                    <Button
+                        Margin="0,8,0,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Command="{Binding ShowAboutCommand}"
+                        Content="{Binding AboutPortalButtonText, FallbackValue='About Portal'}"
+                        FontSize="12"
+                        Foreground="#7b88b6"
                         Style="{StaticResource SecondaryButton}" />
                 </StackPanel>
-
-                <TextBlock
-                    x:Name="LblMainStatus"
-                    HorizontalAlignment="Center"
-                    FontSize="12"
-                    Text="{Binding MainStatusText}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsServiceActive}" Value="True">
-                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-
-                <Button
-                    Height="40"
-                    Margin="0,24,0,0"
-                    Background="#172743"
-                    BorderBrush="#35598E"
-                    Command="{Binding ShowActivityCommand}"
-                    Content="✨  Recent Activity"
-                    Foreground="#DCE9FF"
-                    Style="{StaticResource SecondaryButton}" />
-
-                <Button
-                    Margin="0,12,0,0"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Command="{Binding ShowSettingsCommand}"
-                    Content="⚙  Advanced Settings"
-                    FontSize="12"
-                    Foreground="#666688"
-                    Style="{StaticResource SecondaryButton}" />
-
-                <Button
-                    Margin="0,10,0,0"
-                    Background="#18311f"
-                    BorderBrush="#2f5b3a"
-                    Command="{Binding OpenExternalLinkCommand}"
-                    CommandParameter="{Binding AboutMobileClientUrl}"
-                    Content="Download Mobile Client"
-                    Foreground="#d8ffe1"
-                    Style="{StaticResource SecondaryButton}" />
-
-                <Button
-                    Margin="0,10,0,0"
-                    Background="Transparent"
-                    BorderThickness="0"
-                    Command="{Binding ShowAboutCommand}"
-                    Content="About Portal"
-                    FontSize="12"
-                    Foreground="#7b88b6"
-                    Style="{StaticResource SecondaryButton}" />
-            </StackPanel>
-        </Grid>
+            </Grid>
+        </ScrollViewer>
 
         <Grid
             x:Name="ViewSettings"
@@ -1605,11 +1604,14 @@
                                                             BorderThickness="1"
                                                             Margin="0,0,9,0"
                                                             VerticalAlignment="Center">
-                                                            <TextBlock
+                                                            <Path
+                                                                Width="14"
+                                                                Height="16"
+                                                                Data="M5 2C3.9 2 3 2.9 3 4v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2H5zm0 3h10v12H5V5zm4 13.5a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"
+                                                                Fill="#7aa2f7"
+                                                                Stretch="Uniform"
                                                                 HorizontalAlignment="Center"
-                                                                VerticalAlignment="Center"
-                                                                FontSize="16"
-                                                                Text="📱" />
+                                                                VerticalAlignment="Center" />
                                                         </Border>
                                                         <TextBlock
                                                             VerticalAlignment="Center"
@@ -1629,11 +1631,14 @@
                                                             CornerRadius="6"
                                                             VerticalAlignment="Center">
                                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    Margin="0,0,4,0"
-                                                                    VerticalAlignment="Center"
-                                                                    Text="{Binding TransportBadgeIcon}" />
+                                                                <Path
+                                                                    Width="11"
+                                                                    Height="11"
+                                                                    Margin="0,0,5,0"
+                                                                    Data="{Binding TransportIconData}"
+                                                                    Fill="#8cb8ff"
+                                                                    Stretch="Uniform"
+                                                                    VerticalAlignment="Center" />
                                                                 <TextBlock
                                                                     FontSize="10"
                                                                     FontWeight="Medium"
@@ -1714,21 +1719,44 @@
 
                                                         <!-- Account -->
                                                         <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,6">
-                                                            <TextBlock Text="👤 " FontSize="11" VerticalAlignment="Center" Opacity="0.85" />
-                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Text="{Binding AccountLabel, FallbackValue='Account: '}" VerticalAlignment="Center" />
-                                                            <TextBlock FontSize="11" FontWeight="Medium" Foreground="#d4e0f7" TextTrimming="CharacterEllipsis" Text="{Binding AccountValue, FallbackValue='—'}" VerticalAlignment="Center" />
+                                                            <Path
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,5,0"
+                                                                VerticalAlignment="Center"
+                                                                Data="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                                                                Fill="#8a99be"
+                                                                Stretch="Uniform" />
+                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Margin="0,0,6,0" Text="{Binding AccountLabel, FallbackValue='Account:'}" VerticalAlignment="Center" />
+                                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#d4e0f7" TextTrimming="CharacterEllipsis" Text="{Binding AccountValue, FallbackValue='—'}" VerticalAlignment="Center" />
                                                         </StackPanel>
 
                                                         <!-- Paired Date -->
                                                         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,6">
-                                                            <TextBlock Text="📅 " FontSize="11" VerticalAlignment="Center" Opacity="0.85" />
-                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Text="{Binding PairedLabel, FallbackValue='Paired: '}" VerticalAlignment="Center" />
+                                                            <Path
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,5,0"
+                                                                VerticalAlignment="Center"
+                                                                Data="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"
+                                                                Fill="#8a99be"
+                                                                Stretch="Uniform" />
+                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Margin="0,0,6,0" Text="{Binding PairedLabel, FallbackValue='Paired:'}" VerticalAlignment="Center" />
                                                             <TextBlock FontSize="11" Foreground="#c0caea" Text="{Binding PairedValue}" VerticalAlignment="Center" />
                                                         </StackPanel>
 
                                                         <!-- Client ID (Full Width) -->
                                                         <DockPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Center">
-                                                            <TextBlock DockPanel.Dock="Left" Text="🔑 ID: " FontSize="10" Foreground="#6f7ca1" VerticalAlignment="Center" />
+                                                            <Path
+                                                                DockPanel.Dock="Left"
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,5,0"
+                                                                VerticalAlignment="Center"
+                                                                Data="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+                                                                Fill="#66779d"
+                                                                Stretch="Uniform" />
+                                                            <TextBlock DockPanel.Dock="Left" Text="ID:" FontSize="10" Foreground="#6f7ca1" Margin="0,0,6,0" VerticalAlignment="Center" />
                                                             <TextBlock
                                                                 Text="{Binding ClientId}"
                                                                 FontSize="10"
@@ -1755,7 +1783,7 @@
                                                         Command="{Binding DataContext.TestDeviceUnlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
                                                         Style="{StaticResource DeviceCardTestButtonWide}"
-                                                        ToolTip="Test Connection / Проверить связь с телефоном">
+                                                        ToolTip="{Binding TestToolTip}">
                                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                             <Path
                                                                 Width="11"
@@ -1772,7 +1800,7 @@
                                                                 Foreground="#ffe680"
                                                                 VerticalAlignment="Center" />
                                                         </StackPanel>
-                                                    </Button>
+                                                     </Button>
 
                                                     <!-- Right: Secondary Utility Action Buttons -->
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">

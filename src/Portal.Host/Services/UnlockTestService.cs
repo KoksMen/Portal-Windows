@@ -56,15 +56,29 @@ public class UnlockTestService
         var effectiveCt = linkedCts.Token;
 
         var tcs = new TaskCompletionSource<UnlockTestResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var activeSockets = new System.Collections.Concurrent.ConcurrentBag<WebSocket>();
+
+        void CompleteTest(UnlockTestResult testResult)
+        {
+            if (tcs.TrySetResult(testResult))
+            {
+                try { timeoutCts.Cancel(); } catch { }
+                foreach (var s in activeSockets)
+                {
+                    try { s.Abort(); } catch { }
+                }
+            }
+        }
+
         using var reg = effectiveCt.Register(() =>
         {
             if (ct.IsCancellationRequested)
             {
-                tcs.TrySetResult(new UnlockTestResult(false, Localization.T("Test cancelled."), stopwatch.ElapsedMilliseconds, null, device.Name));
+                CompleteTest(new UnlockTestResult(false, Localization.T("Test cancelled."), stopwatch.ElapsedMilliseconds, null, device.Name));
             }
             else
             {
-                tcs.TrySetResult(new UnlockTestResult(false, Localization.T("Test timed out. The phone did not respond in time."), stopwatch.ElapsedMilliseconds, null, device.Name));
+                CompleteTest(new UnlockTestResult(false, Localization.T("Test timed out. The phone did not respond in time."), stopwatch.ElapsedMilliseconds, null, device.Name));
             }
         });
 
@@ -134,7 +148,7 @@ public class UnlockTestService
                     var latency = stopwatch.ElapsedMilliseconds;
                     Logger.Log($"[UnlockTestService] REST unlock test successful for {device.Name} in {latency} ms");
 
-                    tcs.TrySetResult(new UnlockTestResult(
+                    CompleteTest(new UnlockTestResult(
                         true,
                         string.Format(Localization.T("Connection verified successfully! Latency: {0} ms"), latency),
                         latency,
@@ -183,7 +197,8 @@ public class UnlockTestService
                     return;
                 }
 
-                using var ws = await context.WebSockets.AcceptWebSocketAsync();
+                var ws = await context.WebSockets.AcceptWebSocketAsync();
+                activeSockets.Add(ws);
                 Logger.Log($"[UnlockTestService] WebSocket accepted from {device.Name}. Sending test unlock request...");
 
                 // Send test unlock request over WS (matching Credential Provider format, Status is null)
@@ -244,7 +259,7 @@ public class UnlockTestService
                             var latency = stopwatch.ElapsedMilliseconds;
                             Logger.Log($"[UnlockTestService] Unlock approved on mobile device for {device.Name} in {latency} ms");
 
-                            tcs.TrySetResult(new UnlockTestResult(
+                            CompleteTest(new UnlockTestResult(
                                 true,
                                 string.Format(Localization.T("Connection verified successfully! Latency: {0} ms"), latency),
                                 latency,
@@ -264,7 +279,7 @@ public class UnlockTestService
                             var latency = stopwatch.ElapsedMilliseconds;
                             Logger.LogWarning($"[UnlockTestService] Unlock rejected on mobile device for {device.Name} (status='{status}', type='{type}')");
 
-                            tcs.TrySetResult(new UnlockTestResult(
+                            CompleteTest(new UnlockTestResult(
                                 false,
                                 Localization.T("Biometric authentication was rejected or cancelled on the device."),
                                 latency,
@@ -311,11 +326,16 @@ public class UnlockTestService
         finally
         {
             _mdns.Stop();
+            foreach (var s in activeSockets)
+            {
+                try { s.Abort(); s.Dispose(); } catch { }
+            }
             if (app != null)
             {
                 try
                 {
-                    await app.StopAsync(CancellationToken.None);
+                    using var shutdownCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+                    await app.StopAsync(shutdownCts.Token);
                     await app.DisposeAsync();
                 }
                 catch { }
@@ -330,7 +350,16 @@ public class UnlockTestService
 
         while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
         {
-            var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
+            WebSocketReceiveResult result;
+            try
+            {
+                result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
+            }
+            catch
+            {
+                return (WebSocketMessageType.Close, null);
+            }
+
             if (result.MessageType == WebSocketMessageType.Close)
                 return (WebSocketMessageType.Close, null);
 
