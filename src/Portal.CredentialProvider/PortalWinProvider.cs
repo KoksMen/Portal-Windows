@@ -68,10 +68,6 @@ public class PortalWinProvider : PortalWinProviderBase
         statusLabel.State = FieldState.DisplayInBoth;
         yield return statusLabel;
 
-        var progressLabel = new SmallLabelControl("ProgressLabel", "");
-        progressLabel.State = FieldState.Hidden;
-        yield return progressLabel;
-
         var versionLabel = new SmallLabelControl("VersionLabel", Localization.T("Ver: ") + GetProjectVersionText());
         versionLabel.State = FieldState.DisplayInBoth;
         yield return versionLabel;
@@ -189,24 +185,59 @@ public class PortalWinProvider : PortalWinProviderBase
             if (bracketIndex > 0)
             {
                 string basePart = rawStatus.Substring(0, bracketIndex).Trim();
-                return BuildStatusHeadline(NormalizeHeadline(basePart));
+                string progressPart = rawStatus.Substring(bracketIndex).Trim();
+                string normalizedBase = BuildStatusHeadline(NormalizeHeadline(basePart));
+
+                double w1 = EstimateVisualWidth(normalizedBase);
+                double w2 = EstimateVisualWidth(progressPart);
+                const double spaceWidth = 3.84;
+
+                if (w2 > w1)
+                {
+                    // Bar is wider than headline: pad headline with leading spaces to center it over the bar
+                    int spaces = (int)Math.Round((w2 - w1) / (2.0 * spaceWidth));
+                    string padding = spaces > 0 ? new string(' ', spaces) : string.Empty;
+                    return $"{padding}{normalizedBase}\n{progressPart}";
+                }
+                else if (w1 > w2)
+                {
+                    // Headline is wider than bar: pad bar with leading spaces to center it under the headline
+                    int spaces = (int)Math.Round((w1 - w2) / (2.0 * spaceWidth));
+                    string padding = spaces > 0 ? new string(' ', spaces) : string.Empty;
+                    return $"{normalizedBase}\n{padding}{progressPart}";
+                }
+                else
+                {
+                    return $"{normalizedBase}\n{progressPart}";
+                }
             }
         }
 
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
     }
 
-    internal string? ExtractProgressPart(string? rawStatus)
+    private static double EstimateVisualWidth(string s)
     {
-        if (!string.IsNullOrWhiteSpace(rawStatus))
+        if (string.IsNullOrEmpty(s)) return 0;
+        double width = 0;
+        foreach (char c in s)
         {
-            int bracketIndex = rawStatus.IndexOf('[');
-            if (bracketIndex >= 0)
+            width += c switch
             {
-                return rawStatus.Substring(bracketIndex).Trim();
-            }
+                ' ' => 3.84,
+                '█' or '░' or '▒' or '▓' => 11.4,
+                '[' or ']' => 4.5,
+                ':' or '.' or ',' or ';' or '!' => 3.0,
+                >= '0' and <= '9' => 7.8,
+                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' or 'О' or 'М' or 'Ф' or 'W' or 'M' => 11.0,
+                >= 'А' and <= 'Я' => 9.0,
+                >= 'а' and <= 'я' => (c is 'т' or 'с' or 'г') ? 6.5 : 7.8,
+                >= 'A' and <= 'Z' => 8.8,
+                >= 'a' and <= 'z' => (c is 'i' or 'l' or 't' or 'j' or 'f' or 'r') ? 4.5 : (c is 'w' or 'm') ? 11.0 : 7.4,
+                _ => 7.5
+            };
         }
-        return null;
+        return width;
     }
 
     internal string BuildStatusDetailsForState(string? rawStatus)

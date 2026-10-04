@@ -11,7 +11,6 @@ public abstract class PortalWinTileBase : CredentialTile2
 {
     protected readonly PortalWinProviderBase _providerBase;
     protected SmallLabelControl? _statusLabel;
-    protected SmallLabelControl? _progressLabel;
     protected SmallLabelControl? _versionLabel;
     protected SmallLabelControl? _statusDetailsLabel;
     protected TextboxControl? _usernameControl;
@@ -38,7 +37,6 @@ public abstract class PortalWinTileBase : CredentialTile2
         try
         {
             _statusLabel = Controls.GetControl<SmallLabelControl>("StatusLabel");
-            _progressLabel = Controls.GetControl<SmallLabelControl>("ProgressLabel");
             _versionLabel = Controls.GetControl<SmallLabelControl>("VersionLabel");
             _statusDetailsLabel = Controls.GetControl<SmallLabelControl>("StatusDetailsLabel");
             _usernameControl = Controls.GetControl<TextboxControl>("UsernameField");
@@ -114,52 +112,22 @@ public abstract class PortalWinTileBase : CredentialTile2
         {
             UpdateStatus(
                 provider.BuildStatusHeadlineForState(_lastStatusRaw),
-                provider.BuildStatusDetailsForState(_lastStatusRaw),
-                provider.ExtractProgressPart(_lastStatusRaw));
+                provider.BuildStatusDetailsForState(_lastStatusRaw));
             return;
         }
 
-        UpdateStatus(text, null, null);
+        UpdateStatus(text, null);
     }
 
-    internal void UpdateStatus(string headline, string? details) => UpdateStatus(headline, details, null);
-
-    internal void UpdateStatus(string headline, string? details, string? progress)
+    internal void UpdateStatus(string headline, string? details)
     {
-        string cleanHeadline = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.Trim();
+        string cleanHeadline = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.TrimEnd();
 
         if (_statusLabel != null)
         {
             try
             {
-                if (_progressLabel == null && !string.IsNullOrWhiteSpace(progress))
-                {
-                    _statusLabel.Label = $"{cleanHeadline}\n{progress.Trim()}";
-                }
-                else
-                {
-                    _statusLabel.Label = cleanHeadline;
-                }
-            }
-            catch
-            {
-            }
-        }
-
-        if (_progressLabel != null)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(progress))
-                {
-                    _progressLabel.Label = progress.Trim();
-                    _progressLabel.State = FieldState.DisplayInBoth;
-                }
-                else
-                {
-                    _progressLabel.Label = string.Empty;
-                    _progressLabel.State = FieldState.Hidden;
-                }
+                _statusLabel.Label = cleanHeadline;
             }
             catch
             {
@@ -189,8 +157,7 @@ public abstract class PortalWinTileBase : CredentialTile2
         {
             UpdateStatus(
                 provider.BuildStatusHeadlineForState(_lastStatusRaw),
-                provider.BuildStatusDetailsForState(_lastStatusRaw),
-                provider.ExtractProgressPart(_lastStatusRaw));
+                provider.BuildStatusDetailsForState(_lastStatusRaw));
         }
     }
 

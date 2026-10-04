@@ -85,6 +85,11 @@ if ($useStore) {
                 Start-Sleep -Seconds 2
             }
             if (-not $signed) {
+                $sig = Get-AuthenticodeSignature $file.FullName
+                if ($sig.Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
+                    Write-Host "--> File $($file.FullName) could not be re-signed (file in use), but already has an existing signature. Continuing." -ForegroundColor DarkYellow
+                    continue
+                }
                 throw "Failed to sign $($file.FullName) with SHA1 $sha1 (exit code $lastErr)"
             }
         }

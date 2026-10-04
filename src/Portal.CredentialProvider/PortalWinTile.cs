@@ -727,12 +727,10 @@ public class PortalWinTile : PortalWinTileBase
                 int totalSeconds = _timeoutMinutes * 60;
                 int remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
 
-                string timeText = remainingSeconds >= 60
-                    ? $"{remainingSeconds / 60}:{remainingSeconds % 60:D2}"
-                    : $"{remainingSeconds}s";
+                string timeText = $"{remainingSeconds / 60}:{remainingSeconds % 60:D2}";
 
-                const int totalBlocks = 24;
-                const int halfBlocks = 12;
+                const int totalBlocks = 18;
+                const int halfBlocks = 9;
                 int filledBlocks = remainingSeconds > 0
                     ? Math.Clamp((int)Math.Ceiling((double)remainingSeconds / totalSeconds * totalBlocks), 1, totalBlocks)
                     : 0;
@@ -764,8 +762,8 @@ public class PortalWinTile : PortalWinTileBase
             }
             else
             {
-                // Infinite / No timeout mode: animate symmetric radar pulse across full width (10 blocks per side)
-                const int infHalf = 10;
+                // Infinite / No timeout mode: animate symmetric radar pulse across full width (8 blocks per side)
+                const int infHalf = 8;
                 int cycle = (infHalf - 1) * 2;
                 int step = elapsedSeconds % cycle;
                 int pulsePos = step < (infHalf - 1) ? step : cycle - step;
