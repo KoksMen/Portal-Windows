@@ -121,7 +121,16 @@ public static class Localization
         ["PC unlock approved"] = "Разблокировка ПК подтверждена",
         ["Unlock request cancelled"] = "Запрос разблокировки отменён",
         ["Unlock request declined"] = "Запрос разблокировки отклонён",
-        ["Portal started"] = "Portal запущен"
+        ["Portal started"] = "Portal запущен",
+        ["Testing device connection"] = "Проверка связи с устройством",
+        ["Connection test passed!"] = "Тест связи успешно пройден!",
+        ["Connection test failed"] = "Ошибка проверки связи",
+        ["Test cancelled"] = "Тест отменен",
+        ["Device connection test was cancelled."] = "Проверка связи с устройством была отменена.",
+        ["Test Connection / Проверить связь"] = "Проверить связь с телефоном",
+        ["Please approve the unlock prompt on your phone..."] = "Подтвердите запрос разблокировки на телефоне...",
+        ["Waiting for device response..."] = "Ожидание ответа от смартфона...",
+        ["Preparing connection test..."] = "Подготовка теста связи..."
         ,["+ Add Another Device"] = "+ Добавить устройство"
         ,["⚠ Reset & Re-create All"] = "⚠ Сбросить и настроить заново"
         ,["✓ Service Active & Ready"] = "✓ Служба активна и готова"

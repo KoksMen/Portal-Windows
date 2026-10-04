@@ -62,6 +62,7 @@ public partial class MainViewModel : ObservableObject
     private readonly FaqContentService _faqContentService;
     private readonly UpdateService _updateService;
     private readonly EncryptedBackupService _encryptedBackupService;
+    private readonly UnlockTestService _unlockTestService;
 
     private BluetoothPairingService? _btPairing;
     private PortalWinConfig _config;
@@ -540,7 +541,8 @@ public partial class MainViewModel : ObservableObject
         IDialogService dialogService,
         FaqContentService faqContentService,
         UpdateService updateService,
-        EncryptedBackupService encryptedBackupService)
+        EncryptedBackupService encryptedBackupService,
+        UnlockTestService unlockTestService)
     {
         _firewall = firewall;
         _providerSetup = providerSetup;
@@ -555,6 +557,7 @@ public partial class MainViewModel : ObservableObject
         _faqContentService = faqContentService;
         _updateService = updateService;
         _encryptedBackupService = encryptedBackupService;
+        _unlockTestService = unlockTestService;
         _updateToastTimer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(10)
@@ -1410,6 +1413,60 @@ public partial class MainViewModel : ObservableObject
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
             await ShowBusyResultAsync(Services.LocalizationService.T("Deletion cancelled"), Services.LocalizationService.T("Device deletion was cancelled. Please verify the device list before continuing."));
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestDeviceUnlockAsync(DeviceModel? device)
+    {
+        if (device == null)
+        {
+            return;
+        }
+
+        var deviceName = device.Name;
+        UnlockTestResult? testResult = null;
+
+        BusyOperationHintText = Services.LocalizationService.T("Make sure your phone is connected to the same Wi-Fi network or Bluetooth is enabled.");
+        var outcome = await RunBusyOperationAsync(
+            Services.LocalizationService.T("Testing device connection"),
+            string.Format(Services.LocalizationService.T("Waiting for response from '{0}'... Please confirm on your phone."), deviceName),
+            async cancellationToken =>
+            {
+                testResult = await _unlockTestService.TestDeviceAsync(
+                    device,
+                    status =>
+                    {
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            BusyOperationStatus = status;
+                        });
+                    },
+                    cancellationToken);
+            },
+            keepOverlayForResult: true);
+
+        if (outcome == BusyOperationOutcome.Completed && testResult != null)
+        {
+            if (testResult.IsSuccess)
+            {
+                await ShowBusyResultAsync(
+                    Services.LocalizationService.T("Connection test passed!"),
+                    string.Format(Services.LocalizationService.T("Successfully verified connection with '{0}'!\nTransport: {1}\nResponse time: {2} ms"),
+                        deviceName, testResult.Transport ?? "Wi-Fi", testResult.LatencyMs));
+            }
+            else
+            {
+                await ShowBusyResultAsync(
+                    Services.LocalizationService.T("Connection test failed"),
+                    testResult.Message);
+            }
+        }
+        else if (outcome == BusyOperationOutcome.Cancelled)
+        {
+            await ShowBusyResultAsync(
+                Services.LocalizationService.T("Test cancelled"),
+                Services.LocalizationService.T("Device connection test was cancelled."));
         }
     }
 

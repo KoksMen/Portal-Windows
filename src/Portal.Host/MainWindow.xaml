@@ -1502,6 +1502,16 @@
                                                         ToolTip="Certificate information" />
                                                     <Button
                                                         Margin="0,0,6,0"
+                                                        Background="#182d4a"
+                                                        BorderBrush="#3d649d"
+                                                        Command="{Binding DataContext.TestDeviceUnlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="⚡"
+                                                        FontSize="12"
+                                                        Style="{StaticResource TileIconButton}"
+                                                        ToolTip="Test Connection / Проверить связь" />
+                                                    <Button
+                                                        Margin="0,0,6,0"
                                                         Background="#1b2842"
                                                         BorderBrush="#405681"
                                                         Command="{Binding DataContext.EditDeviceAccountCommand, RelativeSource={RelativeSource AncestorType=Window}}"
