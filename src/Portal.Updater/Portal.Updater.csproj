@@ -22,7 +22,7 @@
 		<Version>1.5.3</Version>
 		<AssemblyVersion>1.5.3.0</AssemblyVersion>
 		<FileVersion>1.5.3.0</FileVersion>
-		<InformationalVersion>1.5.3-Rin</InformationalVersion>
+		<InformationalVersion>1.5.3-Herta</InformationalVersion>
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
