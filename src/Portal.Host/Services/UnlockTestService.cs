@@ -207,12 +207,37 @@ public class UnlockTestService
 
                     try
                     {
-                        using var doc = JsonDocument.Parse(json);
-                        var root = doc.RootElement;
-                        var status = root.TryGetProperty("status", out var sProp) ? sProp.GetString() : null;
-                        var type = root.TryGetProperty("type", out var tProp) ? tProp.GetString() : null;
+                        WsMessage? wsMsg = null;
+                        try
+                        {
+                            wsMsg = JsonSerializer.Deserialize<WsMessage>(json, new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
+                        }
+                        catch { }
+
+                        var status = wsMsg?.Status;
+                        var type = wsMsg?.Type;
+
+                        // Fallback case-insensitive check in case of custom/unmatched properties
+                        if (string.IsNullOrEmpty(status) && string.IsNullOrEmpty(type))
+                        {
+                            using var doc = JsonDocument.Parse(json);
+                            foreach (var prop in doc.RootElement.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, "status", StringComparison.OrdinalIgnoreCase))
+                                    status = prop.Value.GetString();
+                                else if (string.Equals(prop.Name, "type", StringComparison.OrdinalIgnoreCase))
+                                    type = prop.Value.GetString();
+                            }
+                        }
+
+                        Logger.Log($"[UnlockTestService] Parsed WS message: type='{type}' status='{status}' requestId='{wsMsg?.RequestId}'");
 
                         if (string.Equals(status, "ok", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(status, "approved", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(status, "success", StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(type, "unlock_approved", StringComparison.OrdinalIgnoreCase))
                         {
                             stopwatch.Stop();
@@ -230,11 +255,14 @@ public class UnlockTestService
                         else if (string.Equals(status, "denied", StringComparison.OrdinalIgnoreCase) ||
                                  string.Equals(status, "rejected", StringComparison.OrdinalIgnoreCase) ||
                                  string.Equals(status, "failed", StringComparison.OrdinalIgnoreCase) ||
-                                 string.Equals(type, "unlock_denied", StringComparison.OrdinalIgnoreCase))
+                                 string.Equals(status, "cancelled", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(status, "canceled", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(type, "unlock_denied", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(type, "unlock_cancelled", StringComparison.OrdinalIgnoreCase))
                         {
                             stopwatch.Stop();
                             var latency = stopwatch.ElapsedMilliseconds;
-                            Logger.LogWarning($"[UnlockTestService] Unlock rejected on mobile device for {device.Name}");
+                            Logger.LogWarning($"[UnlockTestService] Unlock rejected on mobile device for {device.Name} (status='{status}', type='{type}')");
 
                             tcs.TrySetResult(new UnlockTestResult(
                                 false,
