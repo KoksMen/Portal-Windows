@@ -67,13 +67,13 @@ public class PortalWinProvider : PortalWinProviderBase
         statusLabel.State = FieldState.DisplayInBoth;
         yield return statusLabel;
 
+        var versionLabel = new SmallLabelControl("VersionLabel", Localization.T("Ver: ") + GetProjectVersionText());
+        versionLabel.State = FieldState.DisplayInBoth;
+        yield return versionLabel;
+
         var statusDetailsLabel = new SmallLabelControl("StatusDetailsLabel", statusDetails);
         statusDetailsLabel.State = FieldState.Hidden;
         yield return statusDetailsLabel;
-
-        var versionLabel = new SmallLabelControl("VersionLabel", Localization.T("Ver: ") + GetProjectVersionText());
-        versionLabel.State = FieldState.Hidden;
-        yield return versionLabel;
 
         var showDetailsButton = new CommandLinkControl("ShowDetailsButton", Localization.T("Show details"));
         showDetailsButton.State = FieldState.DisplayInSelectedTile;

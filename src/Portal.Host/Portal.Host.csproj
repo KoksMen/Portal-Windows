@@ -37,10 +37,11 @@
         <Company>xXTeam</Company>
         <Product>Portal Host (Windows)</Product>
         <Copyright>Copyright © 2026</Copyright>
-		<Version>1.3.0</Version>
-		<AssemblyVersion>1.3.0.0</AssemblyVersion>
-		<FileVersion>1.3.0.0</FileVersion>
-		<InformationalVersion>1.3.0-Rin</InformationalVersion>
+		<Version>1.5.3</Version>
+		<AssemblyVersion>1.5.3.0</AssemblyVersion>
+		<FileVersion>1.5.3.0</FileVersion>
+		<InformationalVersion>1.5.3-Rin</InformationalVersion>
+		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     </PropertyGroup>
 
     <Target Name="SignOutput" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' And '$(SkipSigning)' != 'true'">
@@ -81,8 +82,15 @@
     <Target Name="SignPublishOutput" AfterTargets="Publish" Condition="'$(Configuration)' == 'Release' And '$(SkipSigning)' != 'true'">
         <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)$(TargetName).dll&quot;" Condition="Exists('$(PublishDir)$(TargetName).dll')" />
         <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)$(TargetName).exe&quot;" Condition="Exists('$(PublishDir)$(TargetName).exe')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;7492EFCAEAEFD328F405F05E0A6BCBF12402C7A8&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Portal.Common.dll&quot;" Condition="Exists('$(PublishDir)Portal.Common.dll')" />
         <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;6B757026547640EBCDB08ACFD568F2A873D601F0&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Portal.Updater.exe&quot;" Condition="Exists('$(PublishDir)Portal.Updater.exe')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;6B757026547640EBCDB08ACFD568F2A873D601F0&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Updater\Portal.Updater.exe&quot;" Condition="Exists('$(PublishDir)Updater\Portal.Updater.exe')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;6B757026547640EBCDB08ACFD568F2A873D601F0&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Updater\Portal.Updater.dll&quot;" Condition="Exists('$(PublishDir)Updater\Portal.Updater.dll')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;7492EFCAEAEFD328F405F05E0A6BCBF12402C7A8&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Updater\Portal.Common.dll&quot;" Condition="Exists('$(PublishDir)Updater\Portal.Common.dll')" />
         <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;110025BF33D9D8EEE632AD6C4F43618A24069B22&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)Portal.CredentialProvider.comhost.dll&quot;" Condition="Exists('$(PublishDir)Portal.CredentialProvider.comhost.dll')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;110025BF33D9D8EEE632AD6C4F43618A24069B22&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)CredentialProvider\Portal.CredentialProvider.comhost.dll&quot;" Condition="Exists('$(PublishDir)CredentialProvider\Portal.CredentialProvider.comhost.dll')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;110025BF33D9D8EEE632AD6C4F43618A24069B22&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)CredentialProvider\Portal.CredentialProvider.dll&quot;" Condition="Exists('$(PublishDir)CredentialProvider\Portal.CredentialProvider.dll')" />
+        <Exec Command="call &quot;E:\Windows Kits\10\bin\10.0.26100.0\x86\signtool.exe&quot; sign /sha1 &quot;7492EFCAEAEFD328F405F05E0A6BCBF12402C7A8&quot; /tr http://timestamp.sectigo.com /td sha256 /fd sha256 &quot;$(PublishDir)CredentialProvider\Portal.Common.dll&quot;" Condition="Exists('$(PublishDir)CredentialProvider\Portal.Common.dll')" />
     </Target>
 
 </Project>
