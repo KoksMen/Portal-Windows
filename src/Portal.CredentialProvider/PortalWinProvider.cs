@@ -222,7 +222,7 @@ public class PortalWinProvider : PortalWinProviderBase
                 double fixedWidth = EstimateVisualWidth($"[  {timeText}  ]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                const double blockWidth = 10.8;
+                const double blockWidth = 11.5;
                 int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
 
                 int bestN = nBase;
@@ -233,14 +233,9 @@ public class PortalWinProvider : PortalWinProviderBase
                 {
                     for (int sp = 1; sp <= 3; sp++)
                     {
-                        string spStr = new string(' ', sp);
+                        string spStr = new string('\u00A0', sp);
                         double candWidth = EstimateVisualWidth($"[{new string('█', candN)}{spStr}{timeText}{spStr}{new string('█', candN)}]");
                         double diff = Math.Abs(candWidth - targetWidth);
-                        // Slightly penalize being shorter than target width so the bar fills the full width of the state line
-                        if (candWidth < targetWidth)
-                        {
-                            diff += 2.0;
-                        }
                         if (diff < minDiff)
                         {
                             minDiff = diff;
@@ -277,7 +272,7 @@ public class PortalWinProvider : PortalWinProviderBase
                     }
                 }
 
-                string spacingStr = new string(' ', bestSpacing);
+                string spacingStr = new string('\u00A0', bestSpacing);
                 string leftSide = new string(blocks[..n]);
                 string rightSide = new string(blocks[n..]);
 
@@ -289,11 +284,11 @@ public class PortalWinProvider : PortalWinProviderBase
             var part = innerTag.Substring("infinite,".Length);
             if (int.TryParse(part, out int elapsedSeconds))
             {
-                string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2} (∞)";
-                double fixedWidth = EstimateVisualWidth($"[  {elapsedText}  ]");
+                string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}\u00A0(∞)";
+                double fixedWidth = EstimateVisualWidth($"[\u00A0\u00A0{elapsedText}\u00A0\u00A0]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                const double blockWidth = 10.8;
+                const double blockWidth = 11.5;
                 int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
 
                 int bestN = nBase;
@@ -304,13 +299,9 @@ public class PortalWinProvider : PortalWinProviderBase
                 {
                     for (int sp = 1; sp <= 3; sp++)
                     {
-                        string spStr = new string(' ', sp);
+                        string spStr = new string('\u00A0', sp);
                         double candWidth = EstimateVisualWidth($"[{new string('░', candN)}{spStr}{elapsedText}{spStr}{new string('░', candN)}]");
                         double diff = Math.Abs(candWidth - targetWidth);
-                        if (candWidth < targetWidth)
-                        {
-                            diff += 2.0;
-                        }
                         if (diff < minDiff)
                         {
                             minDiff = diff;
@@ -334,7 +325,7 @@ public class PortalWinProvider : PortalWinProviderBase
                 left[n - 1 - pulsePos] = '█';
                 right[pulsePos] = '█';
 
-                string spacingStr = new string(' ', bestSpacing);
+                string spacingStr = new string('\u00A0', bestSpacing);
                 return $"[{new string(left)}{spacingStr}{elapsedText}{spacingStr}{new string(right)}]";
             }
         }
@@ -350,22 +341,22 @@ public class PortalWinProvider : PortalWinProviderBase
         {
             width += c switch
             {
-                ' ' => 4.5,
-                '█' or '░' or '▒' or '▓' => 10.8,
-                '[' or ']' => 5.0,
-                ':' or '.' or ',' or ';' or '!' => 4.5,
-                >= '0' and <= '9' => 7.8,
-                '(' or ')' => 5.5,
-                '∞' => 12.0,
-                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' or 'Ф' or 'W' or 'M' => 13.5,
-                >= 'А' and <= 'Я' => 12.0,
-                'т' or 'с' or 'г' => 9.0,
-                >= 'а' and <= 'я' => 10.5,
-                >= 'A' and <= 'Z' => 11.5,
-                'i' or 'l' or 't' or 'j' or 'f' or 'r' => 5.5,
-                'w' or 'm' => 13.5,
-                >= 'a' and <= 'z' => 9.5,
-                _ => 10.0
+                ' ' or '\u00A0' => 4.0,
+                '█' or '░' or '▒' or '▓' => 11.5,
+                '[' or ']' => 4.5,
+                ':' or '.' or ',' or ';' or '!' => 3.5,
+                >= '0' and <= '9' => 7.5,
+                '(' or ')' => 5.0,
+                '∞' => 11.0,
+                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' or 'Ф' or 'W' or 'M' => 12.0,
+                >= 'А' and <= 'Я' => 10.5,
+                'т' or 'с' or 'г' => 7.5,
+                >= 'а' and <= 'я' => 9.0,
+                >= 'A' and <= 'Z' => 10.0,
+                'i' or 'l' or 't' or 'j' or 'f' or 'r' => 5.0,
+                'w' or 'm' => 12.0,
+                >= 'a' and <= 'z' => 8.5,
+                _ => 8.5
             };
         }
         return width;
