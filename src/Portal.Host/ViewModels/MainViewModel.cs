@@ -411,6 +411,56 @@ public partial class MainViewModel : ObservableObject
         _ = ConfirmDisableDuplicateProtectionAsync();
     }
 
+    public PortalWinConfig Config => _config;
+
+    // Window Backdrop (Fluent UI Mica / Acrylic)
+    [ObservableProperty] private bool _isBackdropMica = true;
+    [ObservableProperty] private bool _isBackdropAcrylic;
+    [ObservableProperty] private bool _isBackdropMicaAlt;
+    [ObservableProperty] private bool _isBackdropNone;
+    [ObservableProperty] private bool _isWindows11BackdropSupported = Helpers.DwmBackdropHelper.IsWindows11OrGreater;
+    [ObservableProperty] private string _backdropStatusText = string.Empty;
+
+    public event Action<Helpers.BackdropType>? WindowBackdropChanged;
+
+    private bool _suppressBackdropChangeNotification;
+
+    partial void OnIsBackdropMicaChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.Mica);
+    }
+
+    partial void OnIsBackdropAcrylicChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.Acrylic);
+    }
+
+    partial void OnIsBackdropMicaAltChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.MicaAlt);
+    }
+
+    partial void OnIsBackdropNoneChanged(bool value)
+    {
+        if (value) ApplyBackdropSelection(Helpers.BackdropType.None);
+    }
+
+    private void ApplyBackdropSelection(Helpers.BackdropType type)
+    {
+        if (_suppressBackdropChangeNotification)
+        {
+            return;
+        }
+
+        if (_config != null)
+        {
+            _config.WindowBackdrop = type.ToString();
+            _config.Save();
+        }
+
+        WindowBackdropChanged?.Invoke(type);
+    }
+
     // Loading State for System Health & Maintenance actions
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotWorkingHealth))]
@@ -651,6 +701,18 @@ public partial class MainViewModel : ObservableObject
         IsDuplicateAccountProtectionEnabled = _config.EnforceUniqueAccountPerTransport;
         IsCrossTransportDuplicateProtectionEnabled = _config.EnforceUniqueAccountAcrossTransports && IsDuplicateAccountProtectionEnabled;
         _suppressDuplicateProtectionPrompt = false;
+
+        _suppressBackdropChangeNotification = true;
+        var backdrop = _config.WindowBackdrop?.Trim() ?? "Mica";
+        IsBackdropMica = string.Equals(backdrop, "Mica", StringComparison.OrdinalIgnoreCase);
+        IsBackdropAcrylic = string.Equals(backdrop, "Acrylic", StringComparison.OrdinalIgnoreCase);
+        IsBackdropMicaAlt = string.Equals(backdrop, "MicaAlt", StringComparison.OrdinalIgnoreCase);
+        IsBackdropNone = string.Equals(backdrop, "None", StringComparison.OrdinalIgnoreCase) || (!IsBackdropMica && !IsBackdropAcrylic && !IsBackdropMicaAlt);
+        _suppressBackdropChangeNotification = false;
+
+        BackdropStatusText = Helpers.DwmBackdropHelper.IsWindows11OrGreater
+            ? Services.LocalizationService.T("Windows 11 detected: Native Fluent Mica / Acrylic backdrops active")
+            : Services.LocalizationService.T("Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)");
 
         RefreshDevicesList();
     }
@@ -986,6 +1048,10 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedFaqTagsText));
         OnPropertyChanged(nameof(SelectedFaqUpdatedAtText));
         OnPropertyChanged(nameof(UpdateProgressHintText));
+
+        BackdropStatusText = Helpers.DwmBackdropHelper.IsWindows11OrGreater
+            ? Services.LocalizationService.T("Windows 11 detected: Native Fluent Mica / Acrylic backdrops active")
+            : Services.LocalizationService.T("Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)");
 
         // Certificate info dialog (if open).
         if (ShowCertificateInfoDialog)
@@ -1573,6 +1639,13 @@ public partial class MainViewModel : ObservableObject
                         _config.VpnCompatibilityModeEnabled = IsVpnCompatibilityModeEnabled;
                         _config.EnforceUniqueAccountPerTransport = IsDuplicateAccountProtectionEnabled;
                         _config.EnforceUniqueAccountAcrossTransports = IsDuplicateAccountProtectionEnabled && IsCrossTransportDuplicateProtectionEnabled;
+
+                        var preferredBackdrop = Helpers.BackdropType.Mica;
+                        if (IsBackdropAcrylic) preferredBackdrop = Helpers.BackdropType.Acrylic;
+                        else if (IsBackdropMicaAlt) preferredBackdrop = Helpers.BackdropType.MicaAlt;
+                        else if (IsBackdropNone) preferredBackdrop = Helpers.BackdropType.None;
+                        _config.WindowBackdrop = preferredBackdrop.ToString();
+
                         _config.Save();
                     }, cancellationToken);
                 },

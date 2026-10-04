@@ -9,7 +9,7 @@
     Height="760"
     MinWidth="480"
     MinHeight="560"
-    AllowsTransparency="True"
+    AllowsTransparency="False"
     Background="Transparent"
     Closing="Window_Closing"
     Icon="/Assets/portal-icon.png"
@@ -21,7 +21,7 @@
         <shell:WindowChrome
             CaptionHeight="0"
             CornerRadius="0"
-            GlassFrameThickness="0"
+            GlassFrameThickness="-1"
             ResizeBorderThickness="6"
             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
@@ -1929,6 +1929,60 @@
                                 </StackPanel>
                             </Border>
 
+                        </StackPanel>
+                    </Expander>
+
+                    <Expander
+                        Header="Appearance &amp; Styling"
+                        Style="{StaticResource SettingsSectionExpander}">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,8"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Window Backdrop Material" />
+
+                            <RadioButton
+                                Content="Mica (Windows 11)"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropMica}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Subtle, dynamic blur sampled from desktop wallpaper." />
+
+                            <RadioButton
+                                Content="Acrylic"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropAcrylic}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Translucent frosted glass blur material." />
+
+                            <RadioButton
+                                Content="Mica Alt (Tabbed)"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropMicaAlt}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Deeper, high-contrast desktop wallpaper blur." />
+
+                            <RadioButton
+                                Content="Solid Dark (Classic)"
+                                GroupName="BackdropStyle"
+                                IsChecked="{Binding IsBackdropNone}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Opaque dark background. Automatic fallback on Windows 10." />
+
+                            <Border
+                                Margin="0,8,0,0"
+                                Padding="10"
+                                Background="#101728"
+                                BorderBrush="#2c3f66"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <TextBlock
+                                    FontSize="11"
+                                    Foreground="#8fa2cf"
+                                    Text="{Binding BackdropStatusText}"
+                                    TextWrapping="Wrap" />
+                            </Border>
                         </StackPanel>
                     </Expander>
 

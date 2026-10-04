@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using Portal.Host.Helpers;
 using Portal.Host.Models;
 using Portal.Host.Services;
 using Portal.Host.ViewModels;
@@ -26,6 +27,7 @@ public partial class MainWindow : Window
     private TaskCompletionSource<bool>? _notificationTcs;
     private UpdateToastWindow? _updateToastWindow;
     private LogsWindow? _logsWindow;
+    private bool _isBackdropActive;
 
     public MainWindow(MainViewModel viewModel, IDialogService dialogService)
     {
@@ -41,6 +43,7 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         _viewModel.OpenLogsWindowRequested += OnOpenLogsWindowRequested;
+        _viewModel.WindowBackdropChanged += OnWindowBackdropChanged;
 
         Loaded += MainWindow_Loaded;
         SourceInitialized += MainWindow_SourceInitialized;
@@ -93,6 +96,7 @@ public partial class MainWindow : Window
     {
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         _viewModel.OpenLogsWindowRequested -= OnOpenLogsWindowRequested;
+        _viewModel.WindowBackdropChanged -= OnWindowBackdropChanged;
         CloseUpdateToastWindow();
         CloseLogsWindow();
         _viewModel.OnWindowClosing();
@@ -296,6 +300,8 @@ public partial class MainWindow : Window
     {
         var handle = new WindowInteropHelper(this).Handle;
         HwndSource.FromHwnd(handle)?.AddHook(WindowMessageHook);
+
+        ApplyFluentBackdrop();
     }
 
     /// <summary>
@@ -385,6 +391,66 @@ public partial class MainWindow : Window
             : Visibility.Collapsed;
     }
 
+    private void OnWindowBackdropChanged(BackdropType preferredType)
+    {
+        Dispatcher.Invoke(() => ApplyFluentBackdrop(preferredType));
+    }
+
+    public void ApplyFluentBackdrop(BackdropType? explicitType = null)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var preferredType = explicitType ?? BackdropType.Mica;
+        if (explicitType == null && _viewModel.Config != null)
+        {
+            if (Enum.TryParse<BackdropType>(_viewModel.Config.WindowBackdrop, true, out var parsed))
+            {
+                preferredType = parsed;
+            }
+        }
+
+        // Apply dark mode caption to DWM
+        DwmBackdropHelper.ApplyDarkMode(this, true);
+
+        bool applied = preferredType != BackdropType.None && DwmBackdropHelper.ApplyBackdrop(this, preferredType);
+
+        if (applied)
+        {
+            _isBackdropActive = true;
+
+            // Semi-transparent Fluent dark tints allowing Mica/Acrylic to blur through
+            Color tintColor = preferredType switch
+            {
+                BackdropType.Acrylic => Color.FromArgb(0x95, 0x0B, 0x0E, 0x17),
+                BackdropType.MicaAlt => Color.FromArgb(0xA5, 0x0B, 0x0E, 0x17),
+                _ => Color.FromArgb(0xBD, 0x0A, 0x0A, 0x0F) // Mica (~74% opacity)
+            };
+
+            WindowSurfaceBorder.Background = new SolidColorBrush(tintColor);
+            TitleBarBorder.Background = new SolidColorBrush(Color.FromArgb(0x55, 0x0E, 0x13, 0x20));
+            TitleBarBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(0x35, 0x48, 0x60, 0x8C));
+            WindowSurfaceBorder.BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0x48, 0x60, 0x8C));
+        }
+        else
+        {
+            _isBackdropActive = false;
+            // On Windows 11, if user selected Solid/None, disable system backdrop
+            DwmBackdropHelper.ApplyBackdrop(this, BackdropType.None);
+
+            // Solid 100% opaque dark theme (Windows 10 fallback & Solid mode)
+            WindowSurfaceBorder.Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x0A, 0x0F));
+            TitleBarBorder.Background = new SolidColorBrush(Color.FromRgb(0x0E, 0x13, 0x20));
+            TitleBarBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0x23, 0x2C, 0x43));
+            WindowSurfaceBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0x23, 0x2C, 0x43));
+        }
+
+        UpdateWindowSurfaceClip();
+    }
+
     private void WindowContentClipHost_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateWindowSurfaceClip();
@@ -404,13 +470,29 @@ public partial class MainWindow : Window
             return;
         }
 
-        var radius = WindowState == WindowState.Maximized ? 0d : 24d;
+        // On Windows 11 with active backdrop, DWM handles native window corner rounding (DWMWCP_ROUND).
+        // 12 DIPs matches native Windows 11 curves.
+        // On Windows 10 (or solid fallback), use 0 corner radius so no transparent glass bleed can occur.
+        double radius = 0d;
+        if (WindowState != WindowState.Maximized)
+        {
+            radius = _isBackdropActive ? 12d : 0d;
+        }
+
         WindowSurfaceBorder.CornerRadius = new CornerRadius(radius);
         if (TitleBarBorder != null)
         {
             TitleBarBorder.CornerRadius = new CornerRadius(radius, radius, 0, 0);
         }
-        WindowContentClipHost.Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius);
+
+        if (radius > 0)
+        {
+            WindowContentClipHost.Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius);
+        }
+        else
+        {
+            WindowContentClipHost.Clip = null;
+        }
     }
 
     private void OnNotifyOk(object sender, RoutedEventArgs e)

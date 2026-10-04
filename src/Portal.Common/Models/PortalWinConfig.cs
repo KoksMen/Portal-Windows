@@ -38,6 +38,13 @@ public class PortalWinConfig
     [JsonPropertyName("uiLanguage")]
     public string UiLanguage { get; set; } = "ru";
 
+    /// <summary>
+    /// Window backdrop style on Windows 11: "Mica", "Acrylic", "MicaAlt", or "None" (solid dark fallback).
+    /// Default: "Mica".
+    /// </summary>
+    [JsonPropertyName("windowBackdrop")]
+    public string WindowBackdrop { get; set; } = "Mica";
+
     [JsonPropertyName("unlockMode")]
     public UnlockMode UnlockMode { get; set; } = UnlockMode.Both;
 

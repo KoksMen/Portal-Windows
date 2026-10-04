@@ -21,6 +21,8 @@ public partial class LogsWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Helpers.DwmBackdropHelper.ApplyDarkMode(this, true);
+        Helpers.DwmBackdropHelper.SetCornerPreference(this, Helpers.DwmWindowCornerPreference.Round);
         Services.LocalizationService.ApplyToWindow(this);
         Title = Services.LocalizationService.T("Portal Logs");
         _viewModel.Start();

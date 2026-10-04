@@ -507,6 +507,20 @@ public static class Localization
         ,["unknown"] = "неизвестно"
         ,["Initializing..."] = "Инициализация..."
 
+        // --- Appearance & Fluent Backdrop ---
+        ,["Appearance & Styling"] = "Внешний вид и стиль"
+        ,["Window Backdrop Material"] = "Эффект фона окна"
+        ,["Mica (Windows 11)"] = "Mica / Слюда (Windows 11)"
+        ,["Subtle, dynamic blur sampled from desktop wallpaper."] = "Тонкое динамическое размытие фона рабочего стола."
+        ,["Acrylic"] = "Acrylic / Акрил"
+        ,["Translucent frosted glass blur material."] = "Полупрозрачное матовое стекло."
+        ,["Mica Alt (Tabbed)"] = "Mica Alt / Вкладки"
+        ,["Deeper, high-contrast desktop wallpaper blur."] = "Глубокое контрастное размытие обоев рабочего стола."
+        ,["Solid Dark (Classic)"] = "Сплошной темный (Классика)"
+        ,["Opaque dark background. Automatic fallback on Windows 10."] = "Сплошной темный фон. Автоматический режим на Windows 10."
+        ,["Windows 11 detected: Native Fluent Mica / Acrylic backdrops active"] = "Обнаружена Windows 11: активны нативные эффекты Mica / Acrylic"
+        ,["Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)"] = "Обнаружена Windows 10: активен сплошной темный фон (Mica доступна только на Windows 11)"
+
         // --- Credential Provider (lock screen) ---
         ,["PortalWin Remote Unlock"] = "PortalWin — Удалённая разблокировка"
         ,["Ver: "] = "Версия: "
