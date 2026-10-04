@@ -511,5 +511,7 @@ public static class Localization
         ,["The authorization process was cancelled via emergency shortcut (Left Ctrl + Left Alt)."] = "Процесс авторизации был отменён аварийной комбинацией клавиш (Left Ctrl + Left Alt)."
         ,["Retry"] = "Повторить"
         ,["Cancel Request"] = "Отменить запрос"
+        ,["Show details"] = "Подробнее"
+        ,["Hide details"] = "Скрыть"
     };
 }

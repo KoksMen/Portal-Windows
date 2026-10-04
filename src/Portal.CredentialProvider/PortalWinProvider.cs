@@ -76,7 +76,7 @@ public class PortalWinProvider : PortalWinProviderBase
         yield return versionLabel;
 
         var showDetailsButton = new CommandLinkControl("ShowDetailsButton", Localization.T("Show details"));
-        showDetailsButton.State = FieldState.Hidden;
+        showDetailsButton.State = FieldState.DisplayInSelectedTile;
         yield return showDetailsButton;
 
         var hideDetailsButton = new CommandLinkControl("HideDetailsButton", Localization.T("Hide details"));
