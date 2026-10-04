@@ -397,6 +397,7 @@ public class PortalWinTile : PortalWinTileBase
 
         ApplyHostInitiatedTlsPolicy(config, source);
         int timeoutMinutes = config.HostRequestTimeoutMinutes;
+        bool showProgress = config.ShowLockScreenProgress;
         // Host-Initiated flow must always carry requestId for cross-transport correlation.
         // Keep legacy acceptance on response side, but never omit requestId on request side.
         bool correlationEnabled = true;
@@ -428,7 +429,7 @@ public class PortalWinTile : PortalWinTileBase
 
         Task.Run(async () =>
         {
-            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, timeoutMinutes, requestTimer, cts.Token);
+            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, timeoutMinutes, requestTimer, cts.Token, showProgress);
             var anyRejection = false;
             var approvalCompleted = false;
 
@@ -605,20 +606,25 @@ public class PortalWinTile : PortalWinTileBase
         private readonly int _timeoutMinutes;
         private readonly Stopwatch _timer;
         private readonly CancellationToken _ct;
+        private readonly bool _showProgress;
         private readonly CancellationTokenSource _tickerCts = new();
         private readonly object _sync = new();
         private UnlockTransportStage? _latestStage;
         private bool _disposed;
 
-        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutMinutes, Stopwatch timer, CancellationToken ct)
+        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutMinutes, Stopwatch timer, CancellationToken ct, bool showProgress = true)
         {
             _publishStatus = publishStatus;
             _timeoutMinutes = timeoutMinutes;
             _timer = timer;
             _ct = ct;
+            _showProgress = showProgress;
 
             PublishCurrentStatus();
-            _ = RunTickerAsync();
+            if (_showProgress)
+            {
+                _ = RunTickerAsync();
+            }
         }
 
         public void Report(UnlockTransportStage stage)
@@ -705,6 +711,11 @@ public class PortalWinTile : PortalWinTileBase
                 UnlockTransportStage.Searching => "Searching device...",
                 _ => "Requesting unlock..."
             };
+
+            if (!_showProgress)
+            {
+                return baseKey;
+            }
 
             int elapsedSeconds = (int)(_timer.ElapsedMilliseconds / 1000);
 

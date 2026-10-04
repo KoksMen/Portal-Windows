@@ -204,6 +204,7 @@ public sealed class DiagnosticReportService
             unlock_mode = config.UnlockMode.ToString(),
             host_request_trigger = config.HostRequestTrigger.ToString(),
             host_request_timeout_minutes = config.HostRequestTimeoutMinutes,
+            show_lock_screen_progress = config.ShowLockScreenProgress,
             emergency_cancel_enabled = config.EmergencyCancelEnabled,
             emergency_cancel_hold_duration_ms = config.EmergencyCancelHoldDurationMs,
             emergency_cancel_hotkey = config.EmergencyCancelHotkey,

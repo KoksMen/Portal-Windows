@@ -82,6 +82,8 @@ public static class Localization
         ["On click + PC startup"] = "По нажатию и при запуске ПК",
         ["On click + any lock screen"] = "По нажатию и на любом экране блокировки",
         ["Request validity time (minutes)"] = "Время ожидания запроса (мин.)",
+        ["How long Host waits for device approval. Use 0 to wait until manual cancellation."] = "Сколько времени Host ожидает подтверждения устройства. Значение 0 — ожидать до ручной отмены.",
+        ["Show progress bar and countdown on lock screen"] = "Показывать прогресс-бар и таймер на экране блокировки",
         ["Block duplicate account pairing on same transport"] = "Запретить повторную привязку аккаунта в том же канале",
         ["Also block pairing this account on another transport"] = "Также запретить привязку этого аккаунта в другом канале",
         ["VPN compatibility mode (ignore VPN/virtual adapters)"] = "Режим совместимости с VPN (игнорировать VPN/виртуальные адаптеры)",

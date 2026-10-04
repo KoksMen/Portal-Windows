@@ -9,6 +9,7 @@
 - **⏳ Визуальный центрированный прогресс-бар на плитке экрана блокировки (Lock Screen Tile):**
   - **Центрированное время:** Время ожидания теперь выводится строго по центру графической шкалы: `[████  38s  ░░░░]`.
   - **Индикатор бесконечного ожидания:** Если в настройках выставлено ожидание без ограничений (`0`), плитка отображает циклический бегущий импульс вокруг центрированного секундомера и знака бесконечности: `[■□  0:42 (∞)  □■]`. Пользователь всегда уверен, что система активна и терпеливо ждёт разблокировки.
+  - **Отдельная настройка включения/выключения:** В карточке настроек таймаута добавлен чекбокс *«Показывать прогресс-бар и таймер на экране блокировки»*. Пользователи, предпочитающие минималистичный вид плитки без графических шкал, могут отключить отображение прогресса в один клик.
   - **Двухстрочный сбалансированный лейаут:** Текстовый статус (`Ожидание подтверждения...`) и прогресс-бар аккуратно разнесены, исключая прижимание индикатора к левому краю экрана блокировки.
   - **Центрирование поля настройки:** Поле ввода *«Время ожидания ответа (мин.)»* в настройках Host сбалансировано по центру карточки.
 
@@ -39,6 +40,7 @@
 - **⏳ Centered Visual Progress Bar on Lock Screen Tile:**
   - **Centered Timer:** The remaining countdown is now positioned right in the center of the dynamic progress bar: `[████  38s  ░░░░]`.
   - **Infinite Timeout Mode Support:** When infinite waiting is configured (`0`), the tile animates a continuous marquee pulse around an elapsed stopwatch with infinity badge: `[■□  0:42 (∞)  □■]`.
+  - **Independent User Setting Toggle:** Added a dedicated toggle *“Show progress bar and countdown on lock screen”* under Host Settings. If you prefer a minimal lock screen tile without graphical bars or timers, you can turn it off anytime with one click.
   - **Ergonomic Multi-line Layout:** Status headline and progress indicators are formatted to avoid clipping or sticking to the left edge of LogonUI tiles.
   - **Settings UI Alignment:** Centered the *Request validity time (minutes)* input box inside the settings card.
 

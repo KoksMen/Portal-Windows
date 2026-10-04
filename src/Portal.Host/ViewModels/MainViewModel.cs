@@ -358,6 +358,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _settingsPort = "29170";
     [ObservableProperty] private string _settingsDllPath = "";
     [ObservableProperty] private string _settingsHostRequestTimeoutMinutes = "2";
+    [ObservableProperty] private bool _isLockScreenProgressEnabled = true;
     [ObservableProperty] private bool _isVpnCompatibilityModeEnabled = true;
     [ObservableProperty] private string _restoreBackupFileText = Services.LocalizationService.T("No backup file selected");
     [ObservableProperty] private bool _showCreateBackupDialog;
@@ -691,6 +692,7 @@ public partial class MainViewModel : ObservableObject
     {
         SettingsPort = _config.Port.ToString();
         SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+        IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
         IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
         AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
         UpdateSourceText = IsRussianUi ? $"Источник: {UpdateService.BuiltInSourceLabel}" : $"Source: {UpdateService.BuiltInSourceLabel}";
@@ -959,6 +961,7 @@ public partial class MainViewModel : ObservableObject
                 {
                     SettingsPort = _config.Port.ToString();
                     SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+                    IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
                     IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
                     _suppressDuplicateProtectionPrompt = true;
                     IsDuplicateAccountProtectionEnabled = _config.EnforceUniqueAccountPerTransport;
@@ -1751,6 +1754,7 @@ public partial class MainViewModel : ObservableObject
                         _config.UnlockMode = mode;
                         _config.HostRequestTrigger = trigger;
                         _config.HostRequestTimeoutMinutes = hostRequestTimeoutMinutes;
+                        _config.ShowLockScreenProgress = IsLockScreenProgressEnabled;
                         _config.VpnCompatibilityModeEnabled = IsVpnCompatibilityModeEnabled;
                         _config.EnforceUniqueAccountPerTransport = IsDuplicateAccountProtectionEnabled;
                         _config.EnforceUniqueAccountAcrossTransports = IsDuplicateAccountProtectionEnabled && IsCrossTransportDuplicateProtectionEnabled;

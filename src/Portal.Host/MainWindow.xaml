@@ -2263,6 +2263,12 @@
                                             Foreground="#8fa2cf"
                                             Text="How long Host waits for device approval. Use 0 to wait until manual cancellation."
                                             TextWrapping="Wrap" />
+                                        <CheckBox
+                                            Margin="0,10,0,0"
+                                            IsChecked="{Binding IsLockScreenProgressEnabled}"
+                                            Style="{StaticResource PortalCheckBox}"
+                                            Foreground="#e6edff"
+                                            Content="Show progress bar and countdown on lock screen" />
                                     </StackPanel>
                                 </Border>
                             </StackPanel>

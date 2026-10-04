@@ -66,6 +66,13 @@ public class PortalWinConfig
     public int HostRequestTimeoutMinutes { get; set; } = 2;
 
     /// <summary>
+    /// Displays visual progress bar and countdown/marquee on the Windows lock screen credential provider tile.
+    /// Default: true.
+    /// </summary>
+    [JsonPropertyName("showLockScreenProgress")]
+    public bool ShowLockScreenProgress { get; set; } = true;
+
+    /// <summary>
     /// Enables emergency rollback/cancellation of in-flight unlock requests using a hotkey.
     /// Default: true.
     /// </summary>
