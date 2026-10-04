@@ -120,6 +120,11 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isFirewallOk;
     [ObservableProperty] private bool _isCertOk;
 
+    [ObservableProperty] private string _providerStatusText = Services.LocalizationService.T("Missing");
+    [ObservableProperty] private string _firewallStatusText = Services.LocalizationService.T("Missing");
+    [ObservableProperty] private string _certStatusText = Services.LocalizationService.T("Missing");
+    [ObservableProperty] private string _filesStatusText = Services.LocalizationService.T("Missing");
+
     [ObservableProperty] private string _clientCountText = Services.LocalizationService.TF("{0} trusted devices", 0);
     [ObservableProperty] private string _ipAddressText = Services.LocalizationService.T("IP: Unknown");
 
@@ -894,6 +899,19 @@ public partial class MainViewModel : ObservableObject
                 IsServiceActive = providerHealth.IsHealthy;
                 ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install";
 
+                ProviderStatusText = IsRegisteredOk
+                    ? Services.LocalizationService.T("Installed")
+                    : Services.LocalizationService.T("Missing");
+                FirewallStatusText = IsFirewallOk
+                    ? Services.LocalizationService.T("Active")
+                    : Services.LocalizationService.T("Missing");
+                CertStatusText = IsCertOk
+                    ? Services.LocalizationService.T("Reserved")
+                    : Services.LocalizationService.T("Missing");
+                FilesStatusText = IsFilesOk
+                    ? Services.LocalizationService.T("OK")
+                    : Services.LocalizationService.T("Missing");
+
                 MainStatusText = IsServiceActive
                     ? IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready"
                     : $"⚠ {(providerHealth.FailureReasons.FirstOrDefault() ?? "Service Not Installed")}";
@@ -1008,6 +1026,18 @@ public partial class MainViewModel : ObservableObject
     {
         // Dashboard / status area (async: MainStatusText, SetupIssue*, ClientCountText, IpAddressText, ProviderInstallButtonText).
         _ = RefreshStatusAsync();
+        ProviderStatusText = IsRegisteredOk
+            ? Services.LocalizationService.T("Installed")
+            : Services.LocalizationService.T("Missing");
+        FirewallStatusText = IsFirewallOk
+            ? Services.LocalizationService.T("Active")
+            : Services.LocalizationService.T("Missing");
+        CertStatusText = IsCertOk
+            ? Services.LocalizationService.T("Reserved")
+            : Services.LocalizationService.T("Missing");
+        FilesStatusText = IsFilesOk
+            ? Services.LocalizationService.T("OK")
+            : Services.LocalizationService.T("Missing");
         if (!string.IsNullOrEmpty(_pairingStatusRaw))
             WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
         if (StepPairingVis)

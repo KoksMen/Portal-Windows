@@ -943,4 +943,25 @@ public partial class MainWindow : Window
 
         vm.SelectedLocalAccount = vm.AvailableLocalAccounts[nextIndex];
     }
+
+    private void ListClients_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is DependencyObject dep)
+        {
+            var scrollViewer = FindVisualParent<ScrollViewer>(dep);
+            if (scrollViewer != null)
+            {
+                scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - (e.Delta / 3.0));
+                e.Handled = true;
+            }
+        }
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        var parent = VisualTreeHelper.GetParent(child);
+        while (parent != null && parent is not T)
+            parent = VisualTreeHelper.GetParent(parent);
+        return parent as T;
+    }
 }

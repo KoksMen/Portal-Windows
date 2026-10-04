@@ -917,6 +917,84 @@
             </Setter>
         </Style>
 
+        <Style x:Key="DeviceCardActionButton" TargetType="Button">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.95" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.70" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DeviceCardInfoButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#132238" />
+            <Setter Property="BorderBrush" Value="#2a4269" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1c355c" />
+                    <Setter Property="BorderBrush" Value="#4a78c2" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardTestButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#1a2938" />
+            <Setter Property="BorderBrush" Value="#2d5175" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#253e5e" />
+                    <Setter Property="BorderBrush" Value="#4ba3ff" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardEditButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#182333" />
+            <Setter Property="BorderBrush" Value="#30435f" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#25364e" />
+                    <Setter Property="BorderBrush" Value="#5473a3" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardDeleteButton" BasedOn="{StaticResource DeviceCardActionButton}" TargetType="Button">
+            <Setter Property="Background" Value="#2b141c" />
+            <Setter Property="BorderBrush" Value="#632737" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#451925" />
+                    <Setter Property="BorderBrush" Value="#a83b51" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="StatusDot" TargetType="Ellipse">
             <Setter Property="Width" Value="10" />
             <Setter Property="Height" Value="10" />
@@ -1397,32 +1475,11 @@
                                 Foreground="{StaticResource TextMuted}"
                                 Text="{Binding ClientCountText}" />
 
-                            <ListView
+                            <ItemsControl
                                 x:Name="ListClients"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Foreground="White"
-                                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                VirtualizingPanel.IsVirtualizing="False"
+                                PreviewMouseWheel="ListClients_PreviewMouseWheel"
                                 ItemsSource="{Binding Devices}">
-                                <ListView.ItemContainerStyle>
-                                    <Style TargetType="ListViewItem">
-                                        <Setter Property="Background" Value="Transparent" />
-                                        <Setter Property="BorderThickness" Value="0" />
-                                        <Setter Property="Padding" Value="0" />
-                                        <Setter Property="Focusable" Value="False" />
-                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ListViewItem">
-                                                    <ContentPresenter />
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </ListView.ItemContainerStyle>
-                                <ListView.ItemTemplate>
+                                <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border
                                             Margin="0,6,0,0"
@@ -1524,48 +1581,62 @@
                                                         VerticalAlignment="Center"
                                                         Command="{Binding DataContext.ShowDeviceCertificateInfoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
-                                                        Content="i"
-                                                        Style="{StaticResource InfoIconButton}"
-                                                        ToolTip="Certificate information" />
+                                                        Style="{StaticResource DeviceCardInfoButton}"
+                                                        ToolTip="Certificate information">
+                                                        <Path
+                                                            Width="14"
+                                                            Height="14"
+                                                            Data="M11 7h2v2h-2zm0 4h2v6h-2z M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                                                            Fill="#8cb8ff"
+                                                            Stretch="Uniform" />
+                                                    </Button>
                                                     <Button
                                                         Margin="0,0,6,0"
                                                         VerticalAlignment="Center"
-                                                        Background="#182d4a"
-                                                        BorderBrush="#3d649d"
                                                         Command="{Binding DataContext.TestDeviceUnlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
-                                                        Content="⚡"
-                                                        FontSize="12"
-                                                        Style="{StaticResource TileIconButton}"
-                                                        ToolTip="Test Connection / Проверить связь" />
+                                                        Style="{StaticResource DeviceCardTestButton}"
+                                                        ToolTip="Test Connection / Проверить связь">
+                                                        <Path
+                                                            Width="13"
+                                                            Height="15"
+                                                            Data="M11 2 L4 13 L9 13 L7 22 L16 10 L11 10 Z"
+                                                            Fill="#ffcc00"
+                                                            Stretch="Uniform" />
+                                                    </Button>
                                                     <Button
                                                         Margin="0,0,6,0"
                                                         VerticalAlignment="Center"
-                                                        Background="#1b2842"
-                                                        BorderBrush="#405681"
                                                         Command="{Binding DataContext.EditDeviceAccountCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding ClientId}"
-                                                        Content="✏️"
-                                                        FontSize="14"
-                                                        Style="{StaticResource TileIconButton}"
-                                                        ToolTip="Edit Account" />
+                                                        Style="{StaticResource DeviceCardEditButton}"
+                                                        ToolTip="Edit Account">
+                                                        <Path
+                                                            Width="13"
+                                                            Height="13"
+                                                            Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                                                            Fill="#d4e0f7"
+                                                            Stretch="Uniform" />
+                                                    </Button>
                                                     <Button
                                                         VerticalAlignment="Center"
-                                                        Background="#2b1620"
-                                                        BorderBrush="#6a2f48"
                                                         Command="{Binding DataContext.RemoveDeviceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding ClientId}"
-                                                        Content="❌"
-                                                        FontSize="12"
-                                                        Foreground="#ff5555"
-                                                        Style="{StaticResource TileIconButton}"
-                                                        ToolTip="Remove Device / Удалить" />
+                                                        Style="{StaticResource DeviceCardDeleteButton}"
+                                                        ToolTip="Remove Device / Удалить">
+                                                        <Path
+                                                            Width="13"
+                                                            Height="13"
+                                                            Data="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
+                                                            Fill="#ff6666"
+                                                            Stretch="Uniform" />
+                                                    </Button>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
                         </StackPanel>
                     </Expander>
@@ -1601,14 +1672,13 @@
                                     Grid.Column="1"
                                     Margin="0,0,15,0"
                                     HorizontalAlignment="Right"
-                                    VerticalAlignment="Center">
+                                    VerticalAlignment="Center"
+                                    Text="{Binding ProviderStatusText}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
                                             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
-                                                    <Setter Property="Text" Value="Installed" />
                                                     <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -1660,14 +1730,13 @@
                                     Grid.Column="1"
                                     Margin="0,0,15,0"
                                     HorizontalAlignment="Right"
-                                    VerticalAlignment="Center">
+                                    VerticalAlignment="Center"
+                                    Text="{Binding FirewallStatusText}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
                                             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
-                                                    <Setter Property="Text" Value="Active" />
                                                     <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -1721,14 +1790,13 @@
                                     Grid.Column="1"
                                     Margin="0,0,15,0"
                                     HorizontalAlignment="Right"
-                                    VerticalAlignment="Center">
+                                    VerticalAlignment="Center"
+                                    Text="{Binding CertStatusText}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
                                             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsCertOk}" Value="True">
-                                                    <Setter Property="Text" Value="Reserved" />
                                                     <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -1770,14 +1838,14 @@
                                     </Ellipse>
                                     <TextBlock Foreground="White" Text="DLL Files" />
                                 </StackPanel>
-                                <TextBlock HorizontalAlignment="Right">
+                                <TextBlock
+                                    HorizontalAlignment="Right"
+                                    Text="{Binding FilesStatusText}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
-                                            <Setter Property="Text" Value="Missing" />
                                             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
-                                                    <Setter Property="Text" Value="OK" />
                                                     <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
