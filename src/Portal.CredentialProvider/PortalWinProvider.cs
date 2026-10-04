@@ -185,35 +185,138 @@ public class PortalWinProvider : PortalWinProviderBase
             if (bracketIndex > 0)
             {
                 string basePart = rawStatus.Substring(0, bracketIndex).Trim();
-                string progressPart = rawStatus.Substring(bracketIndex).Trim();
+                string progressTag = rawStatus.Substring(bracketIndex).Trim();
                 string normalizedBase = BuildStatusHeadline(NormalizeHeadline(basePart));
 
-                double w1 = EstimateVisualWidth(normalizedBase);
-                double w2 = EstimateVisualWidth(progressPart);
-                const double spaceWidth = 3.84;
-
-                if (w2 > w1)
+                if (progressTag.StartsWith("[progress:", StringComparison.OrdinalIgnoreCase) && progressTag.EndsWith("]"))
                 {
-                    // Bar is wider than headline: pad headline with leading spaces to center it over the bar
-                    int spaces = (int)Math.Round((w2 - w1) / (2.0 * spaceWidth));
-                    string padding = spaces > 0 ? new string(' ', spaces) : string.Empty;
-                    return $"{padding}{normalizedBase}\n{progressPart}";
-                }
-                else if (w1 > w2)
-                {
-                    // Headline is wider than bar: pad bar with leading spaces to center it under the headline
-                    int spaces = (int)Math.Round((w1 - w2) / (2.0 * spaceWidth));
-                    string padding = spaces > 0 ? new string(' ', spaces) : string.Empty;
-                    return $"{normalizedBase}\n{padding}{progressPart}";
+                    string innerTag = progressTag.Substring("[progress:".Length, progressTag.Length - "[progress:".Length - 1);
+                    string dynamicBar = BuildDynamicProgressBar(normalizedBase, innerTag);
+                    return $"{normalizedBase}\n{dynamicBar}";
                 }
                 else
                 {
-                    return $"{normalizedBase}\n{progressPart}";
+                    // Fallback for any legacy bracket format: render symmetrically without leading spaces
+                    string cleanProgress = progressTag.Trim();
+                    return $"{normalizedBase}\n{cleanProgress}";
                 }
             }
         }
 
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
+    }
+
+    private static string BuildDynamicProgressBar(string headline, string innerTag)
+    {
+        double targetWidth = EstimateVisualWidth(headline);
+
+        if (innerTag.StartsWith("countdown,", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = innerTag.Substring("countdown,".Length).Split(',');
+            if (parts.Length >= 3 &&
+                int.TryParse(parts[0], out int remainingSeconds) &&
+                int.TryParse(parts[1], out int totalSeconds) &&
+                int.TryParse(parts[2], out int elapsedSeconds))
+            {
+                string timeText = $"{remainingSeconds / 60}:{remainingSeconds % 60:D2}";
+                double fixedWidth = EstimateVisualWidth($"[  {timeText}  ]");
+                double availableWidth = Math.Max(0, targetWidth - fixedWidth);
+
+                const double blockWidth = 10.91;
+                int n = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
+                int totalBlocks = n * 2;
+
+                // Fine-tune symmetric spacing (1, 2, or 3 spaces on each side) to match targetWidth as closely as possible
+                int bestSpacing = 2;
+                double minDiff = double.MaxValue;
+                for (int sp = 1; sp <= 3; sp++)
+                {
+                    string spStr = new string(' ', sp);
+                    double candWidth = EstimateVisualWidth($"[{new string('█', n)}{spStr}{timeText}{spStr}{new string('█', n)}]");
+                    double diff = Math.Abs(candWidth - targetWidth);
+                    if (diff < minDiff)
+                    {
+                        minDiff = diff;
+                        bestSpacing = sp;
+                    }
+                }
+
+                int filledBlocks = remainingSeconds > 0
+                    ? Math.Clamp((int)Math.Ceiling((double)remainingSeconds / totalSeconds * totalBlocks), 1, totalBlocks)
+                    : 0;
+
+                int activeIndex = remainingSeconds > 0 ? filledBlocks - 1 : -1;
+                bool isBlink = (elapsedSeconds % 2 == 1);
+
+                Span<char> blocks = stackalloc char[totalBlocks];
+                for (int i = 0; i < totalBlocks; i++)
+                {
+                    if (i < activeIndex)
+                    {
+                        blocks[i] = '█';
+                    }
+                    else if (i == activeIndex)
+                    {
+                        blocks[i] = isBlink ? '▒' : '█';
+                    }
+                    else
+                    {
+                        blocks[i] = '░';
+                    }
+                }
+
+                string spacingStr = new string(' ', bestSpacing);
+                string leftSide = new string(blocks[..n]);
+                string rightSide = new string(blocks[n..]);
+
+                return $"[{leftSide}{spacingStr}{timeText}{spacingStr}{rightSide}]";
+            }
+        }
+        else if (innerTag.StartsWith("infinite,", StringComparison.OrdinalIgnoreCase))
+        {
+            var part = innerTag.Substring("infinite,".Length);
+            if (int.TryParse(part, out int elapsedSeconds))
+            {
+                string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2} (∞)";
+                double fixedWidth = EstimateVisualWidth($"[  {elapsedText}  ]");
+                double availableWidth = Math.Max(0, targetWidth - fixedWidth);
+
+                const double blockWidth = 10.91;
+                int n = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
+
+                int bestSpacing = 2;
+                double minDiff = double.MaxValue;
+                for (int sp = 1; sp <= 3; sp++)
+                {
+                    string spStr = new string(' ', sp);
+                    double candWidth = EstimateVisualWidth($"[{new string('░', n)}{spStr}{elapsedText}{spStr}{new string('░', n)}]");
+                    double diff = Math.Abs(candWidth - targetWidth);
+                    if (diff < minDiff)
+                    {
+                        minDiff = diff;
+                        bestSpacing = sp;
+                    }
+                }
+
+                int cycle = (n - 1) * 2;
+                if (cycle <= 0) cycle = 1;
+                int step = elapsedSeconds % cycle;
+                int pulsePos = step < (n - 1) ? step : cycle - step;
+
+                Span<char> left = stackalloc char[n];
+                Span<char> right = stackalloc char[n];
+                left.Fill('░');
+                right.Fill('░');
+
+                left[n - 1 - pulsePos] = '█';
+                right[pulsePos] = '█';
+
+                string spacingStr = new string(' ', bestSpacing);
+                return $"[{new string(left)}{spacingStr}{elapsedText}{spacingStr}{new string(right)}]";
+            }
+        }
+
+        return $"[{innerTag}]";
     }
 
     private static double EstimateVisualWidth(string s)
@@ -225,15 +328,15 @@ public class PortalWinProvider : PortalWinProviderBase
             width += c switch
             {
                 ' ' => 3.84,
-                '█' or '░' or '▒' or '▓' => 11.4,
-                '[' or ']' => 4.5,
-                ':' or '.' or ',' or ';' or '!' => 3.0,
-                >= '0' and <= '9' => 7.8,
-                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' or 'О' or 'М' or 'Ф' or 'W' or 'M' => 11.0,
-                >= 'А' and <= 'Я' => 9.0,
-                >= 'а' and <= 'я' => (c is 'т' or 'с' or 'г') ? 6.5 : 7.8,
-                >= 'A' and <= 'Z' => 8.8,
-                >= 'a' and <= 'z' => (c is 'i' or 'l' or 't' or 'j' or 'f' or 'r') ? 4.5 : (c is 'w' or 'm') ? 11.0 : 7.4,
+                '█' or '░' or '▒' or '▓' => 10.91,
+                '[' or ']' => 4.22,
+                ':' or '.' or ',' or ';' or '!' => 3.04,
+                >= '0' and <= '9' => 7.55,
+                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' or 'О' or 'М' or 'Ф' or 'W' or 'M' => 10.5,
+                >= 'А' and <= 'Я' => 8.7,
+                >= 'а' and <= 'я' => (c is 'т' or 'с' or 'г') ? 6.4 : 7.6,
+                >= 'A' and <= 'Z' => 8.5,
+                >= 'a' and <= 'z' => (c is 'i' or 'l' or 't' or 'j' or 'f' or 'r') ? 4.5 : (c is 'w' or 'm') ? 10.5 : 7.2,
                 _ => 7.5
             };
         }
