@@ -24,7 +24,7 @@ try {
 
     if (Test-Path $ZipName) { Remove-Item -Force $ZipName }
     $stagingItems = (Get-ChildItem -Path $stage).FullName
-    Compress-Archive -Path $stagingItems -DestinationPath $ZipName -Force
+    Compress-Archive -Path $stagingItems -DestinationPath $ZipName -CompressionLevel Optimal -Force
     (Get-Item $ZipName) | Select-Object FullName, Length, LastWriteTime
 }
 finally {
