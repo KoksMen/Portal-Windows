@@ -72,9 +72,20 @@ if ($useStore) {
                 $file.FullName
             )
 
-            & $SigntoolPath @signArgs
-            if ($LASTEXITCODE -ne 0) {
-                throw "Failed to sign $($file.FullName) with SHA1 $sha1 (exit code $LASTEXITCODE)"
+            $signed = $false
+            $lastErr = 0
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+                & $SigntoolPath @signArgs
+                if ($LASTEXITCODE -eq 0) {
+                    $signed = $true
+                    break
+                }
+                $lastErr = $LASTEXITCODE
+                Write-Host "--> Timestamp attempt $attempt failed, retrying in 2 seconds..." -ForegroundColor DarkYellow
+                Start-Sleep -Seconds 2
+            }
+            if (-not $signed) {
+                throw "Failed to sign $($file.FullName) with SHA1 $sha1 (exit code $lastErr)"
             }
         }
     }

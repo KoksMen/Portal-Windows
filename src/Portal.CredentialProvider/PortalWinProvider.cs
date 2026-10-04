@@ -185,11 +185,40 @@ public class PortalWinProvider : PortalWinProviderBase
                 string basePart = rawStatus.Substring(0, bracketIndex).Trim();
                 string progressPart = rawStatus.Substring(bracketIndex).Trim();
                 string normalizedBase = BuildStatusHeadline(NormalizeHeadline(basePart));
-                return $"{normalizedBase}\n   {progressPart}";
+
+                double w1 = EstimateVisualWidth(normalizedBase);
+                double w2 = EstimateVisualWidth(progressPart);
+                int spaceCount = 0;
+                if (w1 > w2)
+                {
+                    double diff = (w1 - w2) / 2.0;
+                    spaceCount = (int)Math.Round(diff / 0.36);
+                }
+
+                string padding = new string(' ', Math.Max(0, spaceCount));
+                return $"{normalizedBase}\n{padding}{progressPart}";
             }
         }
 
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
+    }
+
+    private static double EstimateVisualWidth(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return 0;
+        double width = 0;
+        foreach (char c in s)
+        {
+            width += c switch
+            {
+                ' ' => 0.36,
+                ':' or '.' or ',' or ';' or '!' or '\'' or '`' or '|' or '[' or ']' or '(' or ')' or 'i' or 'l' or 'I' => 0.4,
+                '█' or '░' or '▒' or '▓' or '■' or '□' or '▣' or '∞' or 'W' or 'M' or 'w' or 'm' or 'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 1.15,
+                >= '0' and <= '9' => 0.65,
+                _ => 0.95
+            };
+        }
+        return width;
     }
 
     internal string BuildStatusDetailsForState(string? rawStatus)

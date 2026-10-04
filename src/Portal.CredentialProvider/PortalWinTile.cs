@@ -729,15 +729,33 @@ public class PortalWinTile : PortalWinTileBase
                     : $"{remainingSeconds}s";
 
                 const int totalBlocks = 8;
-                int filledBlocks = Math.Clamp((int)Math.Round((double)remainingSeconds / totalSeconds * totalBlocks), 0, totalBlocks);
-                int halfBlocks = totalBlocks / 2; // 4
-                int leftFilled = Math.Min(halfBlocks, filledBlocks);
-                int leftEmpty = halfBlocks - leftFilled;
-                int rightFilled = Math.Max(0, filledBlocks - halfBlocks);
-                int rightEmpty = halfBlocks - rightFilled;
+                const int halfBlocks = 4;
+                int filledBlocks = remainingSeconds > 0
+                    ? Math.Clamp((int)Math.Ceiling((double)remainingSeconds / totalSeconds * totalBlocks), 1, totalBlocks)
+                    : 0;
 
-                string leftSide = new string('█', leftFilled) + new string('░', leftEmpty);
-                string rightSide = new string('█', rightFilled) + new string('░', rightEmpty);
+                int activeIndex = remainingSeconds > 0 ? filledBlocks - 1 : -1;
+                bool isBlink = (elapsedSeconds % 2 == 1);
+
+                Span<char> blocks = stackalloc char[totalBlocks];
+                for (int i = 0; i < totalBlocks; i++)
+                {
+                    if (i < activeIndex)
+                    {
+                        blocks[i] = '█';
+                    }
+                    else if (i == activeIndex)
+                    {
+                        blocks[i] = isBlink ? '□' : '█';
+                    }
+                    else
+                    {
+                        blocks[i] = '░';
+                    }
+                }
+
+                string leftSide = new string(blocks[..halfBlocks]);
+                string rightSide = new string(blocks[halfBlocks..]);
 
                 return $"{baseKey} [{leftSide}  {timeText}  {rightSide}]";
             }
