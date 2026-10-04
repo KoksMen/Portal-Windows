@@ -802,6 +802,8 @@ public class PortalWinTile : PortalWinTileBase
         if (_requestButton != null)
         {
             var config = PortalWinConfig.Load();
+            _requestButton.Label = Localization.T("Retry");
+            _requestButton.AsPushButton();
             _requestButton.State = AllowsHostInitiated && FindHostInitiatedDevices(config).Count > 0
                 ? (Provider.UsageScenario == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
                 : FieldState.Hidden;
@@ -814,6 +816,8 @@ public class PortalWinTile : PortalWinTileBase
         if (_requestButton != null) _requestButton.State = FieldState.Hidden;
         if (_cancelButton != null)
         {
+            _cancelButton.Label = Localization.T("Cancel Request");
+            _cancelButton.AsPushButton();
             _cancelButton.State = Provider.UsageScenario == UsageScenario.CredUI
                 ? FieldState.DisplayInBoth
                 : FieldState.DisplayInSelectedTile;

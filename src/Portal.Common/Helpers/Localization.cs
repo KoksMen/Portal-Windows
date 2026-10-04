@@ -471,6 +471,7 @@ public static class Localization
         ,["Hide details"] = "Скрыть подробности"
         ,["Request Remote Unlock"] = "Запросить разблокировку"
         ,["Cancel Request"] = "Отменить запрос"
+        ,["Retry"] = "Повторить"
         ,["Username"] = "Пользователь"
         ,["Unlock"] = "Разблокировать"
         ,["State: "] = "Состояние: "

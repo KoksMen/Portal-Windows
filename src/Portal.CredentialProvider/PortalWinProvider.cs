@@ -84,13 +84,13 @@ public class PortalWinProvider : PortalWinProviderBase
         yield return hideDetailsButton;
 
         // Host-initiated controls (shown only when needed)
-        var reqButton = new CommandLinkControl("RequestButton", Localization.T("Request Remote Unlock"));
+        var reqButton = new CommandLinkControl("RequestButton", Localization.T("Retry")).AsPushButton();
         reqButton.State = UnlockMode == UnlockMode.HostInitiated || UnlockMode == UnlockMode.Both
             ? (cpus == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
             : FieldState.Hidden;
         yield return reqButton;
 
-        var cancelButton = new CommandLinkControl("CancelButton", Localization.T("Cancel Request"));
+        var cancelButton = new CommandLinkControl("CancelButton", Localization.T("Cancel Request")).AsPushButton();
         cancelButton.State = FieldState.Hidden;
         yield return cancelButton;
 
