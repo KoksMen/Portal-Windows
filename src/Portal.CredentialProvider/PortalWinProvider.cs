@@ -222,24 +222,36 @@ public class PortalWinProvider : PortalWinProviderBase
                 double fixedWidth = EstimateVisualWidth($"[  {timeText}  ]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                const double blockWidth = 10.91;
-                int n = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
-                int totalBlocks = n * 2;
+                const double blockWidth = 10.8;
+                int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
 
-                // Fine-tune symmetric spacing (1, 2, or 3 spaces on each side) to match targetWidth as closely as possible
+                int bestN = nBase;
                 int bestSpacing = 2;
                 double minDiff = double.MaxValue;
-                for (int sp = 1; sp <= 3; sp++)
+
+                for (int candN = Math.Max(3, nBase - 1); candN <= nBase + 1; candN++)
                 {
-                    string spStr = new string(' ', sp);
-                    double candWidth = EstimateVisualWidth($"[{new string('█', n)}{spStr}{timeText}{spStr}{new string('█', n)}]");
-                    double diff = Math.Abs(candWidth - targetWidth);
-                    if (diff < minDiff)
+                    for (int sp = 1; sp <= 3; sp++)
                     {
-                        minDiff = diff;
-                        bestSpacing = sp;
+                        string spStr = new string(' ', sp);
+                        double candWidth = EstimateVisualWidth($"[{new string('█', candN)}{spStr}{timeText}{spStr}{new string('█', candN)}]");
+                        double diff = Math.Abs(candWidth - targetWidth);
+                        // Slightly penalize being shorter than target width so the bar fills the full width of the state line
+                        if (candWidth < targetWidth)
+                        {
+                            diff += 2.0;
+                        }
+                        if (diff < minDiff)
+                        {
+                            minDiff = diff;
+                            bestN = candN;
+                            bestSpacing = sp;
+                        }
                     }
                 }
+
+                int n = bestN;
+                int totalBlocks = n * 2;
 
                 int filledBlocks = remainingSeconds > 0
                     ? Math.Clamp((int)Math.Ceiling((double)remainingSeconds / totalSeconds * totalBlocks), 1, totalBlocks)
@@ -281,23 +293,34 @@ public class PortalWinProvider : PortalWinProviderBase
                 double fixedWidth = EstimateVisualWidth($"[  {elapsedText}  ]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                const double blockWidth = 10.91;
-                int n = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
+                const double blockWidth = 10.8;
+                int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
 
+                int bestN = nBase;
                 int bestSpacing = 2;
                 double minDiff = double.MaxValue;
-                for (int sp = 1; sp <= 3; sp++)
+
+                for (int candN = Math.Max(3, nBase - 1); candN <= nBase + 1; candN++)
                 {
-                    string spStr = new string(' ', sp);
-                    double candWidth = EstimateVisualWidth($"[{new string('░', n)}{spStr}{elapsedText}{spStr}{new string('░', n)}]");
-                    double diff = Math.Abs(candWidth - targetWidth);
-                    if (diff < minDiff)
+                    for (int sp = 1; sp <= 3; sp++)
                     {
-                        minDiff = diff;
-                        bestSpacing = sp;
+                        string spStr = new string(' ', sp);
+                        double candWidth = EstimateVisualWidth($"[{new string('░', candN)}{spStr}{elapsedText}{spStr}{new string('░', candN)}]");
+                        double diff = Math.Abs(candWidth - targetWidth);
+                        if (candWidth < targetWidth)
+                        {
+                            diff += 2.0;
+                        }
+                        if (diff < minDiff)
+                        {
+                            minDiff = diff;
+                            bestN = candN;
+                            bestSpacing = sp;
+                        }
                     }
                 }
 
+                int n = bestN;
                 int cycle = (n - 1) * 2;
                 if (cycle <= 0) cycle = 1;
                 int step = elapsedSeconds % cycle;
@@ -327,17 +350,22 @@ public class PortalWinProvider : PortalWinProviderBase
         {
             width += c switch
             {
-                ' ' => 3.84,
-                '█' or '░' or '▒' or '▓' => 10.91,
-                '[' or ']' => 4.22,
-                ':' or '.' or ',' or ';' or '!' => 3.04,
-                >= '0' and <= '9' => 7.55,
-                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' or 'О' or 'М' or 'Ф' or 'W' or 'M' => 10.5,
-                >= 'А' and <= 'Я' => 8.7,
-                >= 'а' and <= 'я' => (c is 'т' or 'с' or 'г') ? 6.4 : 7.6,
-                >= 'A' and <= 'Z' => 8.5,
-                >= 'a' and <= 'z' => (c is 'i' or 'l' or 't' or 'j' or 'f' or 'r') ? 4.5 : (c is 'w' or 'm') ? 10.5 : 7.2,
-                _ => 7.5
+                ' ' => 4.5,
+                '█' or '░' or '▒' or '▓' => 10.8,
+                '[' or ']' => 5.0,
+                ':' or '.' or ',' or ';' or '!' => 4.5,
+                >= '0' and <= '9' => 7.8,
+                '(' or ')' => 5.5,
+                '∞' => 12.0,
+                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' or 'Ф' or 'W' or 'M' => 13.5,
+                >= 'А' and <= 'Я' => 12.0,
+                'т' or 'с' or 'г' => 9.0,
+                >= 'а' and <= 'я' => 10.5,
+                >= 'A' and <= 'Z' => 11.5,
+                'i' or 'l' or 't' or 'j' or 'f' or 'r' => 5.5,
+                'w' or 'm' => 13.5,
+                >= 'a' and <= 'z' => 9.5,
+                _ => 10.0
             };
         }
         return width;
