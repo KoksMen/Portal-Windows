@@ -249,6 +249,9 @@ public class PortalWinProvider : PortalWinProviderBase
         {
             var text when text.Contains("emergency rollback") || text.Contains("аварийный") || text.Contains("откат")
                 => "Emergency rollback: request cancelled",
+            var text when (text.Contains("cancelled") || text.Contains("canceled") || text.Contains("отменен") || text.Contains("отменён"))
+                       && !(text.Contains("timed out") || text.Contains("время истекло") || text.Contains("таймаут"))
+                => "Request cancelled",
             var text when text.Contains("timed out") || text.Contains("время истекло") || text.Contains("таймаут")
                 => "Request timed out",
             var text when text.Contains("denied")
@@ -259,6 +262,7 @@ public class PortalWinProvider : PortalWinProviderBase
                        || text.Contains("запрещен")
                        || text.Contains("запрещён") => "Request denied",
             var text when text.Contains("cancelled")
+                       || text.Contains("canceled")
                        || text.Contains("отменен")
                        || text.Contains("отменён") => "Request cancelled",
             var text when text.Contains("awaiting approval")

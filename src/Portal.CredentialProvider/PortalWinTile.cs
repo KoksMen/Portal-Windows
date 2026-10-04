@@ -495,7 +495,7 @@ public class PortalWinTile : PortalWinTileBase
                         reason == "timeout" ? "Unlock request timed out" : "Unlock request cancelled",
                         reason == "timeout" ? "No paired device responded before the request expired." : "The remote unlock request was cancelled.",
                         false);
-                    UpdateStatus("Request cancelled or timed out.");
+                    UpdateStatus(reason == "timeout" ? "Request timed out." : "Request cancelled.");
                 }
             }
             catch (OperationCanceledException) { }
