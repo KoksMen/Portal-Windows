@@ -576,12 +576,13 @@
             <Setter Property="Foreground" Value="{StaticResource TextMain}" />
             <Setter Property="Background" Value="#222233" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="15,10" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border
                             x:Name="bd"
-                            Padding="15,10"
+                            Padding="{TemplateBinding Padding}"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="1"
@@ -992,6 +993,45 @@
                     <Setter Property="Background" Value="#451925" />
                     <Setter Property="BorderBrush" Value="#a83b51" />
                 </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DeviceCardPowerButton" TargetType="Button">
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="9,0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Background" Value="#122a1b" />
+            <Setter Property="BorderBrush" Value="#25663a" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.65" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                    <Setter Property="Background" Value="#1e1c24" />
+                    <Setter Property="BorderBrush" Value="#3f3b4d" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -1482,12 +1522,22 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border
-                                            Margin="0,6,0,0"
+                                            Margin="0,0,0,10"
                                             Padding="14,12"
-                                            Background="#101626"
-                                            BorderBrush="#28334d"
+                                            Background="#101726"
+                                            BorderBrush="#253452"
                                             BorderThickness="1"
                                             CornerRadius="10">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Opacity" Value="1.0" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.72" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
                                             <Grid>
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
@@ -1515,7 +1565,7 @@
                                                         FontWeight="SemiBold"
                                                         Foreground="White"
                                                         TextTrimming="CharacterEllipsis"
-                                                        MaxWidth="260"
+                                                        MaxWidth="240"
                                                         Text="{Binding Name}" />
                                                     <Border
                                                         Margin="8,0,0,0"
@@ -1530,25 +1580,62 @@
                                                     </Border>
                                                 </StackPanel>
 
-                                                <!-- Row 0 Right: Enabled Toggle -->
-                                                <CheckBox
+                                                <!-- Row 0 Right: Status Badge -->
+                                                <Button
                                                     Grid.Row="0"
                                                     Grid.Column="1"
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Right"
                                                     Command="{Binding DataContext.ToggleDeviceEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                     CommandParameter="{Binding}"
-                                                    Content="Enabled"
-                                                    FontSize="11"
-                                                    Foreground="#cfe0ff"
-                                                    IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                    Style="{StaticResource PortalCheckBox}" />
+                                                    Cursor="Hand"
+                                                    ToolTip="{Binding StateToolTip}">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border
+                                                                x:Name="badgeBd"
+                                                                Padding="8,3"
+                                                                CornerRadius="6"
+                                                                BorderThickness="1"
+                                                                Background="#122a1b"
+                                                                BorderBrush="#25663a">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <Ellipse
+                                                                        x:Name="dot"
+                                                                        Width="6"
+                                                                        Height="6"
+                                                                        Margin="0,0,5,0"
+                                                                        VerticalAlignment="Center"
+                                                                        Fill="#4cd964" />
+                                                                    <TextBlock
+                                                                        x:Name="txt"
+                                                                        FontSize="10"
+                                                                        FontWeight="Medium"
+                                                                        VerticalAlignment="Center"
+                                                                        Foreground="#6ee7b7"
+                                                                        Text="{Binding StateBadgeText}" />
+                                                                </StackPanel>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                    <Setter TargetName="badgeBd" Property="Background" Value="#1e1c24" />
+                                                                    <Setter TargetName="badgeBd" Property="BorderBrush" Value="#3f3b4d" />
+                                                                    <Setter TargetName="dot" Property="Fill" Value="#8c8c9e" />
+                                                                    <Setter TargetName="txt" Property="Foreground" Value="#9d9dae" />
+                                                                </DataTrigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="badgeBd" Property="Opacity" Value="0.85" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
 
                                                 <!-- Row 1 Left: Accounts, Paired Date, ClientId -->
                                                 <StackPanel
                                                     Grid.Row="1"
                                                     Grid.Column="0"
-                                                    Margin="23,8,12,0"
+                                                    Margin="23,8,8,0"
                                                     VerticalAlignment="Center">
                                                     <TextBlock
                                                         FontSize="12"
@@ -1556,7 +1643,7 @@
                                                         TextTrimming="CharacterEllipsis"
                                                         Text="{Binding Accounts[0].Username, FallbackValue=No account}" />
                                                     <TextBlock
-                                                        Margin="0,4,0,0"
+                                                        Margin="0,3,0,0"
                                                         FontSize="10"
                                                         Foreground="#8f9bbf"
                                                         Text="{Binding PairedAt, StringFormat='Paired: {0:yyyy-MM-dd HH:mm}'}" />
@@ -1568,7 +1655,7 @@
                                                         Text="{Binding ClientId}" />
                                                 </StackPanel>
 
-                                                <!-- Row 1 Right: Action Buttons -->
+                                                <!-- Row 1 Right: Unified Action Buttons -->
                                                 <StackPanel
                                                     Grid.Row="1"
                                                     Grid.Column="1"
@@ -1576,6 +1663,49 @@
                                                     VerticalAlignment="Bottom"
                                                     HorizontalAlignment="Right"
                                                     Margin="0,8,0,0">
+                                                    <Button
+                                                        Margin="0,0,6,0"
+                                                        VerticalAlignment="Center"
+                                                        Command="{Binding DataContext.ToggleDeviceEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource DeviceCardPowerButton}"
+                                                        ToolTip="{Binding StateToolTip}">
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Path
+                                                                Width="11"
+                                                                Height="11"
+                                                                Margin="0,0,5,0"
+                                                                Data="M11 2h2v10h-2zm-3.5 3.5l1.42 1.42A7.003 7.003 0 0 0 12 20a7 7 0 0 0 5.08-13.08l1.42-1.42A9 9 0 1 1 7.5 5.5z"
+                                                                Stretch="Uniform">
+                                                                <Path.Style>
+                                                                    <Style TargetType="Path">
+                                                                        <Setter Property="Fill" Value="#4cd964" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                                <Setter Property="Fill" Value="#8c8c9e" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Path.Style>
+                                                            </Path>
+                                                            <TextBlock
+                                                                VerticalAlignment="Center"
+                                                                FontSize="11"
+                                                                FontWeight="SemiBold"
+                                                                Text="{Binding StateText}">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground" Value="#4cd964" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                                <Setter Property="Foreground" Value="#8c8c9e" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                    </Button>
                                                     <Button
                                                         Margin="0,0,6,0"
                                                         VerticalAlignment="Center"
@@ -1646,213 +1776,286 @@
                         Header="System Health &amp; Maintenance"
                         Style="{StaticResource SettingsSectionExpander}">
                         <StackPanel>
-                            <!--  Provider  -->
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="Credential Provider" />
-                                </StackPanel>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="0,0,15,0"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Text="{Binding ProviderStatusText}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                    <Button
-                                        Margin="0,0,5,0"
-                                        Padding="8,4"
-                                        Command="{Binding InstallProviderCommand}"
-                                        Content="{Binding ProviderInstallButtonText}"
-                                        FontSize="10"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                    <Button
-                                        Padding="8,4"
-                                        Command="{Binding UninstallProviderCommand}"
-                                        Content="Uninstall"
-                                        FontSize="10"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                </StackPanel>
-                            </Grid>
+                            <!--  1. Provider  -->
+                            <Border
+                                Margin="0,0,0,8"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="Credential Provider" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding ProviderStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Padding="8,4"
+                                            Command="{Binding InstallProviderCommand}"
+                                            Content="{Binding ProviderInstallButtonText}"
+                                            FontSize="11"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Padding="8,4"
+                                            Command="{Binding UninstallProviderCommand}"
+                                            Content="Uninstall"
+                                            FontSize="11"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                            <!--  Firewall  -->
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="Firewall Rule" />
-                                </StackPanel>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="0,0,15,0"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Text="{Binding FirewallStatusText}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                    <Button
-                                        Margin="0,0,5,0"
-                                        Padding="8,4"
-                                        Command="{Binding FixFirewallCommand}"
-                                        Content="Fix / Update"
-                                        FontSize="10"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                    <Button
-                                        Padding="8,4"
-                                        Background="#331111"
-                                        Command="{Binding RemoveFirewallRulesCommand}"
-                                        Content="Delete Rules"
-                                        FontSize="10"
-                                        Foreground="#ffb0b0"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                </StackPanel>
-                            </Grid>
+                            <!--  2. Firewall  -->
+                            <Border
+                                Margin="0,0,0,8"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="Firewall Rule" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding FirewallStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Padding="8,4"
+                                            Command="{Binding FixFirewallCommand}"
+                                            Content="Fix / Update"
+                                            FontSize="11"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Padding="8,4"
+                                            Background="#331111"
+                                            Command="{Binding RemoveFirewallRulesCommand}"
+                                            Content="Delete Rules"
+                                            FontSize="11"
+                                            Foreground="#ffb0b0"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                            <!--  Url / Cert  -->
-                            <Grid Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCertOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="SSL Certificate" />
-                                </StackPanel>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="0,0,15,0"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Center"
-                                    Text="{Binding CertStatusText}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsCertOk}" Value="True">
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                    <Button
-                                        Margin="0,0,6,0"
-                                        Command="{Binding ShowHostCertificateInfoCommand}"
-                                        Content="i"
-                                        Style="{StaticResource InfoIconButton}"
-                                        ToolTip="Host certificate information" />
-                                    <Button
-                                        Padding="8,4"
-                                        Background="#5a1f28"
-                                        Command="{Binding FixCertCommand}"
-                                        Content="Regenerate"
-                                        FontSize="10"
-                                        Foreground="#ffe6ea"
-                                        IsEnabled="{Binding IsNotWorkingHealth}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                </StackPanel>
-                            </Grid>
+                            <!--  3. SSL Certificate  -->
+                            <Border
+                                Margin="0,0,0,8"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="SSL Certificate" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding CertStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Command="{Binding ShowHostCertificateInfoCommand}"
+                                            Content="i"
+                                            Style="{StaticResource InfoIconButton}"
+                                            ToolTip="Host certificate information" />
+                                        <Button
+                                            Padding="8,4"
+                                            Background="#5a1f28"
+                                            Command="{Binding FixCertCommand}"
+                                            Content="Regenerate"
+                                            FontSize="11"
+                                            Foreground="#ffe6ea"
+                                            IsEnabled="{Binding IsNotWorkingHealth}"
+                                            Style="{StaticResource SecondaryButton}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                            <Grid Margin="0,0,0,12">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse>
-                                        <Ellipse.Style>
-                                            <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                <Setter Property="Fill" Value="{StaticResource RedBrush}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
-                                                        <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Ellipse.Style>
-                                    </Ellipse>
-                                    <TextBlock Foreground="White" Text="DLL Files" />
-                                </StackPanel>
-                                <TextBlock
-                                    HorizontalAlignment="Right"
-                                    Text="{Binding FilesStatusText}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
-                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Grid>
+                            <!--  4. DLL Files  -->
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="12,10"
+                                Background="#101726"
+                                BorderBrush="#1e2c47"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock
+                                            Foreground="White"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            TextTrimming="CharacterEllipsis"
+                                            Text="DLL Files" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
+                                            <Ellipse VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                        <Setter Property="Width" Value="8" />
+                                                        <Setter Property="Height" Value="8" />
+                                                        <Setter Property="Margin" Value="0,0,6,0" />
+                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="Medium"
+                                                VerticalAlignment="Center"
+                                                Text="{Binding FilesStatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
                             <Button
                                 Margin="0,10,0,0"

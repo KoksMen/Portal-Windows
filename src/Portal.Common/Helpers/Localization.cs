@@ -611,7 +611,13 @@ public static class Localization
         ,["Test cancelled or timed out."] = "Тест отменен или превышено время ожидания."
         ,["Test timed out. The phone did not respond in time."] = "Превышено время ожидания. Телефон не ответил вовремя."
         ,["Device connection test was cancelled."] = "Проверка подключения устройства была отменена."
-        ,["Device disconnected without confirming unlock."] = "Устройство отключилось без подтверждения разблокировки."
         ,["Connection verified successfully! Latency: {0} ms"] = "Связь успешно проверена! Задержка: {0} мс"
+        ,["Active"] = "Активно"
+        ,["Enabled"] = "Включено"
+        ,["Disabled"] = "Отключено"
+        ,["Enabled (click to disable)"] = "Включено (нажмите, чтобы отключить)"
+        ,["Disabled (click to enable)"] = "Отключено (нажмите, чтобы включить)"
+        ,["Click to disable device"] = "Нажмите, чтобы отключить устройство"
+        ,["Click to enable device"] = "Нажмите, чтобы включить устройство"
     };
 }

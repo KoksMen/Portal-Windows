@@ -1580,7 +1580,8 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        configDevice.IsEnabled = device.IsEnabled;
+        configDevice.IsEnabled = !configDevice.IsEnabled;
+        device.IsEnabled = configDevice.IsEnabled;
         _config.Save();
         RefreshDevicesList();
         _ = RefreshStatusAsync();

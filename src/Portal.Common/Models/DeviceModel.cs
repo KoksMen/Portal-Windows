@@ -29,5 +29,14 @@ public abstract class DeviceModel
     [JsonPropertyName("isEnabled")]
     public bool IsEnabled { get; set; } = true;
 
+    [JsonIgnore]
+    public string StateText => IsEnabled ? Helpers.Localization.T("Enabled") : Helpers.Localization.T("Disabled");
+
+    [JsonIgnore]
+    public string StateToolTip => IsEnabled ? Helpers.Localization.T("Enabled (click to disable)") : Helpers.Localization.T("Disabled (click to enable)");
+
+    [JsonIgnore]
+    public string StateBadgeText => IsEnabled ? Helpers.Localization.T("Active") : Helpers.Localization.T("Disabled");
+
     public string IdsSafe() => $"{Name} ({ClientId})";
 }
