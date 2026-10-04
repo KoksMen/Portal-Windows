@@ -20,6 +20,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
     private ServiceProfile? _profile;
     private bool _isRunning;
     private string? _currentMode;
+    private string? _currentIp;
 
     public bool UseIpv4 { get; set; } = true;
     public bool UseIpv6 { get; set; } = true;
@@ -30,11 +31,17 @@ public class MdnsAnnouncer : IMdnsAnnouncer
     /// <param name="config">Host configuration containing port and device info.</param>
     /// <param name="mode">Service mode: "pair" for Host pairing, "locked" for CredentialProvider lock screen.</param>
     /// <param name="ipAddress">Specific IP address to advertise. If null, automatically detects via the Dns library.</param>
-    public void Start(PortalWinConfig config, string mode = "pair", string? ipAddress = null)
+    /// <param name="forceRefresh">Whether to force restart the mDNS service and refresh adapter bindings even if the mode is unchanged.</param>
+    public void Start(PortalWinConfig config, string mode = "pair", string? ipAddress = null, bool forceRefresh = false)
     {
-        if (_isRunning && _currentMode == mode) return; // Avoid redundant restarts
+        if (!forceRefresh && _isRunning && _currentMode == mode && string.Equals(_currentIp, ipAddress, StringComparison.OrdinalIgnoreCase))
+        {
+            return; // Avoid truly redundant restarts
+        }
+
         if (_isRunning) Stop();
         _currentMode = mode;
+        _currentIp = ipAddress;
 
         try
         {
@@ -235,6 +242,19 @@ public class MdnsAnnouncer : IMdnsAnnouncer
     /// <summary>
     /// Stop announcing the service.
     /// </summary>
+    /// <summary>
+    /// Re-advertise the current service with updated network interfaces and IP address.
+    /// </summary>
+    public void ReAdvertise(PortalWinConfig config, string? ipAddress = null)
+    {
+        var mode = _currentMode ?? "pair";
+        Logger.Log($"[MdnsAnnouncer] Re-advertising service on network change (mode={mode}, ip={ipAddress ?? "auto"})...");
+        Start(config, mode, ipAddress, forceRefresh: true);
+    }
+
+    /// <summary>
+    /// Stop announcing the service.
+    /// </summary>
     public void Stop()
     {
         if (!_isRunning) return;
@@ -253,6 +273,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
             _profile = null;
             _isRunning = false;
             _currentMode = null;
+            _currentIp = null;
             Logger.Log("[MdnsAnnouncer] mDNS announcement stopped.");
         }
         catch (Exception ex)

@@ -614,6 +614,7 @@ public partial class MainViewModel : ObservableObject
         _networkPairing = networkPairing;
         _networkPairing.AdvertisementAddressChanged += OnPairingAdvertisementAddressChanged;
         _networkService = networkService;
+        _networkService.NetworkTopologyChanged += OnNetworkTopologyChanged;
         _qrCodeService = qrCodeService;
         _providerLocator = providerLocator;
         _bluetoothService = bluetoothService;
@@ -3128,6 +3129,64 @@ public partial class MainViewModel : ObservableObject
         WizPairInfo = IsRussianUi ? "Сеть изменилась — QR-код обновлён для текущего подключения." : "Network changed — QR code updated for the current connection.";
     }
 
+    private void OnNetworkTopologyChanged(object? sender, EventArgs e)
+    {
+        if (Application.Current?.Dispatcher == null)
+        {
+            return;
+        }
+
+        _ = Application.Current.Dispatcher.InvokeAsync(async () =>
+        {
+            try
+            {
+                Logger.Log("[MainViewModel] Network topology change detected. Refreshing network state and health...");
+
+                if (StepPairingVis || WizShowNetworkInfo)
+                {
+                    var ipOptions = await _networkService.GetLocalInterfaceAddressesAsync(_config.VpnCompatibilityModeEnabled);
+                    var currentSelectedIp = SelectedPairIp?.IpAddress;
+
+                    AvailableLocalIps.Clear();
+                    foreach (var option in ipOptions)
+                    {
+                        AvailableLocalIps.Add(new NetworkIpOption
+                        {
+                            InterfaceName = option.InterfaceName,
+                            IpAddress = option.IpAddress
+                        });
+                    }
+
+                    if (AvailableLocalIps.Count == 0)
+                    {
+                        AvailableLocalIps.Add(new NetworkIpOption
+                        {
+                            InterfaceName = Services.LocalizationService.T("Unknown"),
+                            IpAddress = Services.LocalizationService.T("Unknown")
+                        });
+                    }
+
+                    if (!string.IsNullOrEmpty(currentSelectedIp))
+                    {
+                        var matching = AvailableLocalIps.FirstOrDefault(x => string.Equals(x.IpAddress, currentSelectedIp, StringComparison.OrdinalIgnoreCase));
+                        SelectedPairIp = matching ?? AvailableLocalIps.FirstOrDefault();
+                    }
+                    else
+                    {
+                        SelectedPairIp = AvailableLocalIps.FirstOrDefault();
+                    }
+                }
+
+                await RefreshStatusAsync();
+                Logger.Log("[MainViewModel] Network topology adaptation completed.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[MainViewModel] Error handling network topology change", ex);
+            }
+        });
+    }
+
     private void RefreshNetworkQrPayload(int? providedCode = null, string? providedHostName = null)
     {
         int codeInt = providedCode ?? (int.TryParse(_pairingContext.PairingCode, out var parsedCode) ? parsedCode : 0);
@@ -3676,6 +3735,7 @@ public partial class MainViewModel : ObservableObject
 
     public void OnWindowClosing()
     {
+        _networkService.NetworkTopologyChanged -= OnNetworkTopologyChanged;
         _networkPairing.AdvertisementAddressChanged -= OnPairingAdvertisementAddressChanged;
         _pairingCts?.Cancel();
         _networkPairing.StopPairing();
