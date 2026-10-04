@@ -11,6 +11,7 @@ public abstract class PortalWinTileBase : CredentialTile2
 {
     protected readonly PortalWinProviderBase _providerBase;
     protected SmallLabelControl? _statusLabel;
+    protected SmallLabelControl? _progressLabel;
     protected SmallLabelControl? _versionLabel;
     protected SmallLabelControl? _statusDetailsLabel;
     protected TextboxControl? _usernameControl;
@@ -37,6 +38,7 @@ public abstract class PortalWinTileBase : CredentialTile2
         try
         {
             _statusLabel = Controls.GetControl<SmallLabelControl>("StatusLabel");
+            _progressLabel = Controls.GetControl<SmallLabelControl>("ProgressLabel");
             _versionLabel = Controls.GetControl<SmallLabelControl>("VersionLabel");
             _statusDetailsLabel = Controls.GetControl<SmallLabelControl>("StatusDetailsLabel");
             _usernameControl = Controls.GetControl<TextboxControl>("UsernameField");
@@ -107,22 +109,57 @@ public abstract class PortalWinTileBase : CredentialTile2
 
     internal void UpdateStatus(string text)
     {
-        _lastStatusRaw = string.IsNullOrWhiteSpace(text) ? "Waiting for remote command." : text.Trim();        if (_providerBase is PortalWinProvider provider)
+        _lastStatusRaw = string.IsNullOrWhiteSpace(text) ? "Waiting for remote command." : text.Trim();
+        if (_providerBase is PortalWinProvider provider)
         {
-            UpdateStatus(provider.BuildStatusHeadlineForState(_lastStatusRaw), provider.BuildStatusDetailsForState(_lastStatusRaw));
+            UpdateStatus(
+                provider.BuildStatusHeadlineForState(_lastStatusRaw),
+                provider.BuildStatusDetailsForState(_lastStatusRaw),
+                provider.ExtractProgressPart(_lastStatusRaw));
             return;
         }
 
-        UpdateStatus(text, null);
+        UpdateStatus(text, null, null);
     }
 
-    internal void UpdateStatus(string headline, string? details)
+    internal void UpdateStatus(string headline, string? details) => UpdateStatus(headline, details, null);
+
+    internal void UpdateStatus(string headline, string? details, string? progress)
     {
+        string cleanHeadline = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.Trim();
+
         if (_statusLabel != null)
         {
             try
             {
-                _statusLabel.Label = string.IsNullOrWhiteSpace(headline) ? Localization.T("PortalWin status unavailable") : headline.TrimEnd();
+                if (_progressLabel == null && !string.IsNullOrWhiteSpace(progress))
+                {
+                    _statusLabel.Label = $"{cleanHeadline}\n{progress.Trim()}";
+                }
+                else
+                {
+                    _statusLabel.Label = cleanHeadline;
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        if (_progressLabel != null)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(progress))
+                {
+                    _progressLabel.Label = progress.Trim();
+                    _progressLabel.State = FieldState.DisplayInBoth;
+                }
+                else
+                {
+                    _progressLabel.Label = string.Empty;
+                    _progressLabel.State = FieldState.Hidden;
+                }
             }
             catch
             {
@@ -150,7 +187,10 @@ public abstract class PortalWinTileBase : CredentialTile2
 
         if (_providerBase is PortalWinProvider provider)
         {
-            UpdateStatus(provider.BuildStatusHeadlineForState(_lastStatusRaw), provider.BuildStatusDetailsForState(_lastStatusRaw));
+            UpdateStatus(
+                provider.BuildStatusHeadlineForState(_lastStatusRaw),
+                provider.BuildStatusDetailsForState(_lastStatusRaw),
+                provider.ExtractProgressPart(_lastStatusRaw));
         }
     }
 
