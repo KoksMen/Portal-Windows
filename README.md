@@ -30,7 +30,7 @@
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal">
     <img src="https://img.shields.io/badge/📱_Google_Play_(Android)-34A853?style=for-the-badge&logo=android" alt="Download on Google Play" />
   </a>
-  <a href="https://github.com/KoksMen/Portal-Android">
+  <a href="https://github.com/xXMRK888YTXx/Portal-Android">
     <img src="https://img.shields.io/badge/🤖_Репозиторий_Portal--Android-181717?style=for-the-badge&logo=github" alt="Portal-Android GitHub" />
   </a>
 </p>
@@ -57,7 +57,7 @@
 | Канал загрузки | Ссылка | Описание |
 | :--- | :--- | :--- |
 | 🟢 **Google Play Store** | [**Установить из Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) | Официальный проверенный клиент для Android |
-| 🐙 **GitHub (Android Client)** | [**KoksMen/Portal-Android**](https://github.com/KoksMen/Portal-Android) | Исходный код мобильного клиента и APK-файлы |
+| 🐙 **GitHub (Android Client)** | [**xXMRK888YTXx/Portal-Android**](https://github.com/xXMRK888YTXx/Portal-Android) | Оригинальный репозиторий мобильного клиента и APK-файлы |
 | ⌚ **Поддержка Wear OS** | Встроена в мобильный клиент | Разблокировка компьютера прямо с вашего запястья! |
 
 ### Возможности мобильного клиента:
@@ -162,7 +162,7 @@
 ### Пошаговая инструкция:
 
 1. **Установите мобильное приложение:**
-   - Скачайте клиент из [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) или установите APK из [репозитория Android](https://github.com/KoksMen/Portal-Android/releases).
+   - Скачайте клиент из [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) или установите APK из [репозитория Android](https://github.com/xXMRK888YTXx/Portal-Android/releases).
 2. **Скачайте Portal-Windows:**
    - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-*-win-x64.zip`.
 3. **Распакуйте и запустите:**
@@ -241,7 +241,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 | Source | Link | Description |
 | :--- | :--- | :--- |
 | 🟢 **Google Play Store** | [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) | Official production client for Android |
-| 🐙 **GitHub (Android Source)** | [**KoksMen/Portal-Android**](https://github.com/KoksMen/Portal-Android) | Open-source mobile client repository & APK downloads |
+| 🐙 **GitHub (Android Source)** | [**xXMRK888YTXx/Portal-Android**](https://github.com/xXMRK888YTXx/Portal-Android) | Original mobile client repository & APK downloads |
 | ⌚ **Wear OS Support** | Included in mobile app | Unlock your desktop straight from your wrist! |
 
 ### Mobile Client Highlights:
@@ -344,7 +344,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 ### Step-by-Step Setup:
 
 1. **Install the Mobile Companion App:**
-   - Get the app on [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) or download the APK from the [Android Repository](https://github.com/KoksMen/Portal-Android/releases).
+   - Get the app on [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) or download the APK from the [Android Repository](https://github.com/xXMRK888YTXx/Portal-Android/releases).
 2. **Download Portal-Windows:**
    - Grab the latest `PortalWin-*-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
 3. **Extract & Launch:**
