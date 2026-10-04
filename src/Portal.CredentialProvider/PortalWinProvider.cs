@@ -188,28 +188,26 @@ public class PortalWinProvider : PortalWinProviderBase
                 string progressPart = rawStatus.Substring(bracketIndex).Trim();
                 string normalizedBase = BuildStatusHeadline(NormalizeHeadline(basePart));
 
-                double w1 = EstimateVisualWidth(normalizedBase);
-                double w2 = EstimateVisualWidth(progressPart);
-                if (w1 > w2)
-                {
-                    int spaceCount = (int)Math.Round((w1 - w2) / 2.0);
-                    string padding = new string(' ', Math.Max(0, spaceCount));
-                    return $"{normalizedBase}\n{padding}{progressPart}";
-                }
-                else if (w2 > w1)
-                {
-                    int spaceCount = (int)Math.Round((w2 - w1) / 2.0);
-                    string padding = new string(' ', Math.Max(0, spaceCount));
-                    return $"{padding}{normalizedBase}\n{progressPart}";
-                }
-                else
-                {
-                    return $"{normalizedBase}\n{progressPart}";
-                }
+                // Line 1 is the primary headline anchor and must NEVER have leading spaces,
+                // ensuring native horizontal centering aligned with the avatar and version label.
+                int spaceCount = CalculateCenterPaddingSpaces(normalizedBase, progressPart);
+                string padding = spaceCount > 0 ? new string(' ', spaceCount) : string.Empty;
+                return $"{normalizedBase}\n{padding}{progressPart}";
             }
         }
 
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
+    }
+
+    private static int CalculateCenterPaddingSpaces(string baseText, string childText)
+    {
+        double w1 = EstimateVisualWidth(baseText);
+        double w2 = EstimateVisualWidth(childText);
+        if (w1 > w2)
+        {
+            return Math.Clamp((int)Math.Round((w1 - w2) / 2.0), 0, 4);
+        }
+        return 0;
     }
 
     private static double EstimateVisualWidth(string s)
@@ -226,10 +224,10 @@ public class PortalWinProvider : PortalWinProviderBase
                 '█' or '░' or '▒' or '▓' => 2.88,
                 '■' or '□' or '▣' or '◆' or '◇' => 2.88,
                 '∞' or 'W' or 'M' or 'w' or 'm' => 2.5,
-                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 2.7,
+                'ж' or 'ш' or 'щ' or 'ю' or 'ы' or 'Ж' or 'Ш' or 'Щ' or 'Ю' or 'Ы' => 2.9,
                 >= '0' and <= '9' => 1.55,
-                >= 'А' and <= 'Я' => 2.45,
-                >= 'а' and <= 'я' => 2.55,
+                >= 'А' and <= 'Я' => 2.7,
+                >= 'а' and <= 'я' => 2.65,
                 >= 'A' and <= 'Z' => 2.3,
                 _ => 1.8
             };

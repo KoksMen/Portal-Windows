@@ -291,31 +291,23 @@ public class WebSocketConnectionManager
                     {
                         if (_pendingApprovals.TryGetValue(clientId, out var pending))
                         {
-                            // If user explicitly approved on mobile, accept it immediately
-                            if (string.Equals(msg.Status, "ok", StringComparison.OrdinalIgnoreCase))
-                            {
-                                pending.Completion.TrySetResult("ok");
-                                Logger.Log($"[WebSocketManager] unlock_response 'ok' accepted for {clientId} (msgRequestId='{msg.RequestId}', pendingRequestId='{pending.RequestId}').");
-                                continue;
-                            }
-
                             if (!string.IsNullOrWhiteSpace(pending.RequestId) && !string.IsNullOrWhiteSpace(msg.RequestId))
                             {
                                 if (!string.Equals(msg.RequestId, pending.RequestId, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    Logger.LogWarning($"[WebSocketManager] Ignored stale non-ok unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{msg.RequestId}' status='{msg.Status}'.");
+                                    Logger.LogWarning($"[WebSocketManager] Ignored stale unlock_response for {clientId}: requestId mismatch. expected='{pending.RequestId}' got='{msg.RequestId}' status='{msg.Status}'.");
                                     continue;
                                 }
 
                                 pending.Completion.TrySetResult(msg.Status);
-                                Logger.Log($"[WebSocketManager] unlock_response accepted for {clientId} by requestId='{pending.RequestId}'.");
+                                Logger.Log($"[WebSocketManager] unlock_response accepted for {clientId} by requestId='{pending.RequestId}' (status='{msg.Status}').");
                                 continue;
                             }
 
                             if (string.IsNullOrWhiteSpace(pending.RequestId))
                             {
                                 pending.Completion.TrySetResult(msg.Status);
-                                Logger.Log($"[WebSocketManager] unlock_response accepted for {clientId} in legacy mode without correlation.");
+                                Logger.Log($"[WebSocketManager] unlock_response accepted for {clientId} in legacy mode without correlation (status='{msg.Status}').");
                                 continue;
                             }
 
