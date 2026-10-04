@@ -713,23 +713,32 @@ public class PortalWinTile : PortalWinTileBase
                 int totalSeconds = _timeoutMinutes * 60;
                 int remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
 
-                const int totalBlocks = 8;
-                int filledBlocks = Math.Clamp((int)Math.Round((double)remainingSeconds / totalSeconds * totalBlocks), 0, totalBlocks);
-                string bar = new string('█', filledBlocks) + new string('░', totalBlocks - filledBlocks);
-
                 string timeText = remainingSeconds >= 60
                     ? $"{remainingSeconds / 60}:{remainingSeconds % 60:D2}"
                     : $"{remainingSeconds}s";
 
-                return $"{baseKey} [{bar}] {timeText}";
+                const int totalBlocks = 8;
+                int filledBlocks = Math.Clamp((int)Math.Round((double)remainingSeconds / totalSeconds * totalBlocks), 0, totalBlocks);
+                int halfBlocks = totalBlocks / 2; // 4
+                int leftFilled = Math.Min(halfBlocks, filledBlocks);
+                int leftEmpty = halfBlocks - leftFilled;
+                int rightFilled = Math.Max(0, filledBlocks - halfBlocks);
+                int rightEmpty = halfBlocks - rightFilled;
+
+                string leftSide = new string('█', leftFilled) + new string('░', leftEmpty);
+                string rightSide = new string('█', rightFilled) + new string('░', rightEmpty);
+
+                return $"{baseKey} [{leftSide}  {timeText}  {rightSide}]";
             }
             else
             {
-                // Infinite / No timeout mode: animate a marquee pulse with elapsed time counter and infinity badge
-                string pulse = InfiniteFrames[elapsedSeconds % InfiniteFrames.Length];
+                // Infinite / No timeout mode: animate pulse around centered elapsed time
+                int frame = (elapsedSeconds % 4);
+                string leftPulse = frame switch { 0 => "■□", 1 => "□■", 2 => "□□", _ => "■■" };
+                string rightPulse = frame switch { 0 => "□■", 1 => "■□", 2 => "■■", _ => "□□" };
                 string elapsedText = $"{elapsedSeconds / 60}:{elapsedSeconds % 60:D2}";
 
-                return $"{baseKey} [{pulse}] {elapsedText} (∞)";
+                return $"{baseKey} [{leftPulse}  {elapsedText} (∞)  {rightPulse}]";
             }
         }
     }

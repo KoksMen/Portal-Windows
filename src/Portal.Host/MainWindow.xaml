@@ -2253,6 +2253,9 @@
                                             Text="Request validity time (minutes)" />
                                         <TextBox
                                             MaxLength="5"
+                                            Width="140"
+                                            HorizontalAlignment="Center"
+                                            TextAlignment="Center"
                                             Text="{Binding SettingsHostRequestTimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" />
                                         <TextBlock
                                             Margin="0,6,0,0"
