@@ -37,10 +37,10 @@
         <Company>xXTeam</Company>
         <Product>Portal Host (Windows)</Product>
         <Copyright>Copyright © 2026</Copyright>
-		<Version>1.4.0</Version>
-		<AssemblyVersion>1.4.0.0</AssemblyVersion>
-		<FileVersion>1.4.0.0</FileVersion>
-		<InformationalVersion>1.4.0-Rin</InformationalVersion>
+		<Version>1.5.3</Version>
+		<AssemblyVersion>1.5.3.0</AssemblyVersion>
+		<FileVersion>1.5.3.0</FileVersion>
+		<InformationalVersion>1.5.3-Rin</InformationalVersion>
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     </PropertyGroup>
 
