@@ -10,11 +10,11 @@ namespace Portal.CredentialProvider;
 public static class CredentialControlExtensions
 {
     /// <summary>
-    /// CPFG_STYLE_LINK_AS_BUTTON ({E15F1D41-1180-4E86-8E8E-32386E8D6242})
+    /// CPFG_STYLE_LINK_AS_BUTTON ({088FA508-94A6-4430-A4CB-6FC6E3C0B9E2})
     /// Instructs Windows LogonUI to style a CPFT_COMMAND_LINK field as a native push button
-    /// instead of a default blue text hyperlink.
+    /// instead of a default blue text hyperlink. Defined in Windows SDK ShlGuid.h.
     /// </summary>
-    public static readonly Guid StyleLinkAsButton = new("E15F1D41-1180-4E86-8E8E-32386E8D6242");
+    public static readonly Guid StyleLinkAsButton = new("088FA508-94A6-4430-A4CB-6FC6E3C0B9E2");
 
     private static readonly FieldInfo? FieldTypeGuidField = typeof(ControlBase).GetField("<FieldTypeGuid>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
 
