@@ -14,7 +14,7 @@
     Closing="Window_Closing"
     Icon="/Assets/portal-icon.png"
     PreviewKeyDown="Window_PreviewKeyDown"
-    ResizeMode="CanResizeWithGrip"
+    ResizeMode="CanResize"
     WindowStyle="None"
     WindowStartupLocation="CenterScreen">
     <shell:WindowChrome.WindowChrome>
@@ -1399,12 +1399,11 @@
 
                             <ListView
                                 x:Name="ListClients"
-                                MaxHeight="200"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Foreground="White"
-                                ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                ScrollViewer.CanContentScroll="False"
+                                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                 VirtualizingPanel.IsVirtualizing="False"
                                 ItemsSource="{Binding Devices}">
                                 <ListView.ItemContainerStyle>
@@ -1413,6 +1412,7 @@
                                         <Setter Property="BorderThickness" Value="0" />
                                         <Setter Property="Padding" Value="0" />
                                         <Setter Property="Focusable" Value="False" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="ListViewItem">
@@ -1426,75 +1426,102 @@
                                     <DataTemplate>
                                         <Border
                                             Margin="0,6,0,0"
-                                            Padding="12,10"
+                                            Padding="14,12"
                                             Background="#101626"
                                             BorderBrush="#28334d"
                                             BorderThickness="1"
                                             CornerRadius="10">
                                             <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
 
-                                                <StackPanel>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock
-                                                            Margin="0,0,8,0"
-                                                            VerticalAlignment="Center"
-                                                            FontSize="15"
-                                                            Text="🖥️" />
-                                                        <TextBlock
-                                                            VerticalAlignment="Center"
-                                                            FontSize="14"
-                                                            FontWeight="Bold"
-                                                            Foreground="White"
-                                                            Text="{Binding Name}" />
-                                                        <Border
-                                                            Margin="8,0,0,0"
-                                                            Padding="6,1"
-                                                            Background="#1b2f4f"
-                                                            CornerRadius="6">
-                                                            <TextBlock
-                                                                FontSize="10"
-                                                                Foreground="#9ec1ff"
-                                                                Text="{Binding TransportType}" />
-                                                        </Border>
-                                                    </StackPanel>
+                                                <!-- Row 0 Left: Device Name & Transport Badge -->
+                                                <StackPanel
+                                                    Grid.Row="0"
+                                                    Grid.Column="0"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
                                                     <TextBlock
-                                                        Margin="23,3,0,0"
+                                                        Margin="0,0,8,0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="15"
+                                                        Text="🖥️" />
+                                                    <TextBlock
+                                                        VerticalAlignment="Center"
+                                                        FontSize="14"
+                                                        FontWeight="SemiBold"
+                                                        Foreground="White"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        MaxWidth="260"
+                                                        Text="{Binding Name}" />
+                                                    <Border
+                                                        Margin="8,0,0,0"
+                                                        Padding="6,2"
+                                                        Background="#1b2f4f"
+                                                        CornerRadius="6"
+                                                        VerticalAlignment="Center">
+                                                        <TextBlock
+                                                            FontSize="10"
+                                                            Foreground="#9ec1ff"
+                                                            Text="{Binding TransportType}" />
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <!-- Row 0 Right: Enabled Toggle -->
+                                                <CheckBox
+                                                    Grid.Row="0"
+                                                    Grid.Column="1"
+                                                    VerticalAlignment="Center"
+                                                    HorizontalAlignment="Right"
+                                                    Command="{Binding DataContext.ToggleDeviceEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="Enabled"
+                                                    FontSize="11"
+                                                    Foreground="#cfe0ff"
+                                                    IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    Style="{StaticResource PortalCheckBox}" />
+
+                                                <!-- Row 1 Left: Accounts, Paired Date, ClientId -->
+                                                <StackPanel
+                                                    Grid.Row="1"
+                                                    Grid.Column="0"
+                                                    Margin="23,8,12,0"
+                                                    VerticalAlignment="Center">
+                                                    <TextBlock
                                                         FontSize="12"
                                                         Foreground="#c0caea"
+                                                        TextTrimming="CharacterEllipsis"
                                                         Text="{Binding Accounts[0].Username, FallbackValue=No account}" />
                                                     <TextBlock
-                                                        Margin="23,5,0,0"
+                                                        Margin="0,4,0,0"
                                                         FontSize="10"
                                                         Foreground="#8f9bbf"
                                                         Text="{Binding PairedAt, StringFormat='Paired: {0:yyyy-MM-dd HH:mm}'}" />
                                                     <TextBlock
-                                                        Margin="23,2,0,0"
+                                                        Margin="0,2,0,0"
                                                         FontSize="9"
                                                         TextTrimming="CharacterEllipsis"
                                                         Foreground="#6f7ca1"
                                                         Text="{Binding ClientId}" />
                                                 </StackPanel>
 
+                                                <!-- Row 1 Right: Action Buttons -->
                                                 <StackPanel
+                                                    Grid.Row="1"
                                                     Grid.Column="1"
-                                                    VerticalAlignment="Center"
-                                                    Orientation="Horizontal">
-                                                    <CheckBox
-                                                        Margin="0,0,8,0"
-                                                        VerticalAlignment="Center"
-                                                        Command="{Binding DataContext.ToggleDeviceEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        Content="Enabled"
-                                                        FontSize="11"
-                                                        Foreground="#cfe0ff"
-                                                        IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                        Style="{StaticResource PortalCheckBox}" />
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Bottom"
+                                                    HorizontalAlignment="Right"
+                                                    Margin="0,8,0,0">
                                                     <Button
                                                         Margin="0,0,6,0"
+                                                        VerticalAlignment="Center"
                                                         Command="{Binding DataContext.ShowDeviceCertificateInfoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}"
                                                         Content="i"
@@ -1502,6 +1529,7 @@
                                                         ToolTip="Certificate information" />
                                                     <Button
                                                         Margin="0,0,6,0"
+                                                        VerticalAlignment="Center"
                                                         Background="#182d4a"
                                                         BorderBrush="#3d649d"
                                                         Command="{Binding DataContext.TestDeviceUnlockCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -1512,6 +1540,7 @@
                                                         ToolTip="Test Connection / Проверить связь" />
                                                     <Button
                                                         Margin="0,0,6,0"
+                                                        VerticalAlignment="Center"
                                                         Background="#1b2842"
                                                         BorderBrush="#405681"
                                                         Command="{Binding DataContext.EditDeviceAccountCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -1521,6 +1550,7 @@
                                                         Style="{StaticResource TileIconButton}"
                                                         ToolTip="Edit Account" />
                                                     <Button
+                                                        VerticalAlignment="Center"
                                                         Background="#2b1620"
                                                         BorderBrush="#6a2f48"
                                                         Command="{Binding DataContext.RemoveDeviceCommand, RelativeSource={RelativeSource AncestorType=Window}}"
