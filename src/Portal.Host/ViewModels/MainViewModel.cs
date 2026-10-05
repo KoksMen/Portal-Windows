@@ -7,6 +7,7 @@ using System.Management;
 using System.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +29,7 @@ public class LocalAccountOption
 {
     public string Username { get; set; } = "";
     public string Domain { get; set; } = "";
-    public string DisplayName => $"{Domain}\\{Username}";
+    public string DisplayName => string.IsNullOrWhiteSpace(Domain) ? Username : $"{Domain}\\{Username}";
     public override string ToString() => DisplayName;
 }
 
@@ -3442,39 +3443,6 @@ public partial class MainViewModel : ObservableObject
         var machineName = Environment.MachineName;
         var currentDomain = Environment.UserDomainName;
         var known = new Dictionary<string, LocalAccountOption>(StringComparer.OrdinalIgnoreCase);
-        var profileUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            using var profileSearcher = new ManagementObjectSearcher(
-                "SELECT LocalPath, Special, Loaded FROM Win32_UserProfile");
-
-            foreach (ManagementObject profile in profileSearcher.Get())
-            {
-                var special = profile["Special"] as bool?;
-                if (special == true) continue;
-
-                var localPath = profile["LocalPath"]?.ToString();
-                if (string.IsNullOrWhiteSpace(localPath)) continue;
-
-                var userName = Path.GetFileName(localPath.TrimEnd('\\'));
-                if (string.IsNullOrWhiteSpace(userName)) continue;
-
-                // Skip well-known non-interactive profile folders.
-                if (string.Equals(userName, "Public", StringComparison.OrdinalIgnoreCase) ||
-                    userName.StartsWith("Default", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(userName, "All Users", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                profileUsers.Add(userName);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning($"[Host] Failed to enumerate user profiles via WMI: {ex.Message}");
-        }
 
         void AddAccount(string user, string dom)
         {
@@ -3488,47 +3456,79 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
-        // Always include the current interactive account.
+        static bool IsIgnoredSystemAccount(string name)
+        {
+            return string.Equals(name, "WDAGUtilityAccount", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "DefaultAccount", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "Guest", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "Public", StringComparison.OrdinalIgnoreCase) ||
+                   name.StartsWith("Default", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "All Users", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // 1. Always include the current interactive account.
         AddAccount(Environment.UserName, currentDomain);
 
+        // 2. Discover accounts by translating SIDs from Win32_UserProfile (handles local, domain, and MSA profiles).
         try
         {
-            // Query only real local Windows accounts from SAM.
+            using var profileSearcher = new ManagementObjectSearcher(
+                "SELECT LocalPath, Special, Loaded, SID FROM Win32_UserProfile");
+
+            foreach (ManagementObject profile in profileSearcher.Get())
+            {
+                var special = profile["Special"] as bool?;
+                if (special == true) continue;
+
+                var sidString = profile["SID"]?.ToString();
+                if (string.IsNullOrWhiteSpace(sidString)) continue;
+
+                try
+                {
+                    var sid = new SecurityIdentifier(sidString);
+                    var ntAccount = sid.Translate(typeof(NTAccount))?.Value;
+                    if (!string.IsNullOrWhiteSpace(ntAccount) && ntAccount.Contains('\\'))
+                    {
+                        var parts = ntAccount.Split('\\', 2);
+                        if (!IsIgnoredSystemAccount(parts[1]))
+                        {
+                            AddAccount(parts[1], parts[0]);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Non-resolvable or orphaned profile SID
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[Host] Failed to enumerate user profiles via WMI: {ex.Message}");
+        }
+
+        // 3. Discover accounts from Win32_UserAccount (including domain and local accounts).
+        try
+        {
             using var searcher = new ManagementObjectSearcher(
-                "SELECT Name, Disabled, Lockout, LocalAccount FROM Win32_UserAccount WHERE LocalAccount=True");
+                "SELECT Name, Domain, Disabled, Lockout FROM Win32_UserAccount");
 
             foreach (ManagementObject account in searcher.Get())
             {
                 var disabled = account["Disabled"] as bool?;
                 var locked = account["Lockout"] as bool?;
-                if (disabled == true || locked == true)
-                    continue;
+                if (disabled == true || locked == true) continue;
 
                 var name = account["Name"]?.ToString();
-                if (string.IsNullOrWhiteSpace(name))
-                    continue;
+                var domain = account["Domain"]?.ToString() ?? machineName;
+                if (string.IsNullOrWhiteSpace(name) || IsIgnoredSystemAccount(name)) continue;
 
-                // Only keep accounts that have a real user profile (interactive-capable).
-                if (!profileUsers.Contains(name) &&
-                    !string.Equals(name, Environment.UserName, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                // Skip well-known service/internal accounts from UI.
-                if (string.Equals(name, "WDAGUtilityAccount", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(name, "DefaultAccount", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(name, "Guest", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                AddAccount(name, machineName);
+                AddAccount(name, domain);
             }
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[Host] Failed to enumerate local accounts via WMI: {ex.Message}");
+            Logger.LogWarning($"[Host] Failed to enumerate user accounts via WMI: {ex.Message}");
         }
 
         AvailableLocalAccounts.Clear();

@@ -224,25 +224,7 @@ public class PortalWinTile : PortalWinTileBase
 
     private static string? GetShortUserName(string? userOrUpn)
     {
-        if (string.IsNullOrWhiteSpace(userOrUpn))
-        {
-            return null;
-        }
-
-        var value = userOrUpn.Trim();
-
-        if (value.Contains("\\"))
-        {
-            return IdentityHelper.GetShortUsername(value);
-        }
-
-        var atIndex = value.IndexOf('@');
-        if (atIndex > 0)
-        {
-            return value[..atIndex];
-        }
-
-        return value;
+        return IdentityHelper.GetShortUsername(userOrUpn);
     }
 
     private void TryAutoRequestUnlock(bool forceTakeover, string source)
