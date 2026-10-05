@@ -36,6 +36,7 @@ public class TlsUnlockService : IDisposable
 
     public string? StartupError { get; private set; }
     public bool IsRunning { get; private set; }
+    public string? CurrentIp => _lastAdvertisedIp ?? ResolveLocalIPv4();
 
     public event Action<string, SecureString?, string>? UnlockRequested;
     public event Action<string, bool>? NetworkConnectionChanged;
@@ -804,22 +805,30 @@ public class TlsUnlockService : IDisposable
 
     private string? ResolveLocalIPv4()
     {
-        var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
-            .Where(IsAdapterEligibleForAdvertise)
-            .ToList();
+        try
+        {
+            var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .Where(IsAdapterEligibleForAdvertise)
+                .ToList();
 
-        var best = interfaces.FirstOrDefault(ni => ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Ethernet)
-                   ?? interfaces.FirstOrDefault(ni => ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Wireless80211)
-                   ?? interfaces.FirstOrDefault();
+            var best = interfaces.FirstOrDefault(ni => ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Ethernet)
+                       ?? interfaces.FirstOrDefault(ni => ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Wireless80211)
+                       ?? interfaces.FirstOrDefault();
 
-        if (best == null) return null;
+            if (best == null) return null;
 
-        return best.GetIPProperties().UnicastAddresses
-            .Where(ua => ua.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-            .Select(ua => ua.Address)
-            .Where(ip => !IsLinkLocalOrLoopback(ip))
-            .Select(ip => ip.ToString())
-            .FirstOrDefault();
+            return best.GetIPProperties().UnicastAddresses
+                .Where(ua => ua.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                .Select(ua => ua.Address)
+                .Where(ip => !IsLinkLocalOrLoopback(ip))
+                .Select(ip => ip.ToString())
+                .FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[TlsUnlockService] Error resolving local IPv4: {ex.Message}");
+            return null;
+        }
     }
 
     private static bool IsLinkLocalOrLoopback(System.Net.IPAddress ip)

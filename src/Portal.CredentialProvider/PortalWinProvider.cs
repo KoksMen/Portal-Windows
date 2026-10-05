@@ -384,17 +384,61 @@ public class PortalWinProvider : PortalWinProviderBase
 
     private string BuildStatusDetails(string? stateOverride = null)
     {
-        var tlsService = CredentialProviderBootstrapper.TlsService;
-        var btService = CredentialProviderBootstrapper.BtService;
-
-        int networkClients = tlsService?.GetConnectedClientCount() ?? 0;
-        int btClients = btService?.GetConnectedClientCount() ?? 0;
-        string networkState = tlsService is { IsRunning: true } ? "ON" : "OFF";
-        string btState = btService is { IsRunning: true } ? "ON" : "OFF";
-
         _ = stateOverride;
 
-        return $"{Localization.T("Network: ")}{networkState} ({networkClients})\nBluetooth: {btState} ({btClients})";
+        try
+        {
+            var tlsService = CredentialProviderBootstrapper.TlsService;
+            var btService = CredentialProviderBootstrapper.BtService;
+
+            string wifiStatus;
+            if (tlsService is { IsRunning: true })
+            {
+                var ip = tlsService.CurrentIp;
+                int netClients = tlsService.GetConnectedClientCount();
+                if (netClients > 0)
+                {
+                    wifiStatus = !string.IsNullOrEmpty(ip)
+                        ? Localization.TF("Connected ({0})", ip)
+                        : Localization.TF("Connected ({0})", netClients);
+                }
+                else
+                {
+                    wifiStatus = !string.IsNullOrEmpty(ip)
+                        ? Localization.TF("Active ({0})", ip)
+                        : Localization.T("Active");
+                }
+            }
+            else
+            {
+                wifiStatus = Localization.T("Off");
+            }
+
+            string btStatus;
+            if (btService is { IsRunning: true })
+            {
+                int btClients = btService.GetConnectedClientCount();
+                if (btClients > 0)
+                {
+                    btStatus = Localization.TF("Connected ({0})", btClients);
+                }
+                else
+                {
+                    btStatus = Localization.T("Standby");
+                }
+            }
+            else
+            {
+                btStatus = Localization.T("Off");
+            }
+
+            return $"{Localization.T("Wi-Fi: ")}{wifiStatus}\n{Localization.T("Bluetooth: ")}{btStatus}";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[PortalWinProvider] Error building status details: {ex.Message}");
+            return "Wi-Fi: --\nBluetooth: --";
+        }
     }
 
     private static string NormalizeHeadline(string? rawStatus)
