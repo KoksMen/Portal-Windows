@@ -1379,25 +1379,39 @@
                             BorderThickness="1"
                             CornerRadius="10"
                             Visibility="{Binding HasSetupIssues, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel>
-                                <TextBlock
-                                    FontSize="13"
-                                    FontWeight="SemiBold"
-                                    Foreground="#FF9FB3"
-                                    Text="{Binding SetupRequiredTitleText, FallbackValue='⚠ Setup Required'}" />
-                                <TextBlock
-                                    Margin="0,5,0,0"
-                                    FontSize="12"
-                                    Foreground="#FFD7DF"
-                                    Text="{Binding SetupIssueTitle}"
-                                    TextWrapping="Wrap" />
-                                <TextBlock
-                                    Margin="0,4,0,0"
+                            <Grid>
+                                <StackPanel Margin="0,0,32,0">
+                                    <TextBlock
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Foreground="#FF9FB3"
+                                        Text="{Binding SetupRequiredTitleText, FallbackValue='⚠ Setup Required'}" />
+                                    <TextBlock
+                                        Margin="0,5,0,0"
+                                        FontSize="12"
+                                        Foreground="#FFD7DF"
+                                        Text="{Binding SetupIssueTitle}"
+                                        TextWrapping="Wrap" />
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        FontSize="11"
+                                        Foreground="#F6B8C7"
+                                        Text="{Binding SetupIssueHint}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Padding="4,2"
                                     FontSize="11"
-                                    Foreground="#F6B8C7"
-                                    Text="{Binding SetupIssueHint}"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    ToolTip="Refresh status"
+                                    Command="{Binding RefreshComponentStatusCommand}"
+                                    IsEnabled="{Binding IsRefreshingHealth, Converter={StaticResource InverseBooleanConverter}}"
+                                    Content="🔄"
+                                    Cursor="Hand" />
+                            </Grid>
                         </Border>
 
                         <Button
@@ -1428,25 +1442,49 @@
                             Style="{StaticResource SecondaryButton}" />
                     </StackPanel>
 
-                    <TextBlock
-                        x:Name="LblMainStatus"
-                        HorizontalAlignment="Center"
-                        FontSize="12"
-                        Text="{Binding MainStatusText}">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsServiceActive}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding HasSetupIssues}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock
+                            x:Name="LblMainStatus"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Text="{Binding MainStatusText}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsServiceActive}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasSetupIssues}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Button
+                            Margin="6,0,0,0"
+                            Padding="3,0"
+                            FontSize="11"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ToolTip="Refresh status"
+                            Command="{Binding RefreshComponentStatusCommand}"
+                            IsEnabled="{Binding IsRefreshingHealth, Converter={StaticResource InverseBooleanConverter}}"
+                            Content="🔄"
+                            Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasSetupIssues}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
 
                     <Button
                         Height="38"
@@ -1861,6 +1899,23 @@
                         Header="System Health &amp; Maintenance"
                         Style="{StaticResource SettingsSectionExpander}">
                         <StackPanel>
+                            <Grid Margin="0,2,0,10">
+                                <TextBlock
+                                    Text="Component Health Status"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextMuted}"
+                                    VerticalAlignment="Center" />
+                                <Button
+                                    HorizontalAlignment="Right"
+                                    Padding="10,4"
+                                    FontSize="11"
+                                    Command="{Binding RefreshComponentStatusCommand}"
+                                    IsEnabled="{Binding IsRefreshingHealth, Converter={StaticResource InverseBooleanConverter}}"
+                                    Content="🔄 Refresh Status"
+                                    Style="{StaticResource SecondaryButton}" />
+                            </Grid>
+
                             <!--  1. Provider  -->
                             <Border
                                 Margin="0,0,0,8"

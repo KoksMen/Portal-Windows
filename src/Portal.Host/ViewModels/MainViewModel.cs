@@ -121,6 +121,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isFilesOk;
     [ObservableProperty] private bool _isFirewallOk;
     [ObservableProperty] private bool _isCertOk;
+    [ObservableProperty] private bool _isRefreshingHealth;
 
     [ObservableProperty] private string _providerStatusText = Services.LocalizationService.T("Missing");
     [ObservableProperty] private string _firewallStatusText = Services.LocalizationService.T("Missing");
@@ -1026,6 +1027,25 @@ public partial class MainViewModel : ObservableObject
         catch
         {
             IsStatusReady = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshComponentStatusAsync()
+    {
+        if (IsRefreshingHealth)
+        {
+            return;
+        }
+
+        try
+        {
+            IsRefreshingHealth = true;
+            await RefreshStatusAsync();
+        }
+        finally
+        {
+            IsRefreshingHealth = false;
         }
     }
 
