@@ -813,6 +813,20 @@ public class PortalWinTile : PortalWinTileBase
         ShowRequestButton();
     }
 
+    protected override void OnManualPasswordInputChanged()
+    {
+        base.OnManualPasswordInputChanged();
+
+        if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
+        {
+            Logger.Log("[Tile] Manual password input detected; cancelling active remote unlock request.");
+            _activeRequestCts.Cancel();
+            DisconnectAllTransportsFast("Manual password input");
+            UpdateStatus("Manual password input.");
+            ShowRequestButton();
+        }
+    }
+
     private static void DisconnectAllTransportsFast(string reason)
     {
         CredentialProviderBootstrapper.TlsService?.DisconnectAllWebSocketClients(reason);

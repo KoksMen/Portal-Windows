@@ -41,6 +41,11 @@ public abstract class PortalWinTileBase : CredentialTile2
             _statusDetailsLabel = Controls.GetControl<SmallLabelControl>("StatusDetailsLabel");
             _usernameControl = Controls.GetControl<TextboxControl>("UsernameField");
             _passwordControl = Controls.GetControl<SecurePasswordTextboxControl>("PasswordField");
+            if (_passwordControl != null)
+            {
+                _passwordControl.PropertyChanged -= OnPasswordControlPropertyChanged;
+                _passwordControl.PropertyChanged += OnPasswordControlPropertyChanged;
+            }
             _showDetailsButton = Controls.GetControl<CommandLinkControl>("ShowDetailsButton");
             _hideDetailsButton = Controls.GetControl<CommandLinkControl>("HideDetailsButton");
             _requestButton = Controls.GetControl<CommandLinkControl>("RequestButton");
@@ -336,5 +341,24 @@ public abstract class PortalWinTileBase : CredentialTile2
         catch { }
 
         return null;
+    }
+
+    private void OnPasswordControlPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        try
+        {
+            if (_passwordControl != null && _passwordControl.Password != null && _passwordControl.Password.Length > 0)
+            {
+                OnManualPasswordInputChanged();
+            }
+        }
+        catch
+        {
+            // Ignore any control property read errors
+        }
+    }
+
+    protected virtual void OnManualPasswordInputChanged()
+    {
     }
 }
