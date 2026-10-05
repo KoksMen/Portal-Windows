@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <!-- Centralized Versioning: Single source of truth for the entire solution -->
+    <PortalVersion>1.5.5</PortalVersion>
+    <PortalReleaseCodename>Herta</PortalReleaseCodename>
+
+    <Version>$(PortalVersion)</Version>
+    <AssemblyVersion>$(PortalVersion).0</AssemblyVersion>
+    <FileVersion>$(PortalVersion).0</FileVersion>
+    <InformationalVersion>$(PortalVersion)-$(PortalReleaseCodename)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

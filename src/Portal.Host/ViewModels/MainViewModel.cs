@@ -18,6 +18,7 @@ using Microsoft.Win32;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Portal.Common;
+using Portal.Common.Helpers;
 using Portal.Common.Models;
 using Portal.Host.Helpers;
 using Portal.Host.Models;
@@ -163,8 +164,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
-    public string AppVersion => "v1.5.5";
-    public string AppReleaseVersion => "1.5.5-Herta";
+    public string AppVersion => PortalVersionInfo.DisplayVersion;
+    public string AppReleaseVersion => PortalVersionInfo.FullVersion;
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.
