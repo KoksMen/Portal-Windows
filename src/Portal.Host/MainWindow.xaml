@@ -2092,39 +2092,106 @@
                                             FontWeight="SemiBold"
                                             TextTrimming="CharacterEllipsis"
                                             Text="Credential Provider" />
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
-                                            <Ellipse VerticalAlignment="Center">
-                                                <Ellipse.Style>
-                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                        <Setter Property="Width" Value="8" />
-                                                        <Setter Property="Height" Value="8" />
-                                                        <Setter Property="Margin" Value="0,0,6,0" />
-                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                        <Grid Margin="0,4,0,0">
+                                            <!--  Result State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
-                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingProvider}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </Ellipse.Style>
-                                            </Ellipse>
-                                            <TextBlock
-                                                FontSize="11"
-                                                FontWeight="Medium"
-                                                VerticalAlignment="Center"
-                                                Text="{Binding ProviderStatusText}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                </StackPanel.Style>
+                                                <Ellipse VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                            <Setter Property="Width" Value="8" />
+                                                            <Setter Property="Height" Value="8" />
+                                                            <Setter Property="Margin" Value="0,0,6,0" />
+                                                            <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                                    <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding ProviderStatusText}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <!--  Checking / Loading State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsRegisteredOk}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingProvider}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </StackPanel>
+                                                </StackPanel.Style>
+                                                <TextBlock
+                                                    Text="&#xE72C;"
+                                                    FontFamily="Segoe MDL2 Assets"
+                                                    FontSize="11"
+                                                    Foreground="#60cdff"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    RenderTransformOrigin="0.5,0.5">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform Angle="0" />
+                                                    </TextBlock.RenderTransform>
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCheckingProvider}" Value="True">
+                                                                    <DataTrigger.EnterActions>
+                                                                        <BeginStoryboard x:Name="SpinProvStory">
+                                                                            <Storyboard>
+                                                                                <DoubleAnimation
+                                                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                    From="0" To="360"
+                                                                                    Duration="0:0:0.7"
+                                                                                    RepeatBehavior="Forever" />
+                                                                            </Storyboard>
+                                                                        </BeginStoryboard>
+                                                                    </DataTrigger.EnterActions>
+                                                                    <DataTrigger.ExitActions>
+                                                                        <StopStoryboard BeginStoryboardName="SpinProvStory" />
+                                                                    </DataTrigger.ExitActions>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    Foreground="#60cdff"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding HealthCheckingText}" />
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button
@@ -2166,39 +2233,106 @@
                                             FontWeight="SemiBold"
                                             TextTrimming="CharacterEllipsis"
                                             Text="Firewall Rule" />
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
-                                            <Ellipse VerticalAlignment="Center">
-                                                <Ellipse.Style>
-                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                        <Setter Property="Width" Value="8" />
-                                                        <Setter Property="Height" Value="8" />
-                                                        <Setter Property="Margin" Value="0,0,6,0" />
-                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                        <Grid Margin="0,4,0,0">
+                                            <!--  Result State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
-                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingFirewall}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </Ellipse.Style>
-                                            </Ellipse>
-                                            <TextBlock
-                                                FontSize="11"
-                                                FontWeight="Medium"
-                                                VerticalAlignment="Center"
-                                                Text="{Binding FirewallStatusText}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                </StackPanel.Style>
+                                                <Ellipse VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                            <Setter Property="Width" Value="8" />
+                                                            <Setter Property="Height" Value="8" />
+                                                            <Setter Property="Margin" Value="0,0,6,0" />
+                                                            <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                                    <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding FirewallStatusText}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <!--  Checking / Loading State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFirewallOk}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingFirewall}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </StackPanel>
+                                                </StackPanel.Style>
+                                                <TextBlock
+                                                    Text="&#xE72C;"
+                                                    FontFamily="Segoe MDL2 Assets"
+                                                    FontSize="11"
+                                                    Foreground="#60cdff"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    RenderTransformOrigin="0.5,0.5">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform Angle="0" />
+                                                    </TextBlock.RenderTransform>
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCheckingFirewall}" Value="True">
+                                                                    <DataTrigger.EnterActions>
+                                                                        <BeginStoryboard x:Name="SpinFwStory">
+                                                                            <Storyboard>
+                                                                                <DoubleAnimation
+                                                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                    From="0" To="360"
+                                                                                    Duration="0:0:0.7"
+                                                                                    RepeatBehavior="Forever" />
+                                                                            </Storyboard>
+                                                                        </BeginStoryboard>
+                                                                    </DataTrigger.EnterActions>
+                                                                    <DataTrigger.ExitActions>
+                                                                        <StopStoryboard BeginStoryboardName="SpinFwStory" />
+                                                                    </DataTrigger.ExitActions>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    Foreground="#60cdff"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding HealthCheckingText}" />
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button
@@ -2242,39 +2376,106 @@
                                             FontWeight="SemiBold"
                                             TextTrimming="CharacterEllipsis"
                                             Text="SSL Certificate" />
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
-                                            <Ellipse VerticalAlignment="Center">
-                                                <Ellipse.Style>
-                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                        <Setter Property="Width" Value="8" />
-                                                        <Setter Property="Height" Value="8" />
-                                                        <Setter Property="Margin" Value="0,0,6,0" />
-                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                        <Grid Margin="0,4,0,0">
+                                            <!--  Result State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsCertOk}" Value="True">
-                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingCert}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </Ellipse.Style>
-                                            </Ellipse>
-                                            <TextBlock
-                                                FontSize="11"
-                                                FontWeight="Medium"
-                                                VerticalAlignment="Center"
-                                                Text="{Binding CertStatusText}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                </StackPanel.Style>
+                                                <Ellipse VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                            <Setter Property="Width" Value="8" />
+                                                            <Setter Property="Height" Value="8" />
+                                                            <Setter Property="Margin" Value="0,0,6,0" />
+                                                            <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                                    <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding CertStatusText}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCertOk}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <!--  Checking / Loading State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsCertOk}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingCert}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </StackPanel>
+                                                </StackPanel.Style>
+                                                <TextBlock
+                                                    Text="&#xE72C;"
+                                                    FontFamily="Segoe MDL2 Assets"
+                                                    FontSize="11"
+                                                    Foreground="#60cdff"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    RenderTransformOrigin="0.5,0.5">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform Angle="0" />
+                                                    </TextBlock.RenderTransform>
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCheckingCert}" Value="True">
+                                                                    <DataTrigger.EnterActions>
+                                                                        <BeginStoryboard x:Name="SpinCertStory">
+                                                                            <Storyboard>
+                                                                                <DoubleAnimation
+                                                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                    From="0" To="360"
+                                                                                    Duration="0:0:0.7"
+                                                                                    RepeatBehavior="Forever" />
+                                                                            </Storyboard>
+                                                                        </BeginStoryboard>
+                                                                    </DataTrigger.EnterActions>
+                                                                    <DataTrigger.ExitActions>
+                                                                        <StopStoryboard BeginStoryboardName="SpinCertStory" />
+                                                                    </DataTrigger.ExitActions>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    Foreground="#60cdff"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding HealthCheckingText}" />
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button
@@ -2316,39 +2517,106 @@
                                             FontWeight="SemiBold"
                                             TextTrimming="CharacterEllipsis"
                                             Text="DLL Files" />
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,4,0,0">
-                                            <Ellipse VerticalAlignment="Center">
-                                                <Ellipse.Style>
-                                                    <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
-                                                        <Setter Property="Width" Value="8" />
-                                                        <Setter Property="Height" Value="8" />
-                                                        <Setter Property="Margin" Value="0,0,6,0" />
-                                                        <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                        <Grid Margin="0,4,0,0">
+                                            <!--  Result State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Visible" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
-                                                                <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingFiles}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </Ellipse.Style>
-                                            </Ellipse>
-                                            <TextBlock
-                                                FontSize="11"
-                                                FontWeight="Medium"
-                                                VerticalAlignment="Center"
-                                                Text="{Binding FilesStatusText}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                </StackPanel.Style>
+                                                <Ellipse VerticalAlignment="Center">
+                                                    <Ellipse.Style>
+                                                        <Style BasedOn="{StaticResource StatusDot}" TargetType="Ellipse">
+                                                            <Setter Property="Width" Value="8" />
+                                                            <Setter Property="Height" Value="8" />
+                                                            <Setter Property="Margin" Value="0,0,6,0" />
+                                                            <Setter Property="Fill" Value="{StaticResource RedBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                                    <Setter Property="Fill" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding FilesStatusText}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <!--  Checking / Loading State  -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
                                                         <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFilesOk}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource GreenBrush}" />
+                                                            <DataTrigger Binding="{Binding IsCheckingFiles}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </StackPanel>
+                                                </StackPanel.Style>
+                                                <TextBlock
+                                                    Text="&#xE72C;"
+                                                    FontFamily="Segoe MDL2 Assets"
+                                                    FontSize="11"
+                                                    Foreground="#60cdff"
+                                                    Margin="0,0,6,0"
+                                                    VerticalAlignment="Center"
+                                                    RenderTransformOrigin="0.5,0.5">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform Angle="0" />
+                                                    </TextBlock.RenderTransform>
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCheckingFiles}" Value="True">
+                                                                    <DataTrigger.EnterActions>
+                                                                        <BeginStoryboard x:Name="SpinFilesStory">
+                                                                            <Storyboard>
+                                                                                <DoubleAnimation
+                                                                                    Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                                    From="0" To="360"
+                                                                                    Duration="0:0:0.7"
+                                                                                    RepeatBehavior="Forever" />
+                                                                            </Storyboard>
+                                                                        </BeginStoryboard>
+                                                                    </DataTrigger.EnterActions>
+                                                                    <DataTrigger.ExitActions>
+                                                                        <StopStoryboard BeginStoryboardName="SpinFilesStory" />
+                                                                    </DataTrigger.ExitActions>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="Medium"
+                                                    Foreground="#60cdff"
+                                                    VerticalAlignment="Center"
+                                                    Text="{Binding HealthCheckingText}" />
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
                                 </Grid>
                             </Border>

@@ -104,6 +104,8 @@ public static class Localization
         ["Enabled"] = "Включено",
         ["Disabled"] = "Отключено",
         ["Active"] = "Активно",
+        ["Checking..."] = "Проверка...",
+        ["Checking component health..."] = "Проверка компонентов...",
         ["Enabled (click to disable)"] = "Включено (нажмите, чтобы отключить)",
         ["Disabled (click to enable)"] = "Отключено (нажмите, чтобы включить)",
         ["Wi-Fi / LAN"] = "Wi-Fi / Сеть",
@@ -301,6 +303,7 @@ public static class Localization
         ,["Installed"] = "Установлен"
         ,["Active"] = "Активно"
         ,["Reserved"] = "Резерв"
+        ,["Checking..."] = "Проверка..."
 
         // --- Logs window ---
         ,["Logs Viewer"] = "Просмотр журналов"

@@ -122,7 +122,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isFilesOk;
     [ObservableProperty] private bool _isFirewallOk;
     [ObservableProperty] private bool _isCertOk;
-    [ObservableProperty] private bool _isRefreshingHealth;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotWorkingHealth))]
+    private bool _isRefreshingHealth;
+
+    [ObservableProperty] private bool _isCheckingProvider;
+    [ObservableProperty] private bool _isCheckingFirewall;
+    [ObservableProperty] private bool _isCheckingCert;
+    [ObservableProperty] private bool _isCheckingFiles;
+    [ObservableProperty] private string _healthCheckingText = Services.LocalizationService.T("Checking...");
 
     [ObservableProperty] private string _providerStatusText = Services.LocalizationService.T("Missing");
     [ObservableProperty] private string _firewallStatusText = Services.LocalizationService.T("Missing");
@@ -485,7 +493,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsNotWorkingHealth))]
     private bool _isWorkingHealth = false;
 
-    public bool IsNotWorkingHealth => !IsWorkingHealth;
+    public bool IsNotWorkingHealth => !IsWorkingHealth && !IsRefreshingHealth;
 
     // --- Observable Properties (Wizard) ---
     [ObservableProperty] private bool _showWizard = false;
@@ -1045,12 +1053,116 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsRefreshingHealth = true;
-            var refreshTask = RefreshStatusAsync();
-            var minAnimationDelay = Task.Delay(650);
-            await Task.WhenAll(refreshTask, minAnimationDelay);
+            IsCheckingProvider = true;
+            IsCheckingFirewall = true;
+            IsCheckingCert = true;
+            IsCheckingFiles = true;
+
+            HealthCheckingText = Services.LocalizationService.T("Checking...");
+            MainStatusText = IsRussianUi ? "⏳ Проверка компонентов..." : "⏳ Checking components...";
+            if (HasSetupIssues)
+            {
+                SetupIssueTitle = IsRussianUi ? "Проверка состояния компонентов..." : "Checking component health...";
+            }
+
+            _config = PortalWinConfig.Load();
+            AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
+            if (!AreExperimentalFeaturesEnabled)
+            {
+                ShowFaq = false;
+            }
+
+            // 1. Check Provider (Credential Provider)
+            var providerDllPath = _providerLocator.FindProviderDll(SettingsDllPath);
+            var providerHealth = _providerSetup.CheckProviderHealth(providerDllPath);
+            await Task.Delay(180);
+            IsRegisteredOk = providerHealth.CredentialProviderGuidsOk && providerHealth.ComRegistrationOk;
+            ProviderStatusText = IsRegisteredOk
+                ? Services.LocalizationService.T("Installed")
+                : Services.LocalizationService.T("Missing");
+            ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install";
+            IsCheckingProvider = false;
+
+            // 2. Check Firewall Rule
+            var isFirewallOk = await _firewall.CheckFirewallRule(_config.Port);
+            await Task.Delay(180);
+            IsFirewallOk = isFirewallOk;
+            FirewallStatusText = IsFirewallOk
+                ? Services.LocalizationService.T("Active")
+                : Services.LocalizationService.T("Missing");
+            IsCheckingFirewall = false;
+
+            // 3. Check SSL Certificate
+            var isCertOk = _certManager.CheckCertificate();
+            await Task.Delay(180);
+            IsCertOk = isCertOk;
+            CertStatusText = IsCertOk
+                ? Services.LocalizationService.T("Reserved")
+                : Services.LocalizationService.T("Missing");
+            IsCheckingCert = false;
+
+            // 4. Check DLL Files
+            await Task.Delay(180);
+            IsFilesOk = providerHealth.FilesOk;
+            FilesStatusText = IsFilesOk
+                ? Services.LocalizationService.T("OK")
+                : Services.LocalizationService.T("Missing");
+            IsCheckingFiles = false;
+
+            // Finalize overall status
+            var ips = await _networkService.GetLocalIPsAsync(_config.VpnCompatibilityModeEnabled);
+            IsServiceActive = providerHealth.IsHealthy;
+            MainStatusText = IsServiceActive
+                ? (IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready")
+                : (IsRussianUi ? "⚠ Требуется настройка службы" : "⚠ Service Setup Required");
+
+            var setupIssues = new List<string>();
+            if (!providerHealth.IsHealthy) setupIssues.Add(Services.LocalizationService.T("Credential Provider is not installed or is damaged."));
+            if (!isFirewallOk) setupIssues.Add(Services.LocalizationService.T("Firewall rules are missing."));
+            if (!isCertOk) setupIssues.Add(Services.LocalizationService.T("Host SSL certificate is missing."));
+
+            HasSetupIssues = setupIssues.Count > 0;
+            SetupIssueTitle = setupIssues.Count > 0
+                ? setupIssues[0]
+                : Services.LocalizationService.T("All core components are configured.");
+            SetupIssueHint = setupIssues.Count > 0
+                ? Services.LocalizationService.T("Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate.")
+                : Services.LocalizationService.T("No setup actions required.");
+
+            ClientCountText = Services.LocalizationService.TF("{0} trusted devices", _config.Devices.Count);
+            RefreshDevicesList();
+            Services.LocalizationService.ApplyToMainWindow(_config.UiLanguage);
+
+            ShowSetupPanel = !(IsServiceActive && _config.Devices.Any());
+            OnPropertyChanged(nameof(ShowConnectedPanel));
+
+            IpAddressText = Services.LocalizationService.T("Your IP for client: ") + (ips.FirstOrDefault() ?? Services.LocalizationService.T("Unknown"));
+
+            if (ShowDashboard)
+            {
+                SettingsPort = _config.Port.ToString();
+                SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+                IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
+                IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
+                _suppressDuplicateProtectionPrompt = true;
+                IsDuplicateAccountProtectionEnabled = _config.EnforceUniqueAccountPerTransport;
+                IsCrossTransportDuplicateProtectionEnabled = _config.EnforceUniqueAccountAcrossTransports && IsDuplicateAccountProtectionEnabled;
+                _suppressDuplicateProtectionPrompt = false;
+            }
+
+            IsStatusReady = true;
+            await Task.Delay(100);
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"[RefreshComponentStatus] Error refreshing component health: {ex.Message}");
         }
         finally
         {
+            IsCheckingProvider = false;
+            IsCheckingFirewall = false;
+            IsCheckingCert = false;
+            IsCheckingFiles = false;
             IsRefreshingHealth = false;
         }
     }
@@ -1177,6 +1289,7 @@ public partial class MainViewModel : ObservableObject
         FilesStatusText = IsFilesOk
             ? Services.LocalizationService.T("OK")
             : Services.LocalizationService.T("Missing");
+        HealthCheckingText = Services.LocalizationService.T("Checking...");
         if (!string.IsNullOrEmpty(_pairingStatusRaw))
             WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
         if (StepPairingVis)
