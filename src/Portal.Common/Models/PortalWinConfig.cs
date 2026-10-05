@@ -196,6 +196,12 @@ public class PortalWinConfig
     [JsonPropertyName("hostId")]
     public string HostId { get; set; } = string.Empty;
 
+    [JsonPropertyName("progressBarStyle")]
+    public TileProgressBarStyle ProgressBarStyle { get; set; } = TileProgressBarStyle.Block;
+
+    [JsonPropertyName("customWaitingText")]
+    public string CustomWaitingText { get; set; } = string.Empty;
+
     [JsonPropertyName("devices")]
     public List<DeviceModel> Devices { get; set; } = new();
 
@@ -262,6 +268,16 @@ public class PortalWinConfig
                     cfg.StrictSelectedTileWebSocketConnections = false;
                     cfg.DisableKestrelClientCertificateValidation = false;
                     cfg.HostRequestCorrelationEnabled = true;
+                    shouldResave = true;
+                }
+
+                if (cfg.CustomWaitingText == null)
+                {
+                    cfg.CustomWaitingText = string.Empty;
+                }
+                else if (cfg.CustomWaitingText.Length > 40)
+                {
+                    cfg.CustomWaitingText = cfg.CustomWaitingText.Substring(0, 40).Trim();
                     shouldResave = true;
                 }
 
@@ -618,4 +634,11 @@ public enum HostRequestTrigger
 
     /// <summary>Unlock request is sent on button click AND automatically on any LogonUI appearance (Logon + WorkstationUnlock).</summary>
     OnClickAndAnyLockScreen = 2
+}
+
+public enum TileProgressBarStyle
+{
+    Block = 0,
+    Thin = 1,
+    Dots = 2
 }

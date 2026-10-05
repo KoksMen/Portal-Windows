@@ -20,6 +20,8 @@ public class PortalWinProvider : PortalWinProviderBase
 {
     internal UnlockMode UnlockMode { get; private set; } = UnlockMode.Both;
     internal HostRequestTrigger HostRequestTrigger { get; private set; } = HostRequestTrigger.OnClickAndAnyLockScreen;
+    internal TileProgressBarStyle ProgressBarStyle { get; private set; } = TileProgressBarStyle.Block;
+    internal string CustomWaitingText { get; private set; } = string.Empty;
 
     private string? _preferredDefaultSid;
     private string? _preferredDefaultCanonicalUser;
@@ -33,6 +35,8 @@ public class PortalWinProvider : PortalWinProviderBase
             var config = PortalWinConfig.Load();
             UnlockMode = config.UnlockMode;
             HostRequestTrigger = config.HostRequestTrigger;
+            ProgressBarStyle = config.ProgressBarStyle;
+            CustomWaitingText = config.CustomWaitingText ?? string.Empty;
             Localization.SetCurrentLanguage(config.UiLanguage);
 
             // Ensure the auto-request can fire again for this session
@@ -191,7 +195,7 @@ public class PortalWinProvider : PortalWinProviderBase
                 if (progressTag.StartsWith("[progress:", StringComparison.OrdinalIgnoreCase) && progressTag.EndsWith("]"))
                 {
                     string innerTag = progressTag.Substring("[progress:".Length, progressTag.Length - "[progress:".Length - 1);
-                    string dynamicBar = BuildDynamicProgressBar(normalizedBase, innerTag);
+                    string dynamicBar = BuildDynamicProgressBar(normalizedBase, innerTag, ProgressBarStyle);
                     return $"{normalizedBase}\n{dynamicBar}";
                 }
                 else
@@ -206,9 +210,20 @@ public class PortalWinProvider : PortalWinProviderBase
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
     }
 
-    private static string BuildDynamicProgressBar(string headline, string innerTag)
+    private static (char filled, char empty, char blink, double blockWidth) GetProgressBarChars(TileProgressBarStyle style)
+    {
+        return style switch
+        {
+            TileProgressBarStyle.Thin => ('━', '─', '╍', 10.0),
+            TileProgressBarStyle.Dots => ('●', '○', '◐', 10.5),
+            _ => ('█', '░', '▒', 11.5)
+        };
+    }
+
+    private static string BuildDynamicProgressBar(string headline, string innerTag, TileProgressBarStyle style)
     {
         double targetWidth = EstimateVisualWidth(headline);
+        var (filledChar, emptyChar, blinkChar, blockWidth) = GetProgressBarChars(style);
 
         if (innerTag.StartsWith("countdown,", StringComparison.OrdinalIgnoreCase))
         {
@@ -222,7 +237,6 @@ public class PortalWinProvider : PortalWinProviderBase
                 double fixedWidth = EstimateVisualWidth($"[  {timeText}  ]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                const double blockWidth = 11.5;
                 int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
 
                 int bestN = nBase;
@@ -234,7 +248,7 @@ public class PortalWinProvider : PortalWinProviderBase
                     for (int sp = 1; sp <= 3; sp++)
                     {
                         string spStr = new string('\u00A0', sp);
-                        double candWidth = EstimateVisualWidth($"[{new string('█', candN)}{spStr}{timeText}{spStr}{new string('█', candN)}]");
+                        double candWidth = EstimateVisualWidth($"[{new string(filledChar, candN)}{spStr}{timeText}{spStr}{new string(filledChar, candN)}]");
                         double diff = Math.Abs(candWidth - targetWidth);
                         if (diff < minDiff)
                         {
@@ -260,15 +274,15 @@ public class PortalWinProvider : PortalWinProviderBase
                 {
                     if (i < activeIndex)
                     {
-                        blocks[i] = '█';
+                        blocks[i] = filledChar;
                     }
                     else if (i == activeIndex)
                     {
-                        blocks[i] = isBlink ? '▒' : '█';
+                        blocks[i] = isBlink ? blinkChar : filledChar;
                     }
                     else
                     {
-                        blocks[i] = '░';
+                        blocks[i] = emptyChar;
                     }
                 }
 
@@ -288,7 +302,6 @@ public class PortalWinProvider : PortalWinProviderBase
                 double fixedWidth = EstimateVisualWidth($"[\u00A0\u00A0{elapsedText}\u00A0\u00A0]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                const double blockWidth = 11.5;
                 int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
 
                 int bestN = nBase;
@@ -300,7 +313,7 @@ public class PortalWinProvider : PortalWinProviderBase
                     for (int sp = 1; sp <= 3; sp++)
                     {
                         string spStr = new string('\u00A0', sp);
-                        double candWidth = EstimateVisualWidth($"[{new string('░', candN)}{spStr}{elapsedText}{spStr}{new string('░', candN)}]");
+                        double candWidth = EstimateVisualWidth($"[{new string(emptyChar, candN)}{spStr}{elapsedText}{spStr}{new string(emptyChar, candN)}]");
                         double diff = Math.Abs(candWidth - targetWidth);
                         if (diff < minDiff)
                         {
@@ -319,11 +332,11 @@ public class PortalWinProvider : PortalWinProviderBase
 
                 Span<char> left = stackalloc char[n];
                 Span<char> right = stackalloc char[n];
-                left.Fill('░');
-                right.Fill('░');
+                left.Fill(emptyChar);
+                right.Fill(emptyChar);
 
-                left[n - 1 - pulsePos] = '█';
-                right[pulsePos] = '█';
+                left[n - 1 - pulsePos] = filledChar;
+                right[pulsePos] = filledChar;
 
                 string spacingStr = new string('\u00A0', bestSpacing);
                 return $"[{new string(left)}{spacingStr}{elapsedText}{spacingStr}{new string(right)}]";
@@ -343,6 +356,8 @@ public class PortalWinProvider : PortalWinProviderBase
             {
                 ' ' or '\u00A0' => 4.0,
                 '█' or '░' or '▒' or '▓' => 11.5,
+                '━' or '─' or '╍' => 10.0,
+                '●' or '○' or '◐' => 10.5,
                 '[' or ']' => 4.5,
                 ':' or '.' or ',' or ';' or '!' => 3.5,
                 >= '0' and <= '9' => 7.5,
@@ -379,6 +394,14 @@ public class PortalWinProvider : PortalWinProviderBase
         {
             state = state.Substring("State: ".Length).Trim();
         }
+
+        if (!string.IsNullOrWhiteSpace(CustomWaitingText) &&
+            (string.Equals(state, "Awaiting unlock approval", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(state, CustomWaitingText.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            return $"{statePrefix}{CustomWaitingText.Trim()}";
+        }
+
         return $"{statePrefix}{Localization.T(state)}";
     }
 
@@ -441,12 +464,12 @@ public class PortalWinProvider : PortalWinProviderBase
         }
     }
 
-    private static string NormalizeHeadline(string? rawStatus)
+    private string NormalizeHeadline(string? rawStatus)
     {
         return NormalizeState(rawStatus);
     }
 
-    private static string NormalizeState(string? rawStatus)
+    private string NormalizeState(string? rawStatus)
     {
         if (PortalWinTile.IsEmergencyRollbackActive)
         {
@@ -467,6 +490,13 @@ public class PortalWinProvider : PortalWinProviderBase
         if (value.StartsWith("State: ", StringComparison.OrdinalIgnoreCase))
         {
             value = value.Substring("State: ".Length).Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(CustomWaitingText) &&
+            (string.Equals(value, CustomWaitingText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+             value.Contains(CustomWaitingText.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            return CustomWaitingText.Trim();
         }
 
         var lower = value.ToLowerInvariant();

@@ -426,7 +426,7 @@ public class PortalWinTile : PortalWinTileBase
 
         Task.Run(async () =>
         {
-            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, effectiveTimeoutSeconds, requestTimer, cts.Token, showProgress);
+            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, effectiveTimeoutSeconds, requestTimer, cts.Token, showProgress, config.CustomWaitingText);
             var anyRejection = false;
             Portal.Common.Models.DeviceModel? lastRejectionDevice = null;
             var approvalCompleted = false;
@@ -653,18 +653,20 @@ public class PortalWinTile : PortalWinTileBase
         private readonly Stopwatch _timer;
         private readonly CancellationToken _ct;
         private readonly bool _showProgress;
+        private readonly string? _customWaitingText;
         private readonly CancellationTokenSource _tickerCts = new();
         private readonly object _sync = new();
         private UnlockTransportStage? _latestStage;
         private bool _disposed;
 
-        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutSeconds, Stopwatch timer, CancellationToken ct, bool showProgress = true)
+        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutSeconds, Stopwatch timer, CancellationToken ct, bool showProgress = true, string? customWaitingText = null)
         {
             _publishStatus = publishStatus;
             _timeoutSeconds = timeoutSeconds;
             _timer = timer;
             _ct = ct;
             _showProgress = showProgress;
+            _customWaitingText = customWaitingText;
 
             PublishCurrentStatus();
             if (_showProgress)
@@ -753,7 +755,7 @@ public class PortalWinTile : PortalWinTileBase
         {
             string baseKey = _latestStage switch
             {
-                UnlockTransportStage.AwaitingApproval => "Awaiting approval...",
+                UnlockTransportStage.AwaitingApproval => !string.IsNullOrWhiteSpace(_customWaitingText) ? _customWaitingText.Trim() : "Awaiting approval...",
                 UnlockTransportStage.Searching => "Searching device...",
                 _ => "Requesting unlock..."
             };

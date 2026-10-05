@@ -489,6 +489,64 @@ public partial class MainViewModel : ObservableObject
         WindowBackdropChanged?.Invoke(type);
     }
 
+    // Tile Progress Bar Style
+    [ObservableProperty] private bool _isProgressBarStyleBlock = true;
+    [ObservableProperty] private bool _isProgressBarStyleThin;
+    [ObservableProperty] private bool _isProgressBarStyleDots;
+    private bool _suppressProgressBarStyleChange;
+
+    // Custom Lock Screen Waiting Text
+    [ObservableProperty] private string _customWaitingText = string.Empty;
+    private bool _suppressCustomWaitingTextChange;
+
+    partial void OnIsProgressBarStyleBlockChanged(bool value)
+    {
+        if (value) ApplyProgressBarStyle(TileProgressBarStyle.Block);
+    }
+
+    partial void OnIsProgressBarStyleThinChanged(bool value)
+    {
+        if (value) ApplyProgressBarStyle(TileProgressBarStyle.Thin);
+    }
+
+    partial void OnIsProgressBarStyleDotsChanged(bool value)
+    {
+        if (value) ApplyProgressBarStyle(TileProgressBarStyle.Dots);
+    }
+
+    private void ApplyProgressBarStyle(TileProgressBarStyle style)
+    {
+        if (_suppressProgressBarStyleChange) return;
+        if (_config != null)
+        {
+            _config.ProgressBarStyle = style;
+            _config.Save();
+            Logger.Log($"[Settings] Progress bar style changed to: {style}");
+        }
+    }
+
+    partial void OnCustomWaitingTextChanged(string value)
+    {
+        if (_suppressCustomWaitingTextChange) return;
+        if (_config != null)
+        {
+            var trimmed = value?.Trim() ?? string.Empty;
+            if (trimmed.Length > 40)
+            {
+                trimmed = trimmed.Substring(0, 40);
+            }
+            _config.CustomWaitingText = trimmed;
+            _config.Save();
+            Logger.Log($"[Settings] Custom waiting text changed to: '{trimmed}'");
+        }
+    }
+
+    [RelayCommand]
+    private void ResetCustomWaitingText()
+    {
+        CustomWaitingText = string.Empty;
+    }
+
     // Loading State for System Health & Maintenance actions
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotWorkingHealth))]
@@ -752,6 +810,16 @@ public partial class MainViewModel : ObservableObject
         BackdropStatusText = Helpers.DwmBackdropHelper.IsWindows11OrGreater
             ? Services.LocalizationService.T("Windows 11 detected: Native Fluent Mica / Acrylic backdrops active")
             : Services.LocalizationService.T("Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)");
+
+        _suppressProgressBarStyleChange = true;
+        IsProgressBarStyleBlock = _config.ProgressBarStyle == TileProgressBarStyle.Block;
+        IsProgressBarStyleThin = _config.ProgressBarStyle == TileProgressBarStyle.Thin;
+        IsProgressBarStyleDots = _config.ProgressBarStyle == TileProgressBarStyle.Dots;
+        _suppressProgressBarStyleChange = false;
+
+        _suppressCustomWaitingTextChange = true;
+        CustomWaitingText = _config.CustomWaitingText ?? string.Empty;
+        _suppressCustomWaitingTextChange = false;
 
         RefreshDevicesList();
     }

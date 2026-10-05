@@ -105,6 +105,40 @@
             <Setter Property="Padding" Value="12,8" />
             <Setter Property="CalendarStyle" Value="{StaticResource {x:Type Calendar}}" />
         </Style>
+
+        <Style x:Key="LogsFilterChip" TargetType="Button">
+            <Setter Property="Foreground" Value="#c5d7fa" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="#152136" />
+            <Setter Property="BorderBrush" Value="#2d4572" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#1e3253" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#456ba8" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="16">
@@ -122,47 +156,212 @@
             BorderThickness="1"
             CornerRadius="12">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="10" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="10" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-                <StackPanel Grid.Column="0">
-                    <TextBlock
-                        FontSize="24"
-                        FontWeight="Bold"
-                        Foreground="#ecf3ff"
-                        Text="Logs Viewer" />
-                    <TextBlock
-                        Margin="0,4,0,0"
-                        FontSize="12"
-                        Foreground="{StaticResource TextMuted}"
-                        Text="{Binding LogsUpdatedAtText}" />
-                </StackPanel>
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <DatePicker
-                    Grid.Column="1"
-                    Width="170"
-                    VerticalAlignment="Center"
-                    SelectedDate="{Binding SelectedDate}" />
+                    <StackPanel Grid.Column="0">
+                        <TextBlock
+                            FontSize="24"
+                            FontWeight="Bold"
+                            Foreground="#ecf3ff"
+                            Text="Logs Viewer" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="12"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="{Binding LogsUpdatedAtText}" />
+                    </StackPanel>
 
-                <Button
-                    Grid.Column="3"
-                    MinWidth="98"
-                    Command="{Binding RefreshLogsCommand}"
-                    Content="Refresh"
-                    Style="{StaticResource LogsButtonPrimary}" />
+                    <DatePicker
+                        Grid.Column="1"
+                        Width="170"
+                        VerticalAlignment="Center"
+                        SelectedDate="{Binding SelectedDate}" />
 
-                <Button
-                    Grid.Column="5"
-                    MinWidth="98"
-                    Command="{Binding CloseWindowCommand}"
-                    Content="Close"
-                    Style="{StaticResource LogsButtonSecondary}" />
+                    <Button
+                        Grid.Column="3"
+                        MinWidth="98"
+                        Command="{Binding RefreshLogsCommand}"
+                        Content="Refresh"
+                        Style="{StaticResource LogsButtonPrimary}" />
+
+                    <Button
+                        Grid.Column="5"
+                        MinWidth="98"
+                        Command="{Binding CloseWindowCommand}"
+                        Content="Close"
+                        Style="{StaticResource LogsButtonSecondary}" />
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Width="260"
+                            Height="34"
+                            Margin="0,0,12,0"
+                            Background="{StaticResource InputBg}"
+                            BorderBrush="{StaticResource InputBorder}"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       Text="&#xE721;"
+                                       FontSize="13"
+                                       Foreground="{StaticResource TextMuted}"
+                                       VerticalAlignment="Center"
+                                       Margin="9,0,4,0" />
+
+                            <TextBox Grid.Column="1"
+                                     x:Name="SearchBox"
+                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{StaticResource TextMain}"
+                                     FontSize="12"
+                                     VerticalContentAlignment="Center"
+                                     Padding="2,0" />
+
+                            <TextBlock Grid.Column="1"
+                                       Text="Search logs..."
+                                       Foreground="#62789f"
+                                       FontSize="12"
+                                       IsHitTestVisible="False"
+                                       VerticalAlignment="Center"
+                                       Margin="4,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <Button Grid.Column="2"
+                                    Command="{Binding ClearSearchCommand}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Padding="6,0"
+                                    VerticalAlignment="Center">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchText}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <TextBlock FontFamily="Segoe MDL2 Assets"
+                                           Text="&#xE711;"
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextMuted}" />
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="All"
+                                Command="{Binding SelectFilterCommand}"
+                                CommandParameter="All">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource LogsFilterChip}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFilterAll}" Value="True">
+                                            <Setter Property="Background" Value="#2563eb" />
+                                            <Setter Property="BorderBrush" Value="#60a5fa" />
+                                            <Setter Property="Foreground" Value="#ffffff" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Errors"
+                                Command="{Binding SelectFilterCommand}"
+                                CommandParameter="Errors">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource LogsFilterChip}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFilterErrors}" Value="True">
+                                            <Setter Property="Background" Value="#b91c1c" />
+                                            <Setter Property="BorderBrush" Value="#f87171" />
+                                            <Setter Property="Foreground" Value="#ffffff" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Network (WS)"
+                                Command="{Binding SelectFilterCommand}"
+                                CommandParameter="NetworkWs">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource LogsFilterChip}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFilterNetwork}" Value="True">
+                                            <Setter Property="Background" Value="#0284c7" />
+                                            <Setter Property="BorderBrush" Value="#38bdf8" />
+                                            <Setter Property="Foreground" Value="#ffffff" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Bluetooth (BLE)"
+                                Command="{Binding SelectFilterCommand}"
+                                CommandParameter="BluetoothBle">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource LogsFilterChip}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFilterBluetooth}" Value="True">
+                                            <Setter Property="Background" Value="#7c3aed" />
+                                            <Setter Property="BorderBrush" Value="#a78bfa" />
+                                            <Setter Property="Foreground" Value="#ffffff" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding FilterSummaryText}"
+                               FontSize="12"
+                               Foreground="{StaticResource TextMuted}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right" />
+                </Grid>
             </Grid>
         </Border>
 

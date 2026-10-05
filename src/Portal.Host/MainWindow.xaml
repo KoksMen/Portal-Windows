@@ -2912,6 +2912,106 @@
                                     Text="{Binding BackdropStatusText}"
                                     TextWrapping="Wrap" />
                             </Border>
+
+                            <TextBlock
+                                Margin="0,16,0,8"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Lock Screen Progress Bar Style" />
+
+                            <RadioButton
+                                Content="Block [████]"
+                                GroupName="ProgressBarStyle"
+                                IsChecked="{Binding IsProgressBarStyleBlock}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Classic solid block segments with smooth countdown." />
+
+                            <RadioButton
+                                Content="Thin [━━━━]"
+                                GroupName="ProgressBarStyle"
+                                IsChecked="{Binding IsProgressBarStyleThin}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Modern sleek heavy line with dash animation." />
+
+                            <RadioButton
+                                Content="Dots [●●●●]"
+                                GroupName="ProgressBarStyle"
+                                IsChecked="{Binding IsProgressBarStyleDots}"
+                                Style="{StaticResource ModeCard}"
+                                Tag="Discrete dots with circular pulse indicator." />
+
+                            <TextBlock
+                                Margin="0,16,0,8"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Custom Lock Screen Text" />
+
+                            <Border
+                                Padding="10"
+                                Background="#101728"
+                                BorderBrush="#2c3f66"
+                                BorderThickness="1"
+                                CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock
+                                        FontSize="11"
+                                        Foreground="#8fa2cf"
+                                        Text="Custom status text displayed on the lock screen tile during unlock requests (leave blank for default 'Awaiting approval...'). The progress bar width adapts dynamically to your text length."
+                                        TextWrapping="Wrap" />
+
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0"
+                                                Background="{StaticResource InputBg}"
+                                                BorderBrush="{StaticResource InputBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Height="36">
+                                            <Grid>
+                                                <TextBox x:Name="CustomWaitingTextBox"
+                                                         Text="{Binding CustomWaitingText, UpdateSourceTrigger=PropertyChanged}"
+                                                         MaxLength="40"
+                                                         Background="Transparent"
+                                                         BorderThickness="0"
+                                                         Foreground="{StaticResource TextMain}"
+                                                         FontSize="12"
+                                                         VerticalContentAlignment="Center"
+                                                         Padding="10,0" />
+
+                                                <TextBlock Text="Awaiting approval..."
+                                                           Foreground="#62789f"
+                                                           FontSize="12"
+                                                           IsHitTestVisible="False"
+                                                           VerticalAlignment="Center"
+                                                           Margin="10,0,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Text, ElementName=CustomWaitingTextBox}" Value="">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
+                                        </Border>
+
+                                        <Button Grid.Column="2"
+                                                Command="{Binding ResetCustomWaitingTextCommand}"
+                                                Content="Reset"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="12,6"
+                                                Height="36" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Expander>
 
