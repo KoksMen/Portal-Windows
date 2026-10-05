@@ -1,8 +1,20 @@
 param(
     [string]$PublishDir = 'publish',
-    [string]$ZipName = 'PortalWin-1.5.5-win-x64.zip'
+    [string]$ZipName = ''
 )
 $ErrorActionPreference = 'Stop'
+
+if ([string]::IsNullOrWhiteSpace($ZipName)) {
+    $propsPath = Join-Path $PSScriptRoot "..\Directory.Build.props"
+    $ver = "1.5.5"
+    if (Test-Path $propsPath) {
+        $xml = [xml](Get-Content $propsPath)
+        if ($xml.Project.PropertyGroup.PortalVersion) {
+            $ver = $xml.Project.PropertyGroup.PortalVersion.Trim()
+        }
+    }
+    $ZipName = "PortalWin-$ver-win-x64.zip"
+}
 
 $stage = Join-Path $PSScriptRoot "..\package_staging"
 if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }

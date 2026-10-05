@@ -32,6 +32,17 @@ public partial class LogsWindowViewModel : ObservableObject
     [ObservableProperty] private string _providerLogsText = "No provider logs loaded yet.";
     [ObservableProperty] private string _logsUpdatedAtText = "Not updated yet.";
     [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private string _searchText = string.Empty;
+    [ObservableProperty] private LogFilterCategory _selectedCategory = LogFilterCategory.All;
+    [ObservableProperty] private string _filterSummaryText = string.Empty;
+
+    public bool IsFilterAll => SelectedCategory == LogFilterCategory.All;
+    public bool IsFilterErrors => SelectedCategory == LogFilterCategory.Errors;
+    public bool IsFilterNetwork => SelectedCategory == LogFilterCategory.NetworkWs;
+    public bool IsFilterBluetooth => SelectedCategory == LogFilterCategory.BluetoothBle;
+
+    private ColumnSnapshot? _latestHostSnapshot;
+    private ColumnSnapshot? _latestProviderSnapshot;
 
     public event Action? CloseRequested;
 
@@ -54,6 +65,35 @@ public partial class LogsWindowViewModel : ObservableObject
     partial void OnSelectedDateChanged(DateTime value)
     {
         _ = RefreshLogsInternalAsync(forceRebuild: true, showLoading: true);
+    }
+
+    partial void OnSearchTextChanged(string value)
+    {
+        ApplyCurrentFilter();
+    }
+
+    partial void OnSelectedCategoryChanged(LogFilterCategory value)
+    {
+        OnPropertyChanged(nameof(IsFilterAll));
+        OnPropertyChanged(nameof(IsFilterErrors));
+        OnPropertyChanged(nameof(IsFilterNetwork));
+        OnPropertyChanged(nameof(IsFilterBluetooth));
+        ApplyCurrentFilter();
+    }
+
+    [RelayCommand]
+    private void SelectFilter(string category)
+    {
+        if (Enum.TryParse<LogFilterCategory>(category, true, out var parsed))
+        {
+            SelectedCategory = parsed;
+        }
+    }
+
+    [RelayCommand]
+    private void ClearSearch()
+    {
+        SearchText = string.Empty;
     }
 
     [RelayCommand]
@@ -93,21 +133,20 @@ public partial class LogsWindowViewModel : ObservableObject
                 _loadedDate = day;
             }
 
-            ApplySnapshotToColumn(
-                day,
-                hostSnapshot,
-                dayChanged || forceRebuild,
-                ref _hostBody,
-                ref _hostSeenSignatures,
-                text => HostLogsText = text);
+            var hostSignatures = hostSnapshot.Entries.Select(BuildSignature).ToHashSet(StringComparer.Ordinal);
+            var providerSignatures = providerSnapshot.Entries.Select(BuildSignature).ToHashSet(StringComparer.Ordinal);
+            bool hostChanged = !_hostSeenSignatures.SetEquals(hostSignatures);
+            bool providerChanged = !_providerSeenSignatures.SetEquals(providerSignatures);
 
-            ApplySnapshotToColumn(
-                day,
-                providerSnapshot,
-                dayChanged || forceRebuild,
-                ref _providerBody,
-                ref _providerSeenSignatures,
-                text => ProviderLogsText = text);
+            _hostSeenSignatures = hostSignatures;
+            _providerSeenSignatures = providerSignatures;
+            _latestHostSnapshot = hostSnapshot;
+            _latestProviderSnapshot = providerSnapshot;
+
+            if (forceRebuild || dayChanged || hostChanged || providerChanged)
+            {
+                ApplyCurrentFilter();
+            }
 
             LogsUpdatedAtText = Services.LocalizationService.T("Updated: ") + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
@@ -125,6 +164,117 @@ public partial class LogsWindowViewModel : ObservableObject
                 IsLoading = false;
             }
         }
+    }
+
+    private void ApplyCurrentFilter()
+    {
+        var day = SelectedDate.Date;
+        var hostEntries = _latestHostSnapshot?.Entries ?? (IReadOnlyList<LogEntry>)Array.Empty<LogEntry>();
+        var providerEntries = _latestProviderSnapshot?.Entries ?? (IReadOnlyList<LogEntry>)Array.Empty<LogEntry>();
+
+        var filteredHost = FilterEntries(hostEntries);
+        var filteredProvider = FilterEntries(providerEntries);
+
+        var hostBody = filteredHost.Count == 0
+            ? string.Empty
+            : FormatEntries(filteredHost);
+        HostLogsText = ComposeColumnText(day, hostBody, _latestHostSnapshot?.EmptyMessage ?? "No host logs loaded yet.");
+
+        var providerBody = filteredProvider.Count == 0
+            ? string.Empty
+            : FormatEntries(filteredProvider);
+        ProviderLogsText = ComposeColumnText(day, providerBody, _latestProviderSnapshot?.EmptyMessage ?? "No provider logs loaded yet.");
+
+        int totalFound = filteredHost.Count + filteredProvider.Count;
+        int totalEntries = hostEntries.Count + providerEntries.Count;
+
+        if (SelectedCategory != LogFilterCategory.All || !string.IsNullOrWhiteSpace(SearchText))
+        {
+            FilterSummaryText = Services.LocalizationService.TF("Found: {0}", $"{totalFound} / {totalEntries}");
+        }
+        else
+        {
+            FilterSummaryText = Services.LocalizationService.TF("Found: {0}", totalEntries);
+        }
+    }
+
+    private IReadOnlyList<LogEntry> FilterEntries(IReadOnlyList<LogEntry> entries)
+    {
+        if (entries.Count == 0) return entries;
+
+        var search = SearchText?.Trim();
+        var hasSearch = !string.IsNullOrEmpty(search);
+        var category = SelectedCategory;
+
+        if (!hasSearch && category == LogFilterCategory.All)
+        {
+            return entries;
+        }
+
+        var result = new List<LogEntry>();
+        foreach (var entry in entries)
+        {
+            if (category != LogFilterCategory.All && !MatchesCategory(entry, category))
+            {
+                continue;
+            }
+
+            if (hasSearch && !MatchesSearch(entry, search!))
+            {
+                continue;
+            }
+
+            result.Add(entry);
+        }
+
+        return result;
+    }
+
+    private static bool MatchesCategory(LogEntry entry, LogFilterCategory category)
+    {
+        return category switch
+        {
+            LogFilterCategory.Errors => entry.Lines.Any(l =>
+                l.Contains("[ERR]", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("[WRN]", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("Exception", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("Error", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("Failed", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("Faulted", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("Critical", StringComparison.OrdinalIgnoreCase)),
+
+            LogFilterCategory.NetworkWs => entry.Lines.Any(l =>
+                l.Contains("[WebSocketManager]", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("[TlsUnlockService]", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("[UnlockHandler]", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("WebSocket", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("mDNS", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("TLS", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("Network", StringComparison.OrdinalIgnoreCase)),
+
+            LogFilterCategory.BluetoothBle => entry.Lines.Any(l =>
+                l.Contains("[BtUnlock]", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("BtProtocol", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("RFCOMM", StringComparison.OrdinalIgnoreCase) ||
+                l.Contains("BLE", StringComparison.OrdinalIgnoreCase)),
+
+            _ => true
+        };
+    }
+
+    private static bool MatchesSearch(LogEntry entry, string query)
+    {
+        if (entry.FileName.Contains(query, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        foreach (var line in entry.Lines)
+        {
+            if (line.Contains(query, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private static void ApplySnapshotToColumn(
@@ -360,4 +510,12 @@ public partial class LogsWindowViewModel : ObservableObject
 
     private sealed record LogEntry(DateTime Timestamp, IReadOnlyList<string> Lines, int Sequence, string FileName);
     private sealed record ColumnSnapshot(IReadOnlyList<LogEntry> Entries, string EmptyMessage);
+}
+
+public enum LogFilterCategory
+{
+    All = 0,
+    Errors = 1,
+    NetworkWs = 2,
+    BluetoothBle = 3
 }

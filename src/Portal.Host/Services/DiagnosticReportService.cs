@@ -105,7 +105,7 @@ public sealed class DiagnosticReportService
                 var report = new
                 {
                     title = "Portal-Windows Diagnostic Report",
-                    version = "1.5.5-Herta",
+                    version = PortalVersionInfo.FullVersion,
                     generated_at_utc = DateTime.UtcNow.ToString("o"),
                     os_environment = new
                     {

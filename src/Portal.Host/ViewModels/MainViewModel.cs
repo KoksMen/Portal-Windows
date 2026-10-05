@@ -7,6 +7,7 @@ using System.Management;
 using System.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using Microsoft.Win32;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Portal.Common;
+using Portal.Common.Helpers;
 using Portal.Common.Models;
 using Portal.Host.Helpers;
 using Portal.Host.Models;
@@ -28,7 +30,7 @@ public class LocalAccountOption
 {
     public string Username { get; set; } = "";
     public string Domain { get; set; } = "";
-    public string DisplayName => $"{Domain}\\{Username}";
+    public string DisplayName => string.IsNullOrWhiteSpace(Domain) ? Username : $"{Domain}\\{Username}";
     public override string ToString() => DisplayName;
 }
 
@@ -64,6 +66,7 @@ public partial class MainViewModel : ObservableObject
     private readonly EncryptedBackupService _encryptedBackupService;
     private readonly UnlockTestService _unlockTestService;
     private readonly DiagnosticReportService _diagnosticReportService;
+    private readonly WindowsCredentialValidator _credentialValidator;
 
     private BluetoothPairingService? _btPairing;
     private PortalWinConfig _config;
@@ -120,6 +123,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isFilesOk;
     [ObservableProperty] private bool _isFirewallOk;
     [ObservableProperty] private bool _isCertOk;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotWorkingHealth))]
+    private bool _isRefreshingHealth;
+
+    [ObservableProperty] private bool _isCheckingProvider;
+    [ObservableProperty] private bool _isCheckingFirewall;
+    [ObservableProperty] private bool _isCheckingCert;
+    [ObservableProperty] private bool _isCheckingFiles;
+    [ObservableProperty] private string _healthCheckingText = Services.LocalizationService.T("Checking...");
 
     [ObservableProperty] private string _providerStatusText = Services.LocalizationService.T("Missing");
     [ObservableProperty] private string _firewallStatusText = Services.LocalizationService.T("Missing");
@@ -152,8 +164,8 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private int _activityFromYear = DateTime.Today.Year;
 
     // --- App Info ---
-    public string AppVersion => "v1.5.5";
-    public string AppReleaseVersion => "1.5.5-Herta";
+    public string AppVersion => PortalVersionInfo.DisplayVersion;
+    public string AppReleaseVersion => PortalVersionInfo.FullVersion;
 
     // Replace these URLs and GitHub handles with your production values before release.
     // This is the single place to edit About screen links.
@@ -477,12 +489,70 @@ public partial class MainViewModel : ObservableObject
         WindowBackdropChanged?.Invoke(type);
     }
 
+    // Tile Progress Bar Style
+    [ObservableProperty] private bool _isProgressBarStyleBlock = true;
+    [ObservableProperty] private bool _isProgressBarStyleThin;
+    [ObservableProperty] private bool _isProgressBarStyleDots;
+    private bool _suppressProgressBarStyleChange;
+
+    // Custom Lock Screen Waiting Text
+    [ObservableProperty] private string _customWaitingText = string.Empty;
+    private bool _suppressCustomWaitingTextChange;
+
+    partial void OnIsProgressBarStyleBlockChanged(bool value)
+    {
+        if (value) ApplyProgressBarStyle(TileProgressBarStyle.Block);
+    }
+
+    partial void OnIsProgressBarStyleThinChanged(bool value)
+    {
+        if (value) ApplyProgressBarStyle(TileProgressBarStyle.Thin);
+    }
+
+    partial void OnIsProgressBarStyleDotsChanged(bool value)
+    {
+        if (value) ApplyProgressBarStyle(TileProgressBarStyle.Dots);
+    }
+
+    private void ApplyProgressBarStyle(TileProgressBarStyle style)
+    {
+        if (_suppressProgressBarStyleChange) return;
+        if (_config != null)
+        {
+            _config.ProgressBarStyle = style;
+            _config.Save();
+            Logger.Log($"[Settings] Progress bar style changed to: {style}");
+        }
+    }
+
+    partial void OnCustomWaitingTextChanged(string value)
+    {
+        if (_suppressCustomWaitingTextChange) return;
+        if (_config != null)
+        {
+            var trimmed = value?.Trim() ?? string.Empty;
+            if (trimmed.Length > 40)
+            {
+                trimmed = trimmed.Substring(0, 40);
+            }
+            _config.CustomWaitingText = trimmed;
+            _config.Save();
+            Logger.Log($"[Settings] Custom waiting text changed to: '{trimmed}'");
+        }
+    }
+
+    [RelayCommand]
+    private void ResetCustomWaitingText()
+    {
+        CustomWaitingText = string.Empty;
+    }
+
     // Loading State for System Health & Maintenance actions
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotWorkingHealth))]
     private bool _isWorkingHealth = false;
 
-    public bool IsNotWorkingHealth => !IsWorkingHealth;
+    public bool IsNotWorkingHealth => !IsWorkingHealth && !IsRefreshingHealth;
 
     // --- Observable Properties (Wizard) ---
     [ObservableProperty] private bool _showWizard = false;
@@ -503,6 +573,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _wizInputUser = "";
     [ObservableProperty] private string _wizInputDomain = "";
     public string WizInputPass { get; set; } = ""; // VM shouldn't bind plain passwords easily, but kept simple here
+    [ObservableProperty] private bool _isWizPasswordRevealed;
+    [ObservableProperty] private string _wizPasswordRevealedText = "";
+    [ObservableProperty] private string _wizPasswordRevealGlyph = "\uE7B3";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WizHideDeviceNameEdit))]
@@ -609,7 +682,8 @@ public partial class MainViewModel : ObservableObject
         UpdateService updateService,
         EncryptedBackupService encryptedBackupService,
         UnlockTestService unlockTestService,
-        DiagnosticReportService diagnosticReportService)
+        DiagnosticReportService diagnosticReportService,
+        WindowsCredentialValidator credentialValidator)
     {
         _firewall = firewall;
         _providerSetup = providerSetup;
@@ -627,6 +701,7 @@ public partial class MainViewModel : ObservableObject
         _encryptedBackupService = encryptedBackupService;
         _unlockTestService = unlockTestService;
         _diagnosticReportService = diagnosticReportService;
+        _credentialValidator = credentialValidator;
         _updateToastTimer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(10)
@@ -691,7 +766,9 @@ public partial class MainViewModel : ObservableObject
     private void LoadConfigToUi()
     {
         SettingsPort = _config.Port.ToString();
-        SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+        SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutSeconds.HasValue && _config.HostRequestTimeoutSeconds.Value > 0
+            ? FormatTimeoutSeconds(_config.HostRequestTimeoutSeconds.Value)
+            : (_config.HostRequestTimeoutMinutes > 0 ? $"{_config.HostRequestTimeoutMinutes}m" : "0");
         IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
         IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
         AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
@@ -733,6 +810,16 @@ public partial class MainViewModel : ObservableObject
         BackdropStatusText = Helpers.DwmBackdropHelper.IsWindows11OrGreater
             ? Services.LocalizationService.T("Windows 11 detected: Native Fluent Mica / Acrylic backdrops active")
             : Services.LocalizationService.T("Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)");
+
+        _suppressProgressBarStyleChange = true;
+        IsProgressBarStyleBlock = _config.ProgressBarStyle == TileProgressBarStyle.Block;
+        IsProgressBarStyleThin = _config.ProgressBarStyle == TileProgressBarStyle.Thin;
+        IsProgressBarStyleDots = _config.ProgressBarStyle == TileProgressBarStyle.Dots;
+        _suppressProgressBarStyleChange = false;
+
+        _suppressCustomWaitingTextChange = true;
+        CustomWaitingText = _config.CustomWaitingText ?? string.Empty;
+        _suppressCustomWaitingTextChange = false;
 
         RefreshDevicesList();
     }
@@ -799,12 +886,59 @@ public partial class MainViewModel : ObservableObject
 
     private static int ParseHostRequestTimeoutMinutes(string? value)
     {
-        if (!int.TryParse(value, out var parsed))
+        return ParseHostRequestTimeoutSeconds(value) / 60;
+    }
+
+    private static int ParseHostRequestTimeoutSeconds(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
         {
-            return 2;
+            return 120;
         }
 
-        return Math.Max(0, parsed);
+        var trimmed = value.Trim().ToLowerInvariant();
+        if (trimmed == "0" || trimmed == "∞" || trimmed == "infinite")
+        {
+            return 0;
+        }
+
+        if (trimmed.EndsWith("s") || trimmed.EndsWith("с"))
+        {
+            var raw = trimmed[..^1].Trim();
+            if (int.TryParse(raw, out var sec))
+            {
+                return Math.Max(0, sec);
+            }
+        }
+
+        if (trimmed.EndsWith("m") || trimmed.EndsWith("м"))
+        {
+            var raw = trimmed[..^1].Trim();
+            if (int.TryParse(raw, out var min))
+            {
+                return Math.Max(0, min * 60);
+            }
+        }
+
+        if (int.TryParse(trimmed, out var parsed))
+        {
+            return parsed <= 10 ? parsed * 60 : parsed;
+        }
+
+        return 120;
+    }
+
+    private static string FormatTimeoutSeconds(int seconds)
+    {
+        if (seconds <= 0) return "0";
+        if (seconds % 60 == 0) return $"{seconds / 60}m";
+        return $"{seconds}s";
+    }
+
+    [RelayCommand]
+    private void SetTimeoutPreset(string preset)
+    {
+        SettingsHostRequestTimeoutMinutes = preset;
     }
 
     private async Task ShowBusyResultAsync(string title, string message, string buttonText = "OK")
@@ -977,10 +1111,180 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task RefreshComponentStatusAsync()
+    {
+        if (IsRefreshingHealth)
+        {
+            return;
+        }
+
+        try
+        {
+            IsRefreshingHealth = true;
+            IsCheckingProvider = true;
+            IsCheckingFirewall = true;
+            IsCheckingCert = true;
+            IsCheckingFiles = true;
+
+            HealthCheckingText = Services.LocalizationService.T("Checking...");
+            MainStatusText = IsRussianUi ? "⏳ Проверка компонентов..." : "⏳ Checking components...";
+            if (HasSetupIssues)
+            {
+                SetupIssueTitle = IsRussianUi ? "Проверка состояния компонентов..." : "Checking component health...";
+            }
+
+            _config = PortalWinConfig.Load();
+            AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
+            if (!AreExperimentalFeaturesEnabled)
+            {
+                ShowFaq = false;
+            }
+
+            // 1. Check Provider (Credential Provider)
+            var providerDllPath = _providerLocator.FindProviderDll(SettingsDllPath);
+            var providerHealth = _providerSetup.CheckProviderHealth(providerDllPath);
+            await Task.Delay(180);
+            IsRegisteredOk = providerHealth.CredentialProviderGuidsOk && providerHealth.ComRegistrationOk;
+            ProviderStatusText = IsRegisteredOk
+                ? Services.LocalizationService.T("Installed")
+                : Services.LocalizationService.T("Missing");
+            ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install";
+            IsCheckingProvider = false;
+
+            // 2. Check Firewall Rule
+            var isFirewallOk = await _firewall.CheckFirewallRule(_config.Port);
+            await Task.Delay(180);
+            IsFirewallOk = isFirewallOk;
+            FirewallStatusText = IsFirewallOk
+                ? Services.LocalizationService.T("Active")
+                : Services.LocalizationService.T("Missing");
+            IsCheckingFirewall = false;
+
+            // 3. Check SSL Certificate
+            var isCertOk = _certManager.CheckCertificate();
+            await Task.Delay(180);
+            IsCertOk = isCertOk;
+            CertStatusText = IsCertOk
+                ? Services.LocalizationService.T("Reserved")
+                : Services.LocalizationService.T("Missing");
+            IsCheckingCert = false;
+
+            // 4. Check DLL Files
+            await Task.Delay(180);
+            IsFilesOk = providerHealth.FilesOk;
+            FilesStatusText = IsFilesOk
+                ? Services.LocalizationService.T("OK")
+                : Services.LocalizationService.T("Missing");
+            IsCheckingFiles = false;
+
+            // Finalize overall status
+            var ips = await _networkService.GetLocalIPsAsync(_config.VpnCompatibilityModeEnabled);
+            IsServiceActive = providerHealth.IsHealthy;
+            MainStatusText = IsServiceActive
+                ? (IsRussianUi ? "✓ Служба активна и готова" : "✓ Service Active & Ready")
+                : (IsRussianUi ? "⚠ Требуется настройка службы" : "⚠ Service Setup Required");
+
+            var setupIssues = new List<string>();
+            if (!providerHealth.IsHealthy) setupIssues.Add(Services.LocalizationService.T("Credential Provider is not installed or is damaged."));
+            if (!isFirewallOk) setupIssues.Add(Services.LocalizationService.T("Firewall rules are missing."));
+            if (!isCertOk) setupIssues.Add(Services.LocalizationService.T("Host SSL certificate is missing."));
+
+            HasSetupIssues = setupIssues.Count > 0;
+            SetupIssueTitle = setupIssues.Count > 0
+                ? setupIssues[0]
+                : Services.LocalizationService.T("All core components are configured.");
+            SetupIssueHint = setupIssues.Count > 0
+                ? Services.LocalizationService.T("Click START / ACTIVATE to auto-fix. If needed: Advanced Settings -> System Health -> Reinstall Provider / Fix Firewall / Regenerate Certificate.")
+                : Services.LocalizationService.T("No setup actions required.");
+
+            ClientCountText = Services.LocalizationService.TF("{0} trusted devices", _config.Devices.Count);
+            RefreshDevicesList();
+            Services.LocalizationService.ApplyToMainWindow(_config.UiLanguage);
+
+            ShowSetupPanel = !(IsServiceActive && _config.Devices.Any());
+            OnPropertyChanged(nameof(ShowConnectedPanel));
+
+            IpAddressText = Services.LocalizationService.T("Your IP for client: ") + (ips.FirstOrDefault() ?? Services.LocalizationService.T("Unknown"));
+
+            if (ShowDashboard)
+            {
+                SettingsPort = _config.Port.ToString();
+                SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+                IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
+                IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
+                _suppressDuplicateProtectionPrompt = true;
+                IsDuplicateAccountProtectionEnabled = _config.EnforceUniqueAccountPerTransport;
+                IsCrossTransportDuplicateProtectionEnabled = _config.EnforceUniqueAccountAcrossTransports && IsDuplicateAccountProtectionEnabled;
+                _suppressDuplicateProtectionPrompt = false;
+            }
+
+            IsStatusReady = true;
+            await Task.Delay(100);
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"[RefreshComponentStatus] Error refreshing component health: {ex.Message}");
+        }
+        finally
+        {
+            IsCheckingProvider = false;
+            IsCheckingFirewall = false;
+            IsCheckingCert = false;
+            IsCheckingFiles = false;
+            IsRefreshingHealth = false;
+        }
+    }
+
     private void RefreshDevicesList()
     {
         Devices.Clear();
         foreach (var d in _config.Devices) Devices.Add(d);
+        _ = VerifyDevicesSecretIntegrityAsync();
+    }
+
+    private async Task VerifyDevicesSecretIntegrityAsync()
+    {
+        var devicesToCheck = _config.Devices.ToList();
+        await Task.Run(() =>
+        {
+            foreach (var d in devicesToCheck)
+            {
+                var hasIssue = false;
+                if (d.Accounts == null || d.Accounts.Count == 0)
+                {
+                    hasIssue = true;
+                }
+                else
+                {
+                    foreach (var acc in d.Accounts)
+                    {
+                        try
+                        {
+                            var sec = acc.GetDecryptedSecurePassword();
+                            if (sec == null || sec.Length == 0)
+                            {
+                                hasIssue = true;
+                                break;
+                            }
+                            sec.Dispose();
+                        }
+                        catch
+                        {
+                            hasIssue = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasIssue)
+                {
+                    Logger.LogWarning($"[SecretCheck] Secret integrity check failed for device '{d.Name}' ({d.ClientId}). Account credentials may need to be re-entered.");
+                }
+
+                Application.Current?.Dispatcher.InvokeAsync(() => d.HasSecretIntegrityIssue = hasIssue);
+            }
+        });
     }
 
     private void RefreshActivityJournal()
@@ -1054,6 +1358,7 @@ public partial class MainViewModel : ObservableObject
         FilesStatusText = IsFilesOk
             ? Services.LocalizationService.T("OK")
             : Services.LocalizationService.T("Missing");
+        HealthCheckingText = Services.LocalizationService.T("Checking...");
         if (!string.IsNullOrEmpty(_pairingStatusRaw))
             WizPairInfo = TranslatePairingStatus(_pairingStatusRaw);
         if (StepPairingVis)
@@ -1558,26 +1863,30 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task RemoveDeviceAsync(string clientId)
     {
-        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), "Delete this device?", true);
+        var device = _config.FindDeviceByClientId(clientId);
+        var deviceName = !string.IsNullOrWhiteSpace(device?.Name) ? device.Name : clientId;
+        var confirmTitle = Services.LocalizationService.T("Confirm removal");
+        var confirmPrompt = Services.LocalizationService.TF("Are you sure you want to remove '{0}' from trusted devices?", deviceName);
+
+        var confirmed = await _dialogService.ShowNotificationAsync(confirmTitle, confirmPrompt, isQuestion: true);
         if (!confirmed)
         {
             return;
         }
 
-        var deviceName = _config.FindDeviceByClientId(clientId)?.Name ?? "device";
         var outcome = await RunBusyOperationAsync(
             Services.LocalizationService.T("Deleting trusted device"),
-            $"Removing '{deviceName}' from the trusted devices list...",
+            Services.LocalizationService.TF("Removing '{0}' from the trusted devices list...", deviceName),
             async cancellationToken =>
             {
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var device = _config.FindDeviceByClientId(clientId);
-                    if (device != null)
+                    var dev = _config.FindDeviceByClientId(clientId);
+                    if (dev != null)
                     {
-                        Logger.Log($"Removing device: {device.Name} ({device.ClientId})");
-                        Application.Current.Dispatcher.Invoke(() => _config.Devices.Remove(device));
+                        Logger.Log($"Removing device: {dev.Name} ({dev.ClientId})");
+                        Application.Current.Dispatcher.Invoke(() => _config.Devices.Remove(dev));
                         cancellationToken.ThrowIfCancellationRequested();
                         _config.Save();
                     }
@@ -1591,7 +1900,7 @@ public partial class MainViewModel : ObservableObject
         if (outcome == BusyOperationOutcome.Completed)
         {
             RefreshDevicesList();
-            await ShowBusyResultAsync(Services.LocalizationService.T("Device deleted"), $"'{deviceName}' was removed from trusted devices.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Device deleted"), Services.LocalizationService.TF("'{0}' was removed from trusted devices.", deviceName));
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
@@ -1714,9 +2023,33 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ToggleWizPasswordReveal(object? parameter)
+    {
+        if (parameter is System.Windows.Controls.PasswordBox pb)
+        {
+            if (!IsWizPasswordRevealed)
+            {
+                WizPasswordRevealedText = pb.Password;
+                IsWizPasswordRevealed = true;
+                WizPasswordRevealGlyph = "\uED1A";
+            }
+            else
+            {
+                pb.Password = WizPasswordRevealedText;
+                WizPasswordRevealedText = string.Empty;
+                IsWizPasswordRevealed = false;
+                WizPasswordRevealGlyph = "\uE7B3";
+            }
+        }
+    }
+
+    [RelayCommand]
     private void CancelEdit()
     {
         _editingClientId = null;
+        IsWizPasswordRevealed = false;
+        WizPasswordRevealedText = string.Empty;
+        WizPasswordRevealGlyph = "\uE7B3";
         ShowWizard = false;
         ShowDashboard = false; // Return to Settings
     }
@@ -1735,7 +2068,10 @@ public partial class MainViewModel : ObservableObject
                 async cancellationToken =>
                 {
                     int port = int.TryParse(SettingsPort, out var parsedPort) ? parsedPort : 29170;
-                    int hostRequestTimeoutMinutes = ParseHostRequestTimeoutMinutes(SettingsHostRequestTimeoutMinutes);
+                    int hostRequestTimeoutSeconds = ParseHostRequestTimeoutSeconds(SettingsHostRequestTimeoutMinutes);
+                    int hostRequestTimeoutMinutes = hostRequestTimeoutSeconds > 0
+                        ? Math.Max(1, (int)Math.Ceiling(hostRequestTimeoutSeconds / 60.0))
+                        : 0;
 
                     UnlockMode mode = UnlockMode.ClientInitiated;
                     if (IsModeHost) mode = UnlockMode.HostInitiated;
@@ -1753,6 +2089,7 @@ public partial class MainViewModel : ObservableObject
                         _config.Port = port;
                         _config.UnlockMode = mode;
                         _config.HostRequestTrigger = trigger;
+                        _config.HostRequestTimeoutSeconds = hostRequestTimeoutSeconds;
                         _config.HostRequestTimeoutMinutes = hostRequestTimeoutMinutes;
                         _config.ShowLockScreenProgress = IsLockScreenProgressEnabled;
                         _config.VpnCompatibilityModeEnabled = IsVpnCompatibilityModeEnabled;
@@ -2787,6 +3124,9 @@ public partial class MainViewModel : ObservableObject
         _credsSignal = null;
         _transportSignal = null;
         _pairingContext.ClearSensitiveData();
+        IsWizPasswordRevealed = false;
+        WizPasswordRevealedText = string.Empty;
+        WizPasswordRevealGlyph = "\uE7B3";
 
         return sessionId;
     }
@@ -3287,39 +3627,6 @@ public partial class MainViewModel : ObservableObject
         var machineName = Environment.MachineName;
         var currentDomain = Environment.UserDomainName;
         var known = new Dictionary<string, LocalAccountOption>(StringComparer.OrdinalIgnoreCase);
-        var profileUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            using var profileSearcher = new ManagementObjectSearcher(
-                "SELECT LocalPath, Special, Loaded FROM Win32_UserProfile");
-
-            foreach (ManagementObject profile in profileSearcher.Get())
-            {
-                var special = profile["Special"] as bool?;
-                if (special == true) continue;
-
-                var localPath = profile["LocalPath"]?.ToString();
-                if (string.IsNullOrWhiteSpace(localPath)) continue;
-
-                var userName = Path.GetFileName(localPath.TrimEnd('\\'));
-                if (string.IsNullOrWhiteSpace(userName)) continue;
-
-                // Skip well-known non-interactive profile folders.
-                if (string.Equals(userName, "Public", StringComparison.OrdinalIgnoreCase) ||
-                    userName.StartsWith("Default", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(userName, "All Users", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                profileUsers.Add(userName);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning($"[Host] Failed to enumerate user profiles via WMI: {ex.Message}");
-        }
 
         void AddAccount(string user, string dom)
         {
@@ -3333,47 +3640,79 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
-        // Always include the current interactive account.
+        static bool IsIgnoredSystemAccount(string name)
+        {
+            return string.Equals(name, "WDAGUtilityAccount", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "DefaultAccount", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "Guest", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "Public", StringComparison.OrdinalIgnoreCase) ||
+                   name.StartsWith("Default", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(name, "All Users", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // 1. Always include the current interactive account.
         AddAccount(Environment.UserName, currentDomain);
 
+        // 2. Discover accounts by translating SIDs from Win32_UserProfile (handles local, domain, and MSA profiles).
         try
         {
-            // Query only real local Windows accounts from SAM.
+            using var profileSearcher = new ManagementObjectSearcher(
+                "SELECT LocalPath, Special, Loaded, SID FROM Win32_UserProfile");
+
+            foreach (ManagementObject profile in profileSearcher.Get())
+            {
+                var special = profile["Special"] as bool?;
+                if (special == true) continue;
+
+                var sidString = profile["SID"]?.ToString();
+                if (string.IsNullOrWhiteSpace(sidString)) continue;
+
+                try
+                {
+                    var sid = new SecurityIdentifier(sidString);
+                    var ntAccount = sid.Translate(typeof(NTAccount))?.Value;
+                    if (!string.IsNullOrWhiteSpace(ntAccount) && ntAccount.Contains('\\'))
+                    {
+                        var parts = ntAccount.Split('\\', 2);
+                        if (!IsIgnoredSystemAccount(parts[1]))
+                        {
+                            AddAccount(parts[1], parts[0]);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Non-resolvable or orphaned profile SID
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[Host] Failed to enumerate user profiles via WMI: {ex.Message}");
+        }
+
+        // 3. Discover accounts from Win32_UserAccount (including domain and local accounts).
+        try
+        {
             using var searcher = new ManagementObjectSearcher(
-                "SELECT Name, Disabled, Lockout, LocalAccount FROM Win32_UserAccount WHERE LocalAccount=True");
+                "SELECT Name, Domain, Disabled, Lockout FROM Win32_UserAccount");
 
             foreach (ManagementObject account in searcher.Get())
             {
                 var disabled = account["Disabled"] as bool?;
                 var locked = account["Lockout"] as bool?;
-                if (disabled == true || locked == true)
-                    continue;
+                if (disabled == true || locked == true) continue;
 
                 var name = account["Name"]?.ToString();
-                if (string.IsNullOrWhiteSpace(name))
-                    continue;
+                var domain = account["Domain"]?.ToString() ?? machineName;
+                if (string.IsNullOrWhiteSpace(name) || IsIgnoredSystemAccount(name)) continue;
 
-                // Only keep accounts that have a real user profile (interactive-capable).
-                if (!profileUsers.Contains(name) &&
-                    !string.Equals(name, Environment.UserName, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                // Skip well-known service/internal accounts from UI.
-                if (string.Equals(name, "WDAGUtilityAccount", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(name, "DefaultAccount", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(name, "Guest", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                AddAccount(name, machineName);
+                AddAccount(name, domain);
             }
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[Host] Failed to enumerate local accounts via WMI: {ex.Message}");
+            Logger.LogWarning($"[Host] Failed to enumerate user accounts via WMI: {ex.Message}");
         }
 
         AvailableLocalAccounts.Clear();
@@ -3415,12 +3754,26 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CredsNext(object passwordParams)
+    private async Task CredsNext(object passwordParams)
     {
         SecureString? submittedPassword = null;
         var hasFreshPassword = false;
 
-        if (passwordParams is System.Windows.Controls.PasswordBox pb && pb.SecurePassword != null && pb.SecurePassword.Length > 0)
+        if (IsWizPasswordRevealed && !string.IsNullOrEmpty(WizPasswordRevealedText))
+        {
+            var sec = new SecureString();
+            foreach (char c in WizPasswordRevealedText)
+            {
+                sec.AppendChar(c);
+            }
+            sec.MakeReadOnly();
+            submittedPassword = sec;
+            hasFreshPassword = true;
+            WizPasswordRevealedText = string.Empty;
+            IsWizPasswordRevealed = false;
+            WizPasswordRevealGlyph = "\uE7B3";
+        }
+        else if (passwordParams is System.Windows.Controls.PasswordBox pb && pb.SecurePassword != null && pb.SecurePassword.Length > 0)
         {
             submittedPassword = pb.SecurePassword.Copy();
             submittedPassword.MakeReadOnly();
@@ -3431,7 +3784,7 @@ public partial class MainViewModel : ObservableObject
         {
             if (submittedPassword == null && (!string.IsNullOrEmpty(_editingClientId) || !_pairingContext.HasTargetPassword))
             {
-                _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
+                await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
                 return;
             }
 
@@ -3442,18 +3795,18 @@ public partial class MainViewModel : ObservableObject
                 {
                     if (SelectedLocalAccount == null)
                     {
-                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
+                        await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
                         return;
                     }
 
                     if (IsAccountAlreadyPairedForTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, device.TransportType, _editingClientId))
                     {
-                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("This Windows account is already linked to another device."));
+                        await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("This Windows account is already linked to another device."));
                         return;
                     }
                     if (IsAccountAlreadyPairedOnOtherTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, device.TransportType, _editingClientId))
                     {
-                        _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on another transport.");
+                        await _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on another transport.");
                         return;
                     }
 
@@ -3466,8 +3819,30 @@ public partial class MainViewModel : ObservableObject
 
                     if (submittedPassword == null)
                     {
-                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
+                        await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
                         return;
+                    }
+
+                    var validation = _credentialValidator.Validate(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, submittedPassword);
+                    if (!validation.IsValid)
+                    {
+                        if (validation.IsHardFailure)
+                        {
+                            await _dialogService.ShowNotificationAsync(
+                                Services.LocalizationService.T("Invalid Password"),
+                                validation.ErrorMessage ?? Services.LocalizationService.T("The Windows password you entered is incorrect. Please check your credentials and try again."));
+                            return;
+                        }
+                        else
+                        {
+                            var confirmTitle = Services.LocalizationService.T("Validation Warning");
+                            var confirmMessage = $"{validation.ErrorMessage}\n\n{Services.LocalizationService.T("Do you want to save this password anyway?")}";
+                            var proceed = await _dialogService.ShowNotificationAsync(confirmTitle, confirmMessage, isQuestion: true);
+                            if (!proceed)
+                            {
+                                return;
+                            }
+                        }
                     }
 
                     device.Name = WizDeviceName; // Also save updated name
@@ -3478,7 +3853,7 @@ public partial class MainViewModel : ObservableObject
                     account.SetPassword(submittedPassword);
                     _config.Save();
                     RefreshDevicesList();
-                    _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Success"), Services.LocalizationService.T("Account updated successfully."));
+                    await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Success"), Services.LocalizationService.T("Account updated successfully."));
                 }
 
                 _editingClientId = null;
@@ -3490,7 +3865,7 @@ public partial class MainViewModel : ObservableObject
 
             if (SelectedLocalAccount == null)
             {
-                _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
+                await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
                 return;
             }
 
@@ -3499,6 +3874,28 @@ public partial class MainViewModel : ObservableObject
 
             if (hasFreshPassword && submittedPassword != null)
             {
+                var validation = _credentialValidator.Validate(WizInputUser, WizInputDomain, submittedPassword);
+                if (!validation.IsValid)
+                {
+                    if (validation.IsHardFailure)
+                    {
+                        await _dialogService.ShowNotificationAsync(
+                            Services.LocalizationService.T("Invalid Password"),
+                            validation.ErrorMessage ?? Services.LocalizationService.T("The Windows password you entered is incorrect. Please check your credentials and try again."));
+                        return;
+                    }
+                    else
+                    {
+                        var confirmTitle = Services.LocalizationService.T("Validation Warning");
+                        var confirmMessage = $"{validation.ErrorMessage}\n\n{Services.LocalizationService.T("Do you want to save this password anyway?")}";
+                        var proceed = await _dialogService.ShowNotificationAsync(confirmTitle, confirmMessage, isQuestion: true);
+                        if (!proceed)
+                        {
+                            return;
+                        }
+                    }
+                }
+
                 _pairingContext.SetTargetPassword(submittedPassword);
             }
 

@@ -71,8 +71,10 @@
 
 ## 🌟 Ключевые возможности
 
-### ⏳ 1. Живой динамический прогресс-бар на экране блокировки (NEW v1.5.5)
-- **ASCII-прогресс-бар прямо в плитке пользователя:** Прямо под вашим аватаром отображается стильная шкала тайм-аута и таймер обратного отсчёта.
+### ⏳ 1. Живой динамический прогресс-бар и стили (NEW v1.5.5)
+- **Прогресс-бар прямо в плитке пользователя:** Прямо под вашим аватаром отображается стильная шкала тайм-аута и таймер обратного отсчёта.
+- **3 визуальных стиля:** блочный `[████]`, тонкий `[━━━━]` и точечный `[●●●●]` — настраиваются в один клик в параметрах приложения Host.
+- **Кастомный текст статуса:** Возможность задать свою персонализированную фразу вместо стандартной «Ожидание подтверждения...». Шкала автоматически масштабируется под длину текста.
 - **Идеальное нативное центрирование:** Статусный заголовок и полоса прогресса разнесены по отдельным системным COM-контролам LogonUI — текст всегда строго выровнен по центру контейнера плитки без смещений влево.
 - **Адаптивная калибровка Segoe UI:** Длина шкалы рассчитана по реальным метрикам шрифта под жесткий контейнер DirectUI (~305 px) — полоса гармонично сочетается с текстом и никогда не обрезается.
 - **Защита от переноса строк (No-Wrap):** Пробелы вокруг бейджей времени заменены на неразрывные (`\u00A0`), что исключает разрыв строки компонентами Windows.
@@ -85,11 +87,12 @@
 ### 🪟 2. Современный Windows 11 Fluent Design
 - **Эффекты размытия Mica Alt & Acrylic:** Интерфейс десктопного приложения гармонично интегрируется с оболочкой Windows 11 через DWM API.
 - **Автоматический fallback:** На Windows 10 активируется стильная контрастная тёмная тема.
-- **Чёткая векторная графика (SVG):** Все иконки устройств, статусов связи и кнопок перерисованы в векторном формате.
+- **Чёткая векторная графика (SVG & Segoe MDL2):** Векторные иконки устройств, статусов связи и элементов управления.
 
 ### 📡 3. Двойной канал связи (Wi-Fi + Bluetooth)
 - 🚀 **Локальный mTLS WebSocket (по Wi-Fi / LAN):** Молниеносный обмен пакетами с минимальной задержкой (RTT < 15 мс).
 - 📶 **Прямой Bluetooth RFCOMM канал:** Если домашний роутер выключен или пропал интернет, разблокировка продолжит работать по прямому каналу Bluetooth между телефоном и ПК.
+- 📊 **Живой индикатор канала:** По кнопке «Подробности» на экране блокировки выводится текущий транспорт и IP-адрес.
 
 ### 🔍 4. Zero-Configuration & Zero-Setup (mDNS)
 - Компьютер автоматически объявляет о себе в локальной сети по протоколу mDNS (`_portal._tcp.local.`).
@@ -114,6 +117,21 @@
 ### 🚀 9. Экстремальная производительность (ReadyToRun AOT & Tiered JIT)
 - Модуль `Portal.CredentialProvider` компилируется в режиме AOT (Ahead-of-Time ReadyToRun).
 - Экран входа Windows (`logonui.exe`) отрисовывает плитку Portal мгновенно и без малейших задержек.
+
+### 🔍 10. Поиск и умная фильтрация журналов (NEW v1.5.5)
+- Окно журналов `LogsWindow` оснащено строкой поиска и быстрыми чип-фильтрами: **«Все»**, **«Ошибки»**, **«Сеть (WS)»**, **«Bluetooth (BLE)»**.
+- Мгновенная фильтрация в памяти без лагов дискового ввода-вывода и интерактивный счётчик совпадений.
+
+### ⌨️ 11. Мгновенная клавиатурная навигация (NEW v1.5.5)
+- **Повтор по Enter:** Нажатие клавиши <kbd>Enter</kbd> на плитке при пустом поле пароля моментально отправляет удалённый запрос на смартфон без мыши.
+- **Умная авто-отмена:** Если пользователь начинает вводить пароль на клавиатуре руками, сетевой запрос мгновенно отменяется.
+
+### 🛡️ 12. Валидация паролей и аудит безопасности LSA (NEW v1.5.5)
+- Проверка пароля Windows в реальном времени через `LogonUserW` перед сохранением учетных данных.
+- Фоновый аудит читаемости DPAPI/LSA секретов при каждом старте Host с бейджем `[⚠️ Ошибка секрета]` при обнаружении повреждений.
+
+### 💾 13. Защищённое резервное копирование (.portalbackup AES-256-GCM)
+- Встроенный экспорт и импорт полного профиля (настройки, доверенные устройства, сертификат хоста) в зашифрованный контейнер по алгоритму AES-256-GCM с PBKDF2 (210 000 итераций) и мастер-паролем.
 
 ---
 
@@ -255,8 +273,10 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 ## 🌟 Key Features
 
-### ⏳ 1. Live Dynamic Progress Bar & Centered Timer (NEW v1.5.5)
-- **ASCII Progress Bar on User Tile:** Beautiful real-time progress bar and countdown timer embedded directly into the Windows logon tile.
+### ⏳ 1. Live Dynamic Progress Bar & Styles (NEW v1.5.5)
+- **Progress Bar on User Tile:** Beautiful real-time progress bar and countdown timer embedded directly into the Windows logon tile.
+- **3 Visual Styles:** Block `[████]`, Thin `[━━━━]`, and Dots `[●●●●]`, configurable in one click in Host Settings.
+- **Custom Status Headline:** Replace the default "Awaiting approval..." with your own custom phrase. The progress bar automatically adapts its width to fit.
 - **Dead-Center Native Alignment:** Decoupled status headline and progress bar into dedicated LogonUI controls, guaranteeing pixel-perfect native DirectUI centering without any left-edge bias.
 - **Calibrated Segoe UI Font Metrics:** Widths precisely adapted to fit the DirectUI container limit (~305 px) — guarantees the bar never clips or wraps.
 - **Line-Wrap Protection (No-Wrap):** Non-breaking spaces (`\u00A0`) prevent Windows DirectUI from splitting the bar across lines.
@@ -269,11 +289,12 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 ### 🪟 2. Windows 11 Fluent Design
 - **Mica Alt & Acrylic Backdrops:** Modern translucent desktop window effects utilizing native Windows 11 DWM APIs.
 - **Automatic Fallback:** Clean, high-contrast dark theme on Windows 10.
-- **Crisp Vector Graphics (SVG):** Resolution-independent vector iconography for all devices, connectivity badges, and buttons.
+- **Crisp Vector Graphics (SVG & Segoe MDL2):** Resolution-independent vector iconography for all devices, connectivity badges, and buttons.
 
 ### 📡 3. Dual-Channel Connectivity (Wi-Fi + Bluetooth)
 - 🚀 **High-Speed mTLS WebSocket (Local Network):** Blazing-fast packet exchange with sub-15ms round-trip latency over local Wi-Fi / Ethernet.
 - 📶 **Direct Bluetooth RFCOMM:** Direct duplex Bluetooth channel works flawlessly even when your Wi-Fi router is turned off or Internet is disconnected.
+- 📊 **Live Transport Indicator:** Tile details view shows the active transport interface and local IP address.
 
 ### 🔍 4. Zero-Configuration & Zero-Setup (mDNS)
 - Automatic local network computer announcement using multicast DNS (`_portal._tcp.local.`).
@@ -298,6 +319,21 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 ### 🚀 9. Instant LogonUI Rendering (ReadyToRun AOT & Tiered JIT)
 - Ahead-of-Time (ReadyToRun) compilation enabled for `Portal.CredentialProvider`.
 - Windows `logonui.exe` renders the tile instantly without JIT compilation pauses.
+
+### 🔍 10. Search & Fast Filtering in Logs (NEW v1.5.5)
+- Dedicated search box and category chip filters: **"All"**, **"Errors"**, **"Network (WS)"**, **"Bluetooth (BLE)"**.
+- Instant in-memory search across logs without disk latency and real-time match counter.
+
+### ⌨️ 11. Instant Keyboard Controls (NEW v1.5.5)
+- **Retry on Enter:** Pressing <kbd>Enter</kbd> on an idle tile with an empty password field triggers an immediate remote unlock request without touching the mouse.
+- **Smart Auto-Cancel:** Begins typing a physical password on the keyboard cancels the pending remote unlock request immediately.
+
+### 🛡️ 12. Password Pre-Validation & LSA Auditing (NEW v1.5.5)
+- Real-time Windows password validation via `LogonUserW` prevents storing incorrect passwords in the LSA Secret Store.
+- Background LSA secret integrity check on Host startup shows an alert badge `[⚠️ Secret Issue]` on problematic device cards.
+
+### 💾 13. Secure Encrypted Backups (.portalbackup AES-256-GCM)
+- Export and import your entire profile (settings, paired devices, and host TLS certificate) in an AES-256-GCM encrypted package with PBKDF2 key derivation (210,000 iterations) and master password protection.
 
 ---
 

@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace Portal.Common;
 
@@ -47,9 +49,41 @@ public static class PortalStoragePaths
             var newLogsDirectory = Path.Combine(newRootDirectory, "Logs");
 
             Directory.CreateDirectory(newRootDirectory);
+            EnsureDirectoryPermissions(newRootDirectory);
+
             Directory.CreateDirectory(newLogsDirectory);
+            EnsureDirectoryPermissions(newLogsDirectory);
 
             _initialized = true;
+        }
+    }
+
+    private static void EnsureDirectoryPermissions(string directoryPath)
+    {
+        try
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            var dirInfo = new DirectoryInfo(directoryPath);
+            var dirSecurity = dirInfo.GetAccessControl();
+
+            var authenticatedUsers = new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null);
+            var accessRule = new FileSystemAccessRule(
+                authenticatedUsers,
+                FileSystemRights.Modify,
+                InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                PropagationFlags.None,
+                AccessControlType.Allow);
+
+            dirSecurity.AddAccessRule(accessRule);
+            dirInfo.SetAccessControl(dirSecurity);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[PortalStoragePaths] Failed to set directory ACLs on '{directoryPath}': {ex.Message}");
         }
     }
 }

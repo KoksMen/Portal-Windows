@@ -14,6 +14,7 @@ namespace Portal.CredentialProvider;
 public class PortalWinTile : PortalWinTileBase
 {
     private CancellationTokenSource? _activeRequestCts;
+    private string? _cancellationReason;
     private static readonly object _requestSync = new();
     private static readonly object _tilesSync = new();
     private static readonly HashSet<PortalWinTile> _tiles = new();
@@ -98,8 +99,9 @@ public class PortalWinTile : PortalWinTileBase
             return;
         }
 
+        _cancellationReason = "tile_switch";
         _activeRequestCts.Cancel();
-        UpdateStatus("Request cancelled.");
+        UpdateStatus("Cancelled (user switch).");
         ShowRequestButton();
     }
 
@@ -224,25 +226,7 @@ public class PortalWinTile : PortalWinTileBase
 
     private static string? GetShortUserName(string? userOrUpn)
     {
-        if (string.IsNullOrWhiteSpace(userOrUpn))
-        {
-            return null;
-        }
-
-        var value = userOrUpn.Trim();
-
-        if (value.Contains("\\"))
-        {
-            return IdentityHelper.GetShortUsername(value);
-        }
-
-        var atIndex = value.IndexOf('@');
-        if (atIndex > 0)
-        {
-            return value[..atIndex];
-        }
-
-        return value;
+        return IdentityHelper.GetShortUsername(userOrUpn);
     }
 
     private void TryAutoRequestUnlock(bool forceTakeover, string source)
@@ -324,6 +308,18 @@ public class PortalWinTile : PortalWinTileBase
 
         if (_activeRequestCts == null || _activeRequestCts.IsCancellationRequested)
         {
+            if (AllowsHostInitiated)
+            {
+                Logger.Log("[PortalWinTile] Enter key pressed on idle tile with empty password; starting remote unlock request (source=keyboard_enter).");
+                StartUnlockRequest(forceTakeover: true, source: "keyboard_enter");
+                return new CredentialResponseInsecure
+                {
+                    IsSuccess = false,
+                    StatusText = Localization.T("Waiting for remote unlock command"),
+                    StatusIcon = StatusIcon.None
+                };
+            }
+
             UpdateStatus("No unlock request pending. Waiting...");
         }
 
@@ -396,7 +392,7 @@ public class PortalWinTile : PortalWinTileBase
         }
 
         ApplyHostInitiatedTlsPolicy(config, source);
-        int timeoutMinutes = config.HostRequestTimeoutMinutes;
+        int effectiveTimeoutSeconds = config.EffectiveTimeoutSeconds;
         bool showProgress = config.ShowLockScreenProgress;
         // Host-Initiated flow must always carry requestId for cross-transport correlation.
         // Keep legacy acceptance on response side, but never omit requestId on request side.
@@ -406,8 +402,9 @@ public class PortalWinTile : PortalWinTileBase
             Logger.LogWarning("[Tile] hostRequestCorrelationEnabled=false in config, but Host-Initiated requestId is forced ON for reliable routing.");
         }
 
-        _activeRequestCts = timeoutMinutes > 0
-            ? new CancellationTokenSource(System.TimeSpan.FromMinutes(timeoutMinutes))
+        _cancellationReason = null;
+        _activeRequestCts = effectiveTimeoutSeconds > 0
+            ? new CancellationTokenSource(System.TimeSpan.FromSeconds(effectiveTimeoutSeconds))
             : new CancellationTokenSource();
 
         var cts = _activeRequestCts;
@@ -429,8 +426,9 @@ public class PortalWinTile : PortalWinTileBase
 
         Task.Run(async () =>
         {
-            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, timeoutMinutes, requestTimer, cts.Token, showProgress);
+            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, effectiveTimeoutSeconds, requestTimer, cts.Token, showProgress, config.CustomWaitingText);
             var anyRejection = false;
+            Portal.Common.Models.DeviceModel? lastRejectionDevice = null;
             var approvalCompleted = false;
 
             try
@@ -472,6 +470,7 @@ public class PortalWinTile : PortalWinTileBase
                         else if (result == "rejected" || result == "forbidden")
                         {
                             anyRejection = true;
+                            lastRejectionDevice = device;
                             Logger.LogWarning($"[Tile] unlock_request_rejected_partial clientId='{device.ClientId}' elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
                         }
                     }
@@ -479,24 +478,68 @@ public class PortalWinTile : PortalWinTileBase
 
                 if (anyRejection && !approvalCompleted)
                 {
+                    var devName = lastRejectionDevice?.Name;
+                    var statusMsg = !string.IsNullOrWhiteSpace(devName)
+                        ? Localization.TF("Declined by '{0}'.", devName)
+                        : Localization.T("Declined by device.");
                     Logger.LogWarning($"[Tile] unlock_request_denied elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
-                    ActivityJournal.Record("unlock", "🚫", "Unlock request declined", "A paired device declined the remote unlock request.", false);
-                    UpdateStatus("Denied by device.");
+                    ActivityJournal.Record("unlock", "🚫", "Unlock request declined", $"Unlock request was declined by {devName ?? "device"}.", false);
+                    UpdateStatus(statusMsg);
                 }
                 else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
                 {
-                    var expectedTimeoutMs = timeoutMinutes > 0 ? timeoutMinutes * 60_000L : -1;
-                    var reason = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 250)
-                        ? "timeout"
-                        : "cancelled";
-                    Logger.LogWarning($"[Tile] unlock_request_cancelled reason={reason} elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
-                    ActivityJournal.Record(
-                        "unlock",
-                        reason == "timeout" ? "⌛" : "↩️",
-                        reason == "timeout" ? "Unlock request timed out" : "Unlock request cancelled",
-                        reason == "timeout" ? "No paired device responded before the request expired." : "The remote unlock request was cancelled.",
-                        false);
-                    UpdateStatus(reason == "timeout" ? "Request timed out." : "Request cancelled.");
+                    var expectedTimeoutMs = effectiveTimeoutSeconds > 0 ? effectiveTimeoutSeconds * 1000L : -1;
+                    var isTimeout = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 500);
+
+                    string statusMsg;
+                    string journalTitle;
+                    string journalIcon;
+                    string journalDetails;
+
+                    if (isTimeout)
+                    {
+                        statusMsg = "Request timed out.";
+                        journalTitle = "Unlock request timed out";
+                        journalIcon = "⌛";
+                        journalDetails = "No paired device responded before the request expired.";
+                    }
+                    else if (_cancellationReason == "manual_typing")
+                    {
+                        statusMsg = "Manual password input.";
+                        journalTitle = "Unlock cancelled";
+                        journalIcon = "⌨️";
+                        journalDetails = "Remote unlock was cancelled due to manual password entry.";
+                    }
+                    else if (_cancellationReason == "user")
+                    {
+                        statusMsg = "Cancelled by user.";
+                        journalTitle = "Unlock cancelled";
+                        journalIcon = "↩️";
+                        journalDetails = "The remote unlock request was cancelled by the user.";
+                    }
+                    else if (_cancellationReason == "tile_switch")
+                    {
+                        statusMsg = "Cancelled (user switch).";
+                        journalTitle = "Unlock cancelled";
+                        journalIcon = "👥";
+                        journalDetails = "The unlock request was cancelled because another tile was selected.";
+                    }
+                    else
+                    {
+                        statusMsg = "Request cancelled.";
+                        journalTitle = "Unlock request cancelled";
+                        journalIcon = "↩️";
+                        journalDetails = "The remote unlock request was cancelled.";
+                    }
+
+                    Logger.LogWarning($"[Tile] unlock_request_cancelled reason={_cancellationReason ?? (isTimeout ? "timeout" : "cancelled")} elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
+                    ActivityJournal.Record("unlock", journalIcon, journalTitle, journalDetails, false);
+                    UpdateStatus(statusMsg);
+                }
+                else if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                {
+                    UpdateStatus("Device unreachable.");
+                    ActivityJournal.Record("unlock", "⚠️", "Device unreachable", "Could not establish connection to paired device.", false);
                 }
             }
             catch (OperationCanceledException) { }
@@ -606,22 +649,24 @@ public class PortalWinTile : PortalWinTileBase
     {
 
         private readonly Action<string> _publishStatus;
-        private readonly int _timeoutMinutes;
+        private readonly int _timeoutSeconds;
         private readonly Stopwatch _timer;
         private readonly CancellationToken _ct;
         private readonly bool _showProgress;
+        private readonly string? _customWaitingText;
         private readonly CancellationTokenSource _tickerCts = new();
         private readonly object _sync = new();
         private UnlockTransportStage? _latestStage;
         private bool _disposed;
 
-        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutMinutes, Stopwatch timer, CancellationToken ct, bool showProgress = true)
+        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutSeconds, Stopwatch timer, CancellationToken ct, bool showProgress = true, string? customWaitingText = null)
         {
             _publishStatus = publishStatus;
-            _timeoutMinutes = timeoutMinutes;
+            _timeoutSeconds = timeoutSeconds;
             _timer = timer;
             _ct = ct;
             _showProgress = showProgress;
+            _customWaitingText = customWaitingText;
 
             PublishCurrentStatus();
             if (_showProgress)
@@ -710,7 +755,7 @@ public class PortalWinTile : PortalWinTileBase
         {
             string baseKey = _latestStage switch
             {
-                UnlockTransportStage.AwaitingApproval => "Awaiting approval...",
+                UnlockTransportStage.AwaitingApproval => !string.IsNullOrWhiteSpace(_customWaitingText) ? _customWaitingText.Trim() : "Awaiting approval...",
                 UnlockTransportStage.Searching => "Searching device...",
                 _ => "Requesting unlock..."
             };
@@ -722,9 +767,9 @@ public class PortalWinTile : PortalWinTileBase
 
             int elapsedSeconds = (int)(_timer.ElapsedMilliseconds / 1000);
 
-            if (_timeoutMinutes > 0)
+            if (_timeoutSeconds > 0)
             {
-                int totalSeconds = _timeoutMinutes * 60;
+                int totalSeconds = _timeoutSeconds;
                 int remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
                 return $"{baseKey} [progress:countdown,{remainingSeconds},{totalSeconds},{elapsedSeconds}]";
             }
@@ -825,10 +870,26 @@ public class PortalWinTile : PortalWinTileBase
 
     private void OnCancelUnlockClicked()
     {
+        _cancellationReason = "user";
         _activeRequestCts?.Cancel();
         DisconnectAllTransportsFast("Request cancelled by user");
-        UpdateStatus("Request cancelled.");
+        UpdateStatus("Cancelled by user.");
         ShowRequestButton();
+    }
+
+    protected override void OnManualPasswordInputChanged()
+    {
+        base.OnManualPasswordInputChanged();
+
+        if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
+        {
+            _cancellationReason = "manual_typing";
+            Logger.Log("[Tile] Manual password input detected; cancelling active remote unlock request.");
+            _activeRequestCts.Cancel();
+            DisconnectAllTransportsFast("Manual password input");
+            UpdateStatus("Manual password input.");
+            ShowRequestButton();
+        }
     }
 
     private static void DisconnectAllTransportsFast(string reason)
@@ -995,6 +1056,98 @@ public class PortalWinTile : PortalWinTileBase
             Localization.T("Emergency rollback"),
             Localization.T("The authorization process was cancelled via emergency shortcut (Left Ctrl + Left Alt)."),
             false);
+    }
+
+    protected override void OnLogonStatusReported(int ntStatusCode, int ntSubstatusCode, out string optionalStatusText, out Lithnet.CredentialProvider.StatusIcon optionalStatusIcon)
+    {
+        base.OnLogonStatusReported(ntStatusCode, ntSubstatusCode, out optionalStatusText, out optionalStatusIcon);
+
+        try
+        {
+            if (ntStatusCode == 0)
+            {
+                Logger.Log("[Tile] Windows logon succeeded (STATUS_SUCCESS 0x00000000).");
+                ActivityJournal.Record("logon", "✅", "Windows logon succeeded", "Windows accepted the submitted credentials.", true);
+                UpdateStatus("Logon successful.");
+                return;
+            }
+
+            uint uCode = (uint)ntStatusCode;
+            string hex = $"0x{uCode:X8}";
+            string subHex = $"0x{(uint)ntSubstatusCode:X8}";
+
+            string friendlyHeadline;
+            string journalTitle;
+            string journalDetails;
+            string icon;
+
+            switch (uCode)
+            {
+                case 0xC000006A: // STATUS_WRONG_PASSWORD
+                case 0xC000006D: // STATUS_LOGON_FAILURE
+                    friendlyHeadline = "Incorrect Windows password.";
+                    journalTitle = "Windows logon failed: incorrect password";
+                    journalDetails = $"The password stored in LSA Secret was rejected by Windows ({hex}).";
+                    icon = "🔑";
+                    break;
+
+                case 0xC0000234: // STATUS_ACCOUNT_LOCKED_OUT
+                    friendlyHeadline = "Account is locked out.";
+                    journalTitle = "Windows logon failed: account locked";
+                    journalDetails = "The Windows user account has been locked out due to failed logon attempts.";
+                    icon = "🔒";
+                    break;
+
+                case 0xC0000071: // STATUS_PASSWORD_EXPIRED
+                case 0xC0000224: // STATUS_PASSWORD_MUST_CHANGE
+                case 0xC0000193: // STATUS_ACCOUNT_EXPIRED
+                    friendlyHeadline = "Windows password has expired.";
+                    journalTitle = "Windows logon failed: password expired";
+                    journalDetails = "The password for this Windows account has expired and must be updated.";
+                    icon = "⌛";
+                    break;
+
+                case 0xC0000072: // STATUS_ACCOUNT_DISABLED
+                    friendlyHeadline = "Account is disabled.";
+                    journalTitle = "Windows logon failed: account disabled";
+                    journalDetails = "The Windows user account is currently disabled.";
+                    icon = "🚫";
+                    break;
+
+                case 0xC0000064: // STATUS_NO_SUCH_USER
+                    friendlyHeadline = "User account not found.";
+                    journalTitle = "Windows logon failed: user not found";
+                    journalDetails = "The specified Windows user account does not exist.";
+                    icon = "👤";
+                    break;
+
+                case 0xC000005E: // STATUS_NO_LOGON_SERVERS
+                    friendlyHeadline = "No logon servers available.";
+                    journalTitle = "Windows logon failed: no servers";
+                    journalDetails = "Domain controller or authentication server is currently unreachable.";
+                    icon = "🌐";
+                    break;
+
+                default:
+                    friendlyHeadline = Localization.TF("Windows logon failed ({0}).", hex);
+                    journalTitle = "Windows logon failed";
+                    journalDetails = $"Windows returned logon error {hex} (substatus {subHex}).";
+                    icon = "⚠️";
+                    break;
+            }
+
+            Logger.LogError($"[Tile] Windows logon failed: ntStatus={hex} ntSubstatus={subHex} ({friendlyHeadline})");
+            ActivityJournal.Record("logon", icon, journalTitle, journalDetails, false);
+            UpdateStatus(friendlyHeadline);
+            ShowRequestButton();
+
+            optionalStatusText = Localization.T(friendlyHeadline);
+            optionalStatusIcon = Lithnet.CredentialProvider.StatusIcon.Error;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[Tile] Error handling OnLogonStatusReported: {ex.Message}");
+        }
     }
 
     internal static void ResetAutoRequestClaim()

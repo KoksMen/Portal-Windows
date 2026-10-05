@@ -60,10 +60,22 @@ public class PortalWinConfig
     /// <summary>
     /// Timeout in minutes for waiting for client approval in Host-Initiated mode.
     /// 0 = infinite (wait until user cancels manually).
-    /// Default: 2 minutes. Not exposed in UI — edit config.json directly.
+    /// Default: 2 minutes.
     /// </summary>
     [JsonPropertyName("hostRequestTimeoutMinutes")]
     public int HostRequestTimeoutMinutes { get; set; } = 2;
+
+    /// <summary>
+    /// Optional fine-grained timeout in seconds (e.g. 15, 30, 60, 120).
+    /// If null or <= 0, HostRequestTimeoutMinutes * 60 is used.
+    /// </summary>
+    [JsonPropertyName("hostRequestTimeoutSeconds")]
+    public int? HostRequestTimeoutSeconds { get; set; }
+
+    [JsonIgnore]
+    public int EffectiveTimeoutSeconds => HostRequestTimeoutSeconds is > 0
+        ? HostRequestTimeoutSeconds.Value
+        : (HostRequestTimeoutMinutes > 0 ? HostRequestTimeoutMinutes * 60 : 0);
 
     /// <summary>
     /// Displays visual progress bar and countdown/marquee on the Windows lock screen credential provider tile.
@@ -184,6 +196,12 @@ public class PortalWinConfig
     [JsonPropertyName("hostId")]
     public string HostId { get; set; } = string.Empty;
 
+    [JsonPropertyName("progressBarStyle")]
+    public TileProgressBarStyle ProgressBarStyle { get; set; } = TileProgressBarStyle.Block;
+
+    [JsonPropertyName("customWaitingText")]
+    public string CustomWaitingText { get; set; } = string.Empty;
+
     [JsonPropertyName("devices")]
     public List<DeviceModel> Devices { get; set; } = new();
 
@@ -250,6 +268,16 @@ public class PortalWinConfig
                     cfg.StrictSelectedTileWebSocketConnections = false;
                     cfg.DisableKestrelClientCertificateValidation = false;
                     cfg.HostRequestCorrelationEnabled = true;
+                    shouldResave = true;
+                }
+
+                if (cfg.CustomWaitingText == null)
+                {
+                    cfg.CustomWaitingText = string.Empty;
+                }
+                else if (cfg.CustomWaitingText.Length > 40)
+                {
+                    cfg.CustomWaitingText = cfg.CustomWaitingText.Substring(0, 40).Trim();
                     shouldResave = true;
                 }
 
@@ -606,4 +634,11 @@ public enum HostRequestTrigger
 
     /// <summary>Unlock request is sent on button click AND automatically on any LogonUI appearance (Logon + WorkstationUnlock).</summary>
     OnClickAndAnyLockScreen = 2
+}
+
+public enum TileProgressBarStyle
+{
+    Block = 0,
+    Thin = 1,
+    Dots = 2
 }

@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 namespace Portal.Common.Models;
 
 [JsonDerivedType(typeof(NetworkDeviceModel), typeDiscriminator: "network")]
 [JsonDerivedType(typeof(BluetoothDeviceModel), typeDiscriminator: "bluetooth")]
-public abstract class DeviceModel
+public abstract class DeviceModel : INotifyPropertyChanged
 {
+    private bool _hasSecretIntegrityIssue;
     [JsonPropertyName("clientId")]
     public string ClientId { get; set; } = Guid.NewGuid().ToString();
 
@@ -78,7 +80,26 @@ public abstract class DeviceModel
     public string EditToolTip => Helpers.Localization.T("Edit Account");
 
     [JsonIgnore]
-    public string DeleteToolTip => Helpers.Localization.T("Remove Device / Удалить");
+    public bool HasSecretIntegrityIssue
+    {
+        get => _hasSecretIntegrityIssue;
+        set
+        {
+            if (_hasSecretIntegrityIssue != value)
+            {
+                _hasSecretIntegrityIssue = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasSecretIntegrityIssue)));
+            }
+        }
+    }
+
+    [JsonIgnore]
+    public string SecretIntegrityBadgeText => Helpers.Localization.T("Secret Error");
+
+    [JsonIgnore]
+    public string SecretIntegrityWarning => Helpers.Localization.T("Stored credentials cannot be decrypted. Re-enter password via Edit.");
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string IdsSafe() => $"{Name} ({ClientId})";
 }

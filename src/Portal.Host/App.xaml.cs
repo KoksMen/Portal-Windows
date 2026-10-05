@@ -55,6 +55,7 @@ public partial class App : Application
         services.AddSingleton<BackupFileAssociationService>();
         services.AddSingleton<UnlockTestService>();
         services.AddSingleton<DiagnosticReportService>();
+        services.AddSingleton<WindowsCredentialValidator>();
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -67,6 +68,19 @@ public partial class App : Application
         }
 
         Logger.Initialize("host.log");
+
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception ex)
+            {
+                Logger.LogError($"[App] Unhandled AppDomain exception: {ex}");
+            }
+        };
+
+        DispatcherUnhandledException += (_, args) =>
+        {
+            Logger.LogError($"[App] Unhandled Dispatcher exception: {args.Exception}");
+        };
 
         if (!IsRunningAsAdministrator())
         {
