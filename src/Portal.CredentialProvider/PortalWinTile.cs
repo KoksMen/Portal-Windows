@@ -308,6 +308,18 @@ public class PortalWinTile : PortalWinTileBase
 
         if (_activeRequestCts == null || _activeRequestCts.IsCancellationRequested)
         {
+            if (AllowsHostInitiated)
+            {
+                Logger.Log("[PortalWinTile] Enter key pressed on idle tile with empty password; starting remote unlock request (source=keyboard_enter).");
+                StartUnlockRequest(forceTakeover: true, source: "keyboard_enter");
+                return new CredentialResponseInsecure
+                {
+                    IsSuccess = false,
+                    StatusText = Localization.T("Waiting for remote unlock command"),
+                    StatusIcon = StatusIcon.None
+                };
+            }
+
             UpdateStatus("No unlock request pending. Waiting...");
         }
 
