@@ -1633,26 +1633,30 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task RemoveDeviceAsync(string clientId)
     {
-        var confirmed = await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Confirm"), "Delete this device?", true);
+        var device = _config.FindDeviceByClientId(clientId);
+        var deviceName = !string.IsNullOrWhiteSpace(device?.Name) ? device.Name : clientId;
+        var confirmTitle = Services.LocalizationService.T("Confirm removal");
+        var confirmPrompt = Services.LocalizationService.TF("Are you sure you want to remove '{0}' from trusted devices?", deviceName);
+
+        var confirmed = await _dialogService.ShowNotificationAsync(confirmTitle, confirmPrompt, isQuestion: true);
         if (!confirmed)
         {
             return;
         }
 
-        var deviceName = _config.FindDeviceByClientId(clientId)?.Name ?? "device";
         var outcome = await RunBusyOperationAsync(
             Services.LocalizationService.T("Deleting trusted device"),
-            $"Removing '{deviceName}' from the trusted devices list...",
+            Services.LocalizationService.TF("Removing '{0}' from the trusted devices list...", deviceName),
             async cancellationToken =>
             {
                 await Task.Run(() =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var device = _config.FindDeviceByClientId(clientId);
-                    if (device != null)
+                    var dev = _config.FindDeviceByClientId(clientId);
+                    if (dev != null)
                     {
-                        Logger.Log($"Removing device: {device.Name} ({device.ClientId})");
-                        Application.Current.Dispatcher.Invoke(() => _config.Devices.Remove(device));
+                        Logger.Log($"Removing device: {dev.Name} ({dev.ClientId})");
+                        Application.Current.Dispatcher.Invoke(() => _config.Devices.Remove(dev));
                         cancellationToken.ThrowIfCancellationRequested();
                         _config.Save();
                     }
@@ -1666,7 +1670,7 @@ public partial class MainViewModel : ObservableObject
         if (outcome == BusyOperationOutcome.Completed)
         {
             RefreshDevicesList();
-            await ShowBusyResultAsync(Services.LocalizationService.T("Device deleted"), $"'{deviceName}' was removed from trusted devices.");
+            await ShowBusyResultAsync(Services.LocalizationService.T("Device deleted"), Services.LocalizationService.TF("'{0}' was removed from trusted devices.", deviceName));
         }
         else if (outcome == BusyOperationOutcome.Cancelled)
         {
