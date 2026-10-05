@@ -64,6 +64,7 @@ public partial class MainViewModel : ObservableObject
     private readonly EncryptedBackupService _encryptedBackupService;
     private readonly UnlockTestService _unlockTestService;
     private readonly DiagnosticReportService _diagnosticReportService;
+    private readonly WindowsCredentialValidator _credentialValidator;
 
     private BluetoothPairingService? _btPairing;
     private PortalWinConfig _config;
@@ -609,7 +610,8 @@ public partial class MainViewModel : ObservableObject
         UpdateService updateService,
         EncryptedBackupService encryptedBackupService,
         UnlockTestService unlockTestService,
-        DiagnosticReportService diagnosticReportService)
+        DiagnosticReportService diagnosticReportService,
+        WindowsCredentialValidator credentialValidator)
     {
         _firewall = firewall;
         _providerSetup = providerSetup;
@@ -627,6 +629,7 @@ public partial class MainViewModel : ObservableObject
         _encryptedBackupService = encryptedBackupService;
         _unlockTestService = unlockTestService;
         _diagnosticReportService = diagnosticReportService;
+        _credentialValidator = credentialValidator;
         _updateToastTimer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(10)
@@ -3415,7 +3418,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CredsNext(object passwordParams)
+    private async Task CredsNext(object passwordParams)
     {
         SecureString? submittedPassword = null;
         var hasFreshPassword = false;
@@ -3431,7 +3434,7 @@ public partial class MainViewModel : ObservableObject
         {
             if (submittedPassword == null && (!string.IsNullOrEmpty(_editingClientId) || !_pairingContext.HasTargetPassword))
             {
-                _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
+                await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
                 return;
             }
 
@@ -3442,18 +3445,18 @@ public partial class MainViewModel : ObservableObject
                 {
                     if (SelectedLocalAccount == null)
                     {
-                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
+                        await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
                         return;
                     }
 
                     if (IsAccountAlreadyPairedForTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, device.TransportType, _editingClientId))
                     {
-                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("This Windows account is already linked to another device."));
+                        await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("This Windows account is already linked to another device."));
                         return;
                     }
                     if (IsAccountAlreadyPairedOnOtherTransport(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, device.TransportType, _editingClientId))
                     {
-                        _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on another transport.");
+                        await _dialogService.ShowNotificationAsync(IsRussianUi ? "Ошибка" : "Error", IsRussianUi ? "Для этого аккаунта уже есть привязка через другой канал." : "This account already has pairing on another transport.");
                         return;
                     }
 
@@ -3466,8 +3469,30 @@ public partial class MainViewModel : ObservableObject
 
                     if (submittedPassword == null)
                     {
-                        _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
+                        await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please enter password."));
                         return;
+                    }
+
+                    var validation = _credentialValidator.Validate(SelectedLocalAccount.Username, SelectedLocalAccount.Domain, submittedPassword);
+                    if (!validation.IsValid)
+                    {
+                        if (validation.IsHardFailure)
+                        {
+                            await _dialogService.ShowNotificationAsync(
+                                Services.LocalizationService.T("Invalid Password"),
+                                validation.ErrorMessage ?? Services.LocalizationService.T("The Windows password you entered is incorrect. Please check your credentials and try again."));
+                            return;
+                        }
+                        else
+                        {
+                            var confirmTitle = Services.LocalizationService.T("Validation Warning");
+                            var confirmMessage = $"{validation.ErrorMessage}\n\n{Services.LocalizationService.T("Do you want to save this password anyway?")}";
+                            var proceed = await _dialogService.ShowNotificationAsync(confirmTitle, confirmMessage, isQuestion: true);
+                            if (!proceed)
+                            {
+                                return;
+                            }
+                        }
                     }
 
                     device.Name = WizDeviceName; // Also save updated name
@@ -3478,7 +3503,7 @@ public partial class MainViewModel : ObservableObject
                     account.SetPassword(submittedPassword);
                     _config.Save();
                     RefreshDevicesList();
-                    _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Success"), Services.LocalizationService.T("Account updated successfully."));
+                    await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Success"), Services.LocalizationService.T("Account updated successfully."));
                 }
 
                 _editingClientId = null;
@@ -3490,7 +3515,7 @@ public partial class MainViewModel : ObservableObject
 
             if (SelectedLocalAccount == null)
             {
-                _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
+                await _dialogService.ShowNotificationAsync("Error", Services.LocalizationService.T("Please select account."));
                 return;
             }
 
@@ -3499,6 +3524,28 @@ public partial class MainViewModel : ObservableObject
 
             if (hasFreshPassword && submittedPassword != null)
             {
+                var validation = _credentialValidator.Validate(WizInputUser, WizInputDomain, submittedPassword);
+                if (!validation.IsValid)
+                {
+                    if (validation.IsHardFailure)
+                    {
+                        await _dialogService.ShowNotificationAsync(
+                            Services.LocalizationService.T("Invalid Password"),
+                            validation.ErrorMessage ?? Services.LocalizationService.T("The Windows password you entered is incorrect. Please check your credentials and try again."));
+                        return;
+                    }
+                    else
+                    {
+                        var confirmTitle = Services.LocalizationService.T("Validation Warning");
+                        var confirmMessage = $"{validation.ErrorMessage}\n\n{Services.LocalizationService.T("Do you want to save this password anyway?")}";
+                        var proceed = await _dialogService.ShowNotificationAsync(confirmTitle, confirmMessage, isQuestion: true);
+                        if (!proceed)
+                        {
+                            return;
+                        }
+                    }
+                }
+
                 _pairingContext.SetTargetPassword(submittedPassword);
             }
 

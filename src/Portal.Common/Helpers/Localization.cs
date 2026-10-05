@@ -656,5 +656,15 @@ public static class Localization
         ,["Disabled (click to enable)"] = "Отключено (нажмите, чтобы включить)"
         ,["Click to disable device"] = "Нажмите, чтобы отключить устройство"
         ,["Click to enable device"] = "Нажмите, чтобы включить устройство"
+        ,["Invalid Password"] = "Неверный пароль"
+        ,["Validation Warning"] = "Предупреждение валидации"
+        ,["The Windows password you entered is incorrect. Please check your credentials and try again."] = "Введен неверный пароль учетной записи Windows. Пожалуйста, проверьте правильность ввода и повторите попытку."
+        ,["The referenced account is currently locked out in Windows."] = "Учетная запись заблокирована в Windows."
+        ,["The password for this account has expired."] = "Срок действия пароля этой учетной записи истек."
+        ,["This account is currently disabled in Windows."] = "Эта учетная запись отключена в Windows."
+        ,["Account restriction detected (blank passwords or logon time restrictions may apply)."] = "Обнаружено ограничение учетной записи (возможно, пустой пароль или ограничение по времени входа)."
+        ,["Windows credential validation could not be completed (Error {0}: {1})."] = "Не удалось завершить проверку учетных данных Windows (Ошибка {0}: {1})."
+        ,["Do you want to save this password anyway?"] = "Вы уверены, что хотите сохранить этот пароль?"
+        ,["Unexpected validation error: {0}"] = "Непредвиденная ошибка валидации: {0}"
     };
 }

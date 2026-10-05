@@ -55,6 +55,7 @@ public partial class App : Application
         services.AddSingleton<BackupFileAssociationService>();
         services.AddSingleton<UnlockTestService>();
         services.AddSingleton<DiagnosticReportService>();
+        services.AddSingleton<WindowsCredentialValidator>();
     }
 
     protected override void OnStartup(StartupEventArgs e)
