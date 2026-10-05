@@ -120,6 +120,8 @@ public static class Localization
         ["Removing '{0}' from the trusted devices list..."] = "Удаление «{0}» из списка доверенных устройств...",
         ["'{0}' was removed from trusted devices."] = "«{0}» удалено из списка доверенных устройств.",
         ["Show/Hide password"] = "Показать/скрыть пароль",
+        ["Secret Error"] = "Ошибка секрета",
+        ["Stored credentials cannot be decrypted. Re-enter password via Edit."] = "Сохранённые учётные данные не могут быть расшифрованы. Введите пароль заново через «Изменить».",
         ["Successfully verified connection with '{0}'!\nTransport: {1}\nResponse time: {2} ms"] = "Связь с «{0}» успешно подтверждена!\nКанал: {1}\nВремя отклика: {2} мс",
         ["Waiting for response from '{0}'... Please confirm on your phone."] = "Ожидание ответа от «{0}»... Подтвердите запрос на телефоне.",
         ["Make sure your phone is connected to the same Wi-Fi network or Bluetooth is enabled."] = "Убедитесь, что телефон подключён к той же сети Wi‑Fi или включён Bluetooth.",

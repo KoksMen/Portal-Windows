@@ -1056,6 +1056,51 @@ public partial class MainViewModel : ObservableObject
     {
         Devices.Clear();
         foreach (var d in _config.Devices) Devices.Add(d);
+        _ = VerifyDevicesSecretIntegrityAsync();
+    }
+
+    private async Task VerifyDevicesSecretIntegrityAsync()
+    {
+        var devicesToCheck = _config.Devices.ToList();
+        await Task.Run(() =>
+        {
+            foreach (var d in devicesToCheck)
+            {
+                var hasIssue = false;
+                if (d.Accounts == null || d.Accounts.Count == 0)
+                {
+                    hasIssue = true;
+                }
+                else
+                {
+                    foreach (var acc in d.Accounts)
+                    {
+                        try
+                        {
+                            var sec = acc.GetDecryptedSecurePassword();
+                            if (sec == null || sec.Length == 0)
+                            {
+                                hasIssue = true;
+                                break;
+                            }
+                            sec.Dispose();
+                        }
+                        catch
+                        {
+                            hasIssue = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasIssue)
+                {
+                    Logger.LogWarning($"[SecretCheck] Secret integrity check failed for device '{d.Name}' ({d.ClientId}). Account credentials may need to be re-entered.");
+                }
+
+                Application.Current?.Dispatcher.InvokeAsync(() => d.HasSecretIntegrityIssue = hasIssue);
+            }
+        });
     }
 
     private void RefreshActivityJournal()

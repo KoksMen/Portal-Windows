@@ -1686,6 +1686,31 @@
                                                                     Text="{Binding TransportBadgeText}" />
                                                             </StackPanel>
                                                         </Border>
+
+                                                        <!-- Secret Integrity Error Badge -->
+                                                        <Border
+                                                            Margin="6,0,0,0"
+                                                            Padding="6,2"
+                                                            Background="#3a111a"
+                                                            BorderBrush="#d94c64"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            VerticalAlignment="Center"
+                                                            ToolTip="{Binding SecretIntegrityWarning}"
+                                                            Visibility="{Binding HasSecretIntegrityIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <TextBlock
+                                                                    Text="⚠️ "
+                                                                    FontSize="10"
+                                                                    VerticalAlignment="Center" />
+                                                                <TextBlock
+                                                                    FontSize="10"
+                                                                    FontWeight="SemiBold"
+                                                                    Foreground="#ff8099"
+                                                                    VerticalAlignment="Center"
+                                                                    Text="{Binding SecretIntegrityBadgeText}" />
+                                                            </StackPanel>
+                                                        </Border>
                                                     </StackPanel>
 
                                                     <!-- Right: Power Toggle Switch Button -->
