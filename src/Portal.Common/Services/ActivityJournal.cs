@@ -132,10 +132,25 @@ public static class ActivityJournal
     {
         try
         {
+            // Truncate and write in-place to avoid ERROR_ACCESS_DENIED from File.Move
+            // when the existing journal file was created under SYSTEM (LogonUI) context.
+            using (var stream = new FileStream(JournalPath, FileMode.Create, FileAccess.Write, FileShare.Read))
+            using (var writer = new StreamWriter(stream, System.Text.Encoding.UTF8))
+            {
+                foreach (var entry in entries)
+                {
+                    writer.WriteLine(JsonSerializer.Serialize(entry, JsonOptions));
+                }
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            // Cleanup any stray temporary files from previous versions
             var temporaryPath = JournalPath + ".tmp";
-            var lines = entries.Select(entry => JsonSerializer.Serialize(entry, JsonOptions)).ToArray();
-            File.WriteAllLines(temporaryPath, lines);
-            File.Move(temporaryPath, JournalPath, overwrite: true);
+            if (File.Exists(temporaryPath))
+            {
+                try { File.Delete(temporaryPath); } catch { /* ignore */ }
+            }
         }
         catch (Exception ex)
         {
