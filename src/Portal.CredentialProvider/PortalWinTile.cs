@@ -396,7 +396,7 @@ public class PortalWinTile : PortalWinTileBase
         }
 
         ApplyHostInitiatedTlsPolicy(config, source);
-        int timeoutMinutes = config.HostRequestTimeoutMinutes;
+        int effectiveTimeoutSeconds = config.EffectiveTimeoutSeconds;
         bool showProgress = config.ShowLockScreenProgress;
         // Host-Initiated flow must always carry requestId for cross-transport correlation.
         // Keep legacy acceptance on response side, but never omit requestId on request side.
@@ -406,8 +406,8 @@ public class PortalWinTile : PortalWinTileBase
             Logger.LogWarning("[Tile] hostRequestCorrelationEnabled=false in config, but Host-Initiated requestId is forced ON for reliable routing.");
         }
 
-        _activeRequestCts = timeoutMinutes > 0
-            ? new CancellationTokenSource(System.TimeSpan.FromMinutes(timeoutMinutes))
+        _activeRequestCts = effectiveTimeoutSeconds > 0
+            ? new CancellationTokenSource(System.TimeSpan.FromSeconds(effectiveTimeoutSeconds))
             : new CancellationTokenSource();
 
         var cts = _activeRequestCts;
@@ -429,7 +429,7 @@ public class PortalWinTile : PortalWinTileBase
 
         Task.Run(async () =>
         {
-            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, timeoutMinutes, requestTimer, cts.Token, showProgress);
+            using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, effectiveTimeoutSeconds, requestTimer, cts.Token, showProgress);
             var anyRejection = false;
             var approvalCompleted = false;
 
@@ -485,7 +485,7 @@ public class PortalWinTile : PortalWinTileBase
                 }
                 else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
                 {
-                    var expectedTimeoutMs = timeoutMinutes > 0 ? timeoutMinutes * 60_000L : -1;
+                    var expectedTimeoutMs = effectiveTimeoutSeconds > 0 ? effectiveTimeoutSeconds * 1000L : -1;
                     var reason = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 250)
                         ? "timeout"
                         : "cancelled";
@@ -606,7 +606,7 @@ public class PortalWinTile : PortalWinTileBase
     {
 
         private readonly Action<string> _publishStatus;
-        private readonly int _timeoutMinutes;
+        private readonly int _timeoutSeconds;
         private readonly Stopwatch _timer;
         private readonly CancellationToken _ct;
         private readonly bool _showProgress;
@@ -615,10 +615,10 @@ public class PortalWinTile : PortalWinTileBase
         private UnlockTransportStage? _latestStage;
         private bool _disposed;
 
-        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutMinutes, Stopwatch timer, CancellationToken ct, bool showProgress = true)
+        public UnlockStatusAggregator(Action<string> publishStatus, int timeoutSeconds, Stopwatch timer, CancellationToken ct, bool showProgress = true)
         {
             _publishStatus = publishStatus;
-            _timeoutMinutes = timeoutMinutes;
+            _timeoutSeconds = timeoutSeconds;
             _timer = timer;
             _ct = ct;
             _showProgress = showProgress;
@@ -722,9 +722,9 @@ public class PortalWinTile : PortalWinTileBase
 
             int elapsedSeconds = (int)(_timer.ElapsedMilliseconds / 1000);
 
-            if (_timeoutMinutes > 0)
+            if (_timeoutSeconds > 0)
             {
-                int totalSeconds = _timeoutMinutes * 60;
+                int totalSeconds = _timeoutSeconds;
                 int remainingSeconds = Math.Max(0, totalSeconds - elapsedSeconds);
                 return $"{baseKey} [progress:countdown,{remainingSeconds},{totalSeconds},{elapsedSeconds}]";
             }

@@ -60,10 +60,22 @@ public class PortalWinConfig
     /// <summary>
     /// Timeout in minutes for waiting for client approval in Host-Initiated mode.
     /// 0 = infinite (wait until user cancels manually).
-    /// Default: 2 minutes. Not exposed in UI — edit config.json directly.
+    /// Default: 2 minutes.
     /// </summary>
     [JsonPropertyName("hostRequestTimeoutMinutes")]
     public int HostRequestTimeoutMinutes { get; set; } = 2;
+
+    /// <summary>
+    /// Optional fine-grained timeout in seconds (e.g. 15, 30, 60, 120).
+    /// If null or <= 0, HostRequestTimeoutMinutes * 60 is used.
+    /// </summary>
+    [JsonPropertyName("hostRequestTimeoutSeconds")]
+    public int? HostRequestTimeoutSeconds { get; set; }
+
+    [JsonIgnore]
+    public int EffectiveTimeoutSeconds => HostRequestTimeoutSeconds is > 0
+        ? HostRequestTimeoutSeconds.Value
+        : (HostRequestTimeoutMinutes > 0 ? HostRequestTimeoutMinutes * 60 : 0);
 
     /// <summary>
     /// Displays visual progress bar and countdown/marquee on the Windows lock screen credential provider tile.

@@ -2250,13 +2250,68 @@
                                             FontSize="12"
                                             FontWeight="Bold"
                                             Foreground="#dfe8ff"
-                                            Text="Request validity time (minutes)" />
+                                            Text="Request validity time" />
                                         <TextBox
-                                            MaxLength="5"
+                                            MaxLength="8"
                                             Width="140"
                                             HorizontalAlignment="Center"
                                             TextAlignment="Center"
                                             Text="{Binding SettingsHostRequestTimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" />
+                                        <WrapPanel
+                                            Margin="0,8,0,2"
+                                            HorizontalAlignment="Center">
+                                            <Button
+                                                Margin="2"
+                                                Padding="8,3"
+                                                FontSize="11"
+                                                Background="#1b253b"
+                                                BorderBrush="#385287"
+                                                Content="15s"
+                                                Command="{Binding SetTimeoutPresetCommand}"
+                                                CommandParameter="15s"
+                                                Style="{StaticResource SecondaryButton}" />
+                                            <Button
+                                                Margin="2"
+                                                Padding="8,3"
+                                                FontSize="11"
+                                                Background="#1b253b"
+                                                BorderBrush="#385287"
+                                                Content="30s"
+                                                Command="{Binding SetTimeoutPresetCommand}"
+                                                CommandParameter="30s"
+                                                Style="{StaticResource SecondaryButton}" />
+                                            <Button
+                                                Margin="2"
+                                                Padding="8,3"
+                                                FontSize="11"
+                                                Background="#1b253b"
+                                                BorderBrush="#385287"
+                                                Content="1m"
+                                                Command="{Binding SetTimeoutPresetCommand}"
+                                                CommandParameter="1m"
+                                                Style="{StaticResource SecondaryButton}" />
+                                            <Button
+                                                Margin="2"
+                                                Padding="8,3"
+                                                FontSize="11"
+                                                Background="#1b253b"
+                                                BorderBrush="#385287"
+                                                Content="2m"
+                                                Command="{Binding SetTimeoutPresetCommand}"
+                                                CommandParameter="2m"
+                                                Style="{StaticResource SecondaryButton}" />
+                                            <Button
+                                                Margin="2"
+                                                Padding="8,3"
+                                                FontSize="11"
+                                                Background="#1b253b"
+                                                BorderBrush="#385287"
+                                                Content="♾️"
+                                                ToolTip="No limit (0)"
+                                                Command="{Binding SetTimeoutPresetCommand}"
+                                                CommandParameter="0"
+                                                Style="{StaticResource SecondaryButton}" />
+                                        </WrapPanel>
                                         <TextBlock
                                             Margin="0,6,0,0"
                                             FontSize="11"

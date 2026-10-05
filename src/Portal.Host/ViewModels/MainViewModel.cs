@@ -694,7 +694,9 @@ public partial class MainViewModel : ObservableObject
     private void LoadConfigToUi()
     {
         SettingsPort = _config.Port.ToString();
-        SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+        SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutSeconds.HasValue && _config.HostRequestTimeoutSeconds.Value > 0
+            ? FormatTimeoutSeconds(_config.HostRequestTimeoutSeconds.Value)
+            : (_config.HostRequestTimeoutMinutes > 0 ? $"{_config.HostRequestTimeoutMinutes}m" : "0");
         IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
         IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
         AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
@@ -802,12 +804,59 @@ public partial class MainViewModel : ObservableObject
 
     private static int ParseHostRequestTimeoutMinutes(string? value)
     {
-        if (!int.TryParse(value, out var parsed))
+        return ParseHostRequestTimeoutSeconds(value) / 60;
+    }
+
+    private static int ParseHostRequestTimeoutSeconds(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
         {
-            return 2;
+            return 120;
         }
 
-        return Math.Max(0, parsed);
+        var trimmed = value.Trim().ToLowerInvariant();
+        if (trimmed == "0" || trimmed == "∞" || trimmed == "infinite")
+        {
+            return 0;
+        }
+
+        if (trimmed.EndsWith("s") || trimmed.EndsWith("с"))
+        {
+            var raw = trimmed[..^1].Trim();
+            if (int.TryParse(raw, out var sec))
+            {
+                return Math.Max(0, sec);
+            }
+        }
+
+        if (trimmed.EndsWith("m") || trimmed.EndsWith("м"))
+        {
+            var raw = trimmed[..^1].Trim();
+            if (int.TryParse(raw, out var min))
+            {
+                return Math.Max(0, min * 60);
+            }
+        }
+
+        if (int.TryParse(trimmed, out var parsed))
+        {
+            return parsed <= 10 ? parsed * 60 : parsed;
+        }
+
+        return 120;
+    }
+
+    private static string FormatTimeoutSeconds(int seconds)
+    {
+        if (seconds <= 0) return "0";
+        if (seconds % 60 == 0) return $"{seconds / 60}m";
+        return $"{seconds}s";
+    }
+
+    [RelayCommand]
+    private void SetTimeoutPreset(string preset)
+    {
+        SettingsHostRequestTimeoutMinutes = preset;
     }
 
     private async Task ShowBusyResultAsync(string title, string message, string buttonText = "OK")
@@ -1738,7 +1787,10 @@ public partial class MainViewModel : ObservableObject
                 async cancellationToken =>
                 {
                     int port = int.TryParse(SettingsPort, out var parsedPort) ? parsedPort : 29170;
-                    int hostRequestTimeoutMinutes = ParseHostRequestTimeoutMinutes(SettingsHostRequestTimeoutMinutes);
+                    int hostRequestTimeoutSeconds = ParseHostRequestTimeoutSeconds(SettingsHostRequestTimeoutMinutes);
+                    int hostRequestTimeoutMinutes = hostRequestTimeoutSeconds > 0
+                        ? Math.Max(1, (int)Math.Ceiling(hostRequestTimeoutSeconds / 60.0))
+                        : 0;
 
                     UnlockMode mode = UnlockMode.ClientInitiated;
                     if (IsModeHost) mode = UnlockMode.HostInitiated;
@@ -1756,6 +1808,7 @@ public partial class MainViewModel : ObservableObject
                         _config.Port = port;
                         _config.UnlockMode = mode;
                         _config.HostRequestTrigger = trigger;
+                        _config.HostRequestTimeoutSeconds = hostRequestTimeoutSeconds;
                         _config.HostRequestTimeoutMinutes = hostRequestTimeoutMinutes;
                         _config.ShowLockScreenProgress = IsLockScreenProgressEnabled;
                         _config.VpnCompatibilityModeEnabled = IsVpnCompatibilityModeEnabled;
