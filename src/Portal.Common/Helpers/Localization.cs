@@ -115,6 +115,7 @@ public static class Localization
         ["Certificate details"] = "Сведения о сертификате",
         ["Edit account"] = "Изменить аккаунт",
         ["Remove device"] = "Удалить устройство",
+        ["Show/Hide password"] = "Показать/скрыть пароль",
         ["Successfully verified connection with '{0}'!\nTransport: {1}\nResponse time: {2} ms"] = "Связь с «{0}» успешно подтверждена!\nКанал: {1}\nВремя отклика: {2} мс",
         ["Waiting for response from '{0}'... Please confirm on your phone."] = "Ожидание ответа от «{0}»... Подтвердите запрос на телефоне.",
         ["Make sure your phone is connected to the same Wi-Fi network or Bluetooth is enabled."] = "Убедитесь, что телефон подключён к той же сети Wi‑Fi или включён Bluetooth.",

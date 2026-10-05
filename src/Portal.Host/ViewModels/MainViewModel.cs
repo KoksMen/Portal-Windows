@@ -505,6 +505,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _wizInputUser = "";
     [ObservableProperty] private string _wizInputDomain = "";
     public string WizInputPass { get; set; } = ""; // VM shouldn't bind plain passwords easily, but kept simple here
+    [ObservableProperty] private bool _isWizPasswordRevealed;
+    [ObservableProperty] private string _wizPasswordRevealedText = "";
+    [ObservableProperty] private string _wizPasswordRevealGlyph = "👁";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WizHideDeviceNameEdit))]
@@ -1786,9 +1789,33 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ToggleWizPasswordReveal(object? parameter)
+    {
+        if (parameter is System.Windows.Controls.PasswordBox pb)
+        {
+            if (!IsWizPasswordRevealed)
+            {
+                WizPasswordRevealedText = pb.Password;
+                IsWizPasswordRevealed = true;
+                WizPasswordRevealGlyph = "🙈";
+            }
+            else
+            {
+                pb.Password = WizPasswordRevealedText;
+                WizPasswordRevealedText = string.Empty;
+                IsWizPasswordRevealed = false;
+                WizPasswordRevealGlyph = "👁";
+            }
+        }
+    }
+
+    [RelayCommand]
     private void CancelEdit()
     {
         _editingClientId = null;
+        IsWizPasswordRevealed = false;
+        WizPasswordRevealedText = string.Empty;
+        WizPasswordRevealGlyph = "👁";
         ShowWizard = false;
         ShowDashboard = false; // Return to Settings
     }
@@ -2863,6 +2890,9 @@ public partial class MainViewModel : ObservableObject
         _credsSignal = null;
         _transportSignal = null;
         _pairingContext.ClearSensitiveData();
+        IsWizPasswordRevealed = false;
+        WizPasswordRevealedText = string.Empty;
+        WizPasswordRevealGlyph = "👁";
 
         return sessionId;
     }
@@ -3496,7 +3526,21 @@ public partial class MainViewModel : ObservableObject
         SecureString? submittedPassword = null;
         var hasFreshPassword = false;
 
-        if (passwordParams is System.Windows.Controls.PasswordBox pb && pb.SecurePassword != null && pb.SecurePassword.Length > 0)
+        if (IsWizPasswordRevealed && !string.IsNullOrEmpty(WizPasswordRevealedText))
+        {
+            var sec = new SecureString();
+            foreach (char c in WizPasswordRevealedText)
+            {
+                sec.AppendChar(c);
+            }
+            sec.MakeReadOnly();
+            submittedPassword = sec;
+            hasFreshPassword = true;
+            WizPasswordRevealedText = string.Empty;
+            IsWizPasswordRevealed = false;
+            WizPasswordRevealGlyph = "👁";
+        }
+        else if (passwordParams is System.Windows.Controls.PasswordBox pb && pb.SecurePassword != null && pb.SecurePassword.Length > 0)
         {
             submittedPassword = pb.SecurePassword.Copy();
             submittedPassword.MakeReadOnly();
