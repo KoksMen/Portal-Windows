@@ -223,15 +223,9 @@ dotnet build src/Portal.Host/Portal.Host.csproj -c Release
 
 # 4. Публикация в каталог publish/
 dotnet publish src/Portal.Host/Portal.Host.csproj -c Release -p:SkipSigning=true -o publish/
-
-# 5. Цифровая подпись исполняемых файлов (при наличии сертификата)
-powershell -ExecutionPolicy Bypass -File scripts/Sign-Publish.ps1
-
-# 6. Упаковка чистого релизного архива с оптимальным сжатием
-powershell -ExecutionPolicy Bypass -File scripts/Package-Release.ps1
 ```
 
-Готовый архив появится в корне репозитория под именем `PortalWin-<версия>-win-x64.zip`.
+Готовые исполняемые файлы и компоненты провайдера учетных данных будут скомпилированы в каталоге `publish/`.
 
 ---
 
@@ -402,28 +396,24 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 ## 💻 Building from Source
 
+### Build Steps:
+
 ```powershell
-# Clone the repository
+# 1. Clone repository
 git clone https://github.com/KoksMen/Portal-Windows.git
 cd Portal-Windows
 
-# Restore dependencies
+# 2. Restore dependencies
 dotnet restore Portal-Windows.slnx
 
-# Build Release
+# 3. Build Release
 dotnet build src/Portal.Host/Portal.Host.csproj -c Release
 
-# Publish to publish/
+# 4. Publish to publish/
 dotnet publish src/Portal.Host/Portal.Host.csproj -c Release -p:SkipSigning=true -o publish/
-
-# Sign binaries (if signing certificate is available)
-powershell -ExecutionPolicy Bypass -File scripts/Sign-Publish.ps1
-
-# Package optimal release archive
-powershell -ExecutionPolicy Bypass -File scripts/Package-Release.ps1
 ```
 
-The resulting package will be generated at `./PortalWin-<version>-win-x64.zip`.
+The published binaries and Credential Provider COM registration components will be located in the `publish/` directory.
 
 ---
 
