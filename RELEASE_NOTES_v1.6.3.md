@@ -1,4 +1,4 @@
-## Portal-Windows 1.5.5 Herta 🪄✨
+## Portal-Windows 1.6.3 Herta 🪄✨
 
 ---
 
@@ -145,9 +145,9 @@
 ### 📦 Хэш-суммы и цифровая подпись дистрибутива (Checksums)
 
 ```text
-File: PortalWin-1.5.5-win-x64.zip
-SHA256: 15d7ef5d491eba04ba101448f4a9bdf13856e15b76a39edba7746617fc5832bc
-Signature: PortalWin-1.5.5-win-x64.zip.sig (PKCS#7 Detached Signature)
+File: PortalWin-1.6.3-win-x64.zip
+SHA256: cca59dcfa58df7bd0dce0cf5a0d1624bf3dbca416c8a30d840256517e1e4ac35
+Signature: PortalWin-1.6.3-win-x64.zip.sig (PKCS#7 Detached Signature)
 ```
 
 ---
@@ -175,4 +175,4 @@ Signature: PortalWin-1.5.5-win-x64.zip.sig (PKCS#7 Detached Signature)
 * feat(network): dynamic network change adaptation via NetworkChange and debounced mDNS re-advertisement by @KoksMen
 * build(packaging): clean layout without duplicate nested publish folders, optimal ZIP compression, and detached PKCS#7 signature by @KoksMen
 
-**Full Changelog**: https://github.com/KoksMen/Portal-Windows/compare/v1.5.4...v1.5.5
+**Full Changelog**: https://github.com/KoksMen/Portal-Windows/compare/v1.5.4...v1.6.3

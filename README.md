@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">✨ Portal-Windows ✨</h1>
-<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.5.5) 🪄</h3>
+<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.6.3) 🪄</h3>
 
 <p align="center">
   <b>Бесшовная, безопасная и мгновенная разблокировка Windows с помощью вашего смартфона или умных часов</b><br>
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Версия-v1.5.5--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.5.5-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Версия-v1.6.3--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.6.3-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8.0" />
   <img src="https://img.shields.io/badge/Платформа-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows/releases/latest">
-    <img src="https://img.shields.io/badge/📥_Скачать_Portal--Windows_(v1.5.5)-7c4dff?style=for-the-badge&logo=windows" alt="Download Portal-Windows" />
+    <img src="https://img.shields.io/badge/📥_Скачать_Portal--Windows_(v1.6.3)-7c4dff?style=for-the-badge&logo=windows" alt="Download Portal-Windows" />
   </a>
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal">
     <img src="https://img.shields.io/badge/📱_Google_Play_(Android)-34A853?style=for-the-badge&logo=android" alt="Download on Google Play" />
@@ -71,7 +71,7 @@
 
 ## 🌟 Ключевые возможности
 
-### ⏳ 1. Живой динамический прогресс-бар и стили (NEW v1.5.5)
+### ⏳ 1. Живой динамический прогресс-бар и стили (NEW v1.6.3)
 - **Прогресс-бар прямо в плитке пользователя:** Прямо под вашим аватаром отображается стильная шкала тайм-аута и таймер обратного отсчёта.
 - **3 визуальных стиля:** блочный `[████]`, тонкий `[━━━━]` и точечный `[●●●●]` — настраиваются в один клик в параметрах приложения Host.
 - **Кастомный текст статуса:** Возможность задать свою персонализированную фразу вместо стандартной «Ожидание подтверждения...». Шкала автоматически масштабируется под длину текста.
@@ -98,7 +98,7 @@
 - Компьютер автоматически объявляет о себе в локальной сети по протоколу mDNS (`_portal._tcp.local.`).
 - Смартфон моментально находит ПК сам — не нужно вручную узнавать и прописывать IP-адреса.
 
-### 🌐 5. Динамическая сетевая адаптация (NEW v1.5.5)
+### 🌐 5. Динамическая сетевая адаптация (NEW v1.6.3)
 - Интеграция с системным API `NetworkChange`.
 - При переключении между сетями Wi-Fi, мобильной точкой доступа, кабелем Ethernet или VPN служба автоматически и бесшовно обновляет слушатели и переанонсирует mDNS-сервис.
 
@@ -106,7 +106,7 @@
 - В карточке сопряженного устройства доступна кнопка **«⚡ Проверить связь»**.
 - Запускает временный mTLS-сервер, отправляет тестовый пинг на телефон и выводит точный замер Round-Trip Time (RTT задержка в миллисекундах).
 
-### 📦 7. Сборка архива диагностики в один клик (NEW v1.5.5)
+### 📦 7. Сборка архива диагностики в один клик (NEW v1.6.3)
 - В разделе **Настройки $\rightarrow$ Диагностика** добавлена кнопка **«Экспорт диагностического отчёта»**.
 - Формирует единый защищённый ZIP-архив `portal-diagnostics-*.zip` со всеми логами, конфигурациями и сведениями о системе (без конфиденциальных данных и паролей).
 
@@ -118,15 +118,15 @@
 - Модуль `Portal.CredentialProvider` компилируется в режиме AOT (Ahead-of-Time ReadyToRun).
 - Экран входа Windows (`logonui.exe`) отрисовывает плитку Portal мгновенно и без малейших задержек.
 
-### 🔍 10. Поиск и умная фильтрация журналов (NEW v1.5.5)
+### 🔍 10. Поиск и умная фильтрация журналов (NEW v1.6.3)
 - Окно журналов `LogsWindow` оснащено строкой поиска и быстрыми чип-фильтрами: **«Все»**, **«Ошибки»**, **«Сеть (WS)»**, **«Bluetooth (BLE)»**.
 - Мгновенная фильтрация в памяти без лагов дискового ввода-вывода и интерактивный счётчик совпадений.
 
-### ⌨️ 11. Мгновенная клавиатурная навигация (NEW v1.5.5)
+### ⌨️ 11. Мгновенная клавиатурная навигация (NEW v1.6.3)
 - **Повтор по Enter:** Нажатие клавиши <kbd>Enter</kbd> на плитке при пустом поле пароля моментально отправляет удалённый запрос на смартфон без мыши.
 - **Умная авто-отмена:** Если пользователь начинает вводить пароль на клавиатуре руками, сетевой запрос мгновенно отменяется.
 
-### 🛡️ 12. Валидация паролей и аудит безопасности LSA (NEW v1.5.5)
+### 🛡️ 12. Валидация паролей и аудит безопасности LSA (NEW v1.6.3)
 - Проверка пароля Windows в реальном времени через `LogonUserW` перед сохранением учетных данных.
 - Фоновый аудит читаемости DPAPI/LSA секретов при каждом старте Host с бейджем `[⚠️ Ошибка секрета]` при обнаружении повреждений.
 
@@ -273,7 +273,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 ## 🌟 Key Features
 
-### ⏳ 1. Live Dynamic Progress Bar & Styles (NEW v1.5.5)
+### ⏳ 1. Live Dynamic Progress Bar & Styles (NEW v1.6.3)
 - **Progress Bar on User Tile:** Beautiful real-time progress bar and countdown timer embedded directly into the Windows logon tile.
 - **3 Visual Styles:** Block `[████]`, Thin `[━━━━]`, and Dots `[●●●●]`, configurable in one click in Host Settings.
 - **Custom Status Headline:** Replace the default "Awaiting approval..." with your own custom phrase. The progress bar automatically adapts its width to fit.
@@ -300,7 +300,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 - Automatic local network computer announcement using multicast DNS (`_portal._tcp.local.`).
 - Smartphone discovers your PC automatically without requiring static IP configuration.
 
-### 🌐 5. Dynamic Network Adaptation (NEW v1.5.5)
+### 🌐 5. Dynamic Network Adaptation (NEW v1.6.3)
 - Powered by `System.Net.NetworkInformation.NetworkChange`.
 - Smoothly switches active listeners and debounces mDNS re-advertisement when moving between Wi-Fi networks, mobile hotspots, Ethernet, or VPNs.
 
@@ -308,7 +308,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 - Dedicated **«⚡ Check Connection»** button on paired device cards.
 - Deploys an ephemeral mTLS test listener, pings the mobile device, and displays accurate Round-Trip Time (RTT latency in milliseconds).
 
-### 📦 7. One-Click Diagnostic ZIP Export (NEW v1.5.5)
+### 📦 7. One-Click Diagnostic ZIP Export (NEW v1.6.3)
 - Under **Settings $\rightarrow$ Diagnostics**, click **«Export Diagnostic Report»**.
 - Bundles host logs, provider logs, network interfaces, and environment telemetry into an archive (`portal-diagnostics-*.zip`) for easy troubleshooting.
 
@@ -320,15 +320,15 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 - Ahead-of-Time (ReadyToRun) compilation enabled for `Portal.CredentialProvider`.
 - Windows `logonui.exe` renders the tile instantly without JIT compilation pauses.
 
-### 🔍 10. Search & Fast Filtering in Logs (NEW v1.5.5)
+### 🔍 10. Search & Fast Filtering in Logs (NEW v1.6.3)
 - Dedicated search box and category chip filters: **"All"**, **"Errors"**, **"Network (WS)"**, **"Bluetooth (BLE)"**.
 - Instant in-memory search across logs without disk latency and real-time match counter.
 
-### ⌨️ 11. Instant Keyboard Controls (NEW v1.5.5)
+### ⌨️ 11. Instant Keyboard Controls (NEW v1.6.3)
 - **Retry on Enter:** Pressing <kbd>Enter</kbd> on an idle tile with an empty password field triggers an immediate remote unlock request without touching the mouse.
 - **Smart Auto-Cancel:** Begins typing a physical password on the keyboard cancels the pending remote unlock request immediately.
 
-### 🛡️ 12. Password Pre-Validation & LSA Auditing (NEW v1.5.5)
+### 🛡️ 12. Password Pre-Validation & LSA Auditing (NEW v1.6.3)
 - Real-time Windows password validation via `LogonUserW` prevents storing incorrect passwords in the LSA Secret Store.
 - Background LSA secret integrity check on Host startup shows an alert badge `[⚠️ Secret Issue]` on problematic device cards.
 

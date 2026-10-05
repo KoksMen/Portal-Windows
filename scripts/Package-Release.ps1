@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($ZipName)) {
     $propsPath = Join-Path $PSScriptRoot "..\Directory.Build.props"
-    $ver = "1.5.5"
+    $ver = "1.6.3"
     if (Test-Path $propsPath) {
         $xml = [xml](Get-Content $propsPath)
         if ($xml.Project.PropertyGroup.PortalVersion) {
