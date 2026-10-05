@@ -363,5 +363,8 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# Release packages
+# Release packages and signatures
 *.zip
+PortalWin*
+*.sig
+*.sha256
