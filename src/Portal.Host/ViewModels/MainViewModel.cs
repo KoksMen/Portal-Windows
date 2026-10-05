@@ -508,7 +508,7 @@ public partial class MainViewModel : ObservableObject
     public string WizInputPass { get; set; } = ""; // VM shouldn't bind plain passwords easily, but kept simple here
     [ObservableProperty] private bool _isWizPasswordRevealed;
     [ObservableProperty] private string _wizPasswordRevealedText = "";
-    [ObservableProperty] private string _wizPasswordRevealGlyph = "👁";
+    [ObservableProperty] private string _wizPasswordRevealGlyph = "\uE7B3";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(WizHideDeviceNameEdit))]
@@ -1045,7 +1045,9 @@ public partial class MainViewModel : ObservableObject
         try
         {
             IsRefreshingHealth = true;
-            await RefreshStatusAsync();
+            var refreshTask = RefreshStatusAsync();
+            var minAnimationDelay = Task.Delay(650);
+            await Task.WhenAll(refreshTask, minAnimationDelay);
         }
         finally
         {
@@ -1847,14 +1849,14 @@ public partial class MainViewModel : ObservableObject
             {
                 WizPasswordRevealedText = pb.Password;
                 IsWizPasswordRevealed = true;
-                WizPasswordRevealGlyph = "🙈";
+                WizPasswordRevealGlyph = "\uED1A";
             }
             else
             {
                 pb.Password = WizPasswordRevealedText;
                 WizPasswordRevealedText = string.Empty;
                 IsWizPasswordRevealed = false;
-                WizPasswordRevealGlyph = "👁";
+                WizPasswordRevealGlyph = "\uE7B3";
             }
         }
     }
@@ -1865,7 +1867,7 @@ public partial class MainViewModel : ObservableObject
         _editingClientId = null;
         IsWizPasswordRevealed = false;
         WizPasswordRevealedText = string.Empty;
-        WizPasswordRevealGlyph = "👁";
+        WizPasswordRevealGlyph = "\uE7B3";
         ShowWizard = false;
         ShowDashboard = false; // Return to Settings
     }
@@ -2942,7 +2944,7 @@ public partial class MainViewModel : ObservableObject
         _pairingContext.ClearSensitiveData();
         IsWizPasswordRevealed = false;
         WizPasswordRevealedText = string.Empty;
-        WizPasswordRevealGlyph = "👁";
+        WizPasswordRevealGlyph = "\uE7B3";
 
         return sessionId;
     }
@@ -3587,7 +3589,7 @@ public partial class MainViewModel : ObservableObject
             hasFreshPassword = true;
             WizPasswordRevealedText = string.Empty;
             IsWizPasswordRevealed = false;
-            WizPasswordRevealGlyph = "👁";
+            WizPasswordRevealGlyph = "\uE7B3";
         }
         else if (passwordParams is System.Windows.Controls.PasswordBox pb && pb.SecurePassword != null && pb.SecurePassword.Length > 0)
         {

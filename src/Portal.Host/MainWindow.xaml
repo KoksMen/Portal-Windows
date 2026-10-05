@@ -1403,15 +1403,62 @@
                                 <Button
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Top"
-                                    Padding="4,2"
-                                    FontSize="11"
+                                    Padding="6,4"
                                     Background="Transparent"
                                     BorderThickness="0"
                                     ToolTip="Refresh status"
                                     Command="{Binding RefreshComponentStatusCommand}"
                                     IsEnabled="{Binding IsRefreshingHealth, Converter={StaticResource InverseBooleanConverter}}"
-                                    Content="🔄"
-                                    Cursor="Hand" />
+                                    Cursor="Hand"
+                                    FocusVisualStyle="{x:Null}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#20ffffff" />
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#35ffffff" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <TextBlock
+                                        Text="&#xE72C;"
+                                        FontFamily="Segoe MDL2 Assets"
+                                        FontSize="13"
+                                        Foreground="{StaticResource TextMuted}"
+                                        RenderTransformOrigin="0.5,0.5">
+                                        <TextBlock.RenderTransform>
+                                            <RotateTransform Angle="0" />
+                                        </TextBlock.RenderTransform>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsRefreshingHealth}" Value="True">
+                                                        <DataTrigger.EnterActions>
+                                                            <BeginStoryboard x:Name="SpinStory1">
+                                                                <Storyboard>
+                                                                    <DoubleAnimation
+                                                                        Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                        From="0" To="360"
+                                                                        Duration="0:0:0.7"
+                                                                        RepeatBehavior="Forever" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </DataTrigger.EnterActions>
+                                                        <DataTrigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="SpinStory1" />
+                                                        </DataTrigger.ExitActions>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Button>
                             </Grid>
                         </Border>
 
@@ -1466,15 +1513,14 @@
                         </TextBlock>
                         <Button
                             Margin="6,0,0,0"
-                            Padding="3,0"
-                            FontSize="11"
+                            Padding="4,2"
                             Background="Transparent"
                             BorderThickness="0"
                             ToolTip="Refresh status"
                             Command="{Binding RefreshComponentStatusCommand}"
                             IsEnabled="{Binding IsRefreshingHealth, Converter={StaticResource InverseBooleanConverter}}"
-                            Content="🔄"
-                            Cursor="Hand">
+                            Cursor="Hand"
+                            FocusVisualStyle="{x:Null}">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Style.Triggers>
@@ -1484,6 +1530,53 @@
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="#20ffffff" />
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="#35ffffff" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <TextBlock
+                                Text="&#xE72C;"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                RenderTransformOrigin="0.5,0.5">
+                                <TextBlock.RenderTransform>
+                                    <RotateTransform Angle="0" />
+                                </TextBlock.RenderTransform>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsRefreshingHealth}" Value="True">
+                                                <DataTrigger.EnterActions>
+                                                    <BeginStoryboard x:Name="SpinStory2">
+                                                        <Storyboard>
+                                                            <DoubleAnimation
+                                                                Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                From="0" To="360"
+                                                                Duration="0:0:0.7"
+                                                                RepeatBehavior="Forever" />
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </DataTrigger.EnterActions>
+                                                <DataTrigger.ExitActions>
+                                                    <StopStoryboard BeginStoryboardName="SpinStory2" />
+                                                </DataTrigger.ExitActions>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </Button>
                     </StackPanel>
 
@@ -1938,8 +2031,45 @@
                                     FontSize="11"
                                     Command="{Binding RefreshComponentStatusCommand}"
                                     IsEnabled="{Binding IsRefreshingHealth, Converter={StaticResource InverseBooleanConverter}}"
-                                    Content="🔄 Refresh Status"
-                                    Style="{StaticResource SecondaryButton}" />
+                                    Style="{StaticResource SecondaryButton}"
+                                    Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock
+                                            Text="&#xE72C;"
+                                            FontFamily="Segoe MDL2 Assets"
+                                            FontSize="11"
+                                            Margin="0,0,6,0"
+                                            VerticalAlignment="Center"
+                                            RenderTransformOrigin="0.5,0.5">
+                                            <TextBlock.RenderTransform>
+                                                <RotateTransform Angle="0" />
+                                            </TextBlock.RenderTransform>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsRefreshingHealth}" Value="True">
+                                                            <DataTrigger.EnterActions>
+                                                                <BeginStoryboard x:Name="SpinStory3">
+                                                                    <Storyboard>
+                                                                        <DoubleAnimation
+                                                                            Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                            From="0" To="360"
+                                                                            Duration="0:0:0.7"
+                                                                            RepeatBehavior="Forever" />
+                                                                    </Storyboard>
+                                                                </BeginStoryboard>
+                                                            </DataTrigger.EnterActions>
+                                                            <DataTrigger.ExitActions>
+                                                                <StopStoryboard BeginStoryboardName="SpinStory3" />
+                                                            </DataTrigger.ExitActions>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="Refresh Status" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
 
                             <!--  1. Provider  -->
@@ -3029,29 +3159,58 @@
                         <Grid>
                             <PasswordBox
                                 x:Name="InputPass"
-                                Padding="10,0,36,0"
+                                Height="42"
+                                VerticalContentAlignment="Center"
+                                Padding="12,0,38,0"
+                                FontSize="14"
                                 Visibility="{Binding IsWizPasswordRevealed, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
                             <TextBox
                                 x:Name="InputPassVisible"
-                                Padding="10,0,36,0"
+                                Height="42"
+                                VerticalContentAlignment="Center"
+                                Padding="12,0,38,0"
+                                FontSize="14"
                                 Text="{Binding WizPasswordRevealedText, UpdateSourceTrigger=PropertyChanged}"
                                 Visibility="{Binding IsWizPasswordRevealed, Converter={StaticResource BooleanToVisibilityConverter}}" />
                             <Button
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
-                                Width="32"
+                                Width="28"
                                 Height="28"
-                                Margin="0,0,4,0"
+                                Margin="0,0,6,0"
                                 Background="Transparent"
                                 BorderThickness="0"
                                 Padding="0"
+                                Focusable="False"
+                                FocusVisualStyle="{x:Null}"
                                 ToolTip="Show/Hide password"
                                 Command="{Binding ToggleWizPasswordRevealCommand}"
                                 CommandParameter="{Binding ElementName=InputPass}"
                                 Cursor="Hand">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border
+                                            x:Name="RevealBtnBorder"
+                                            Background="Transparent"
+                                            CornerRadius="6">
+                                            <ContentPresenter
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="RevealBtnBorder" Property="Background" Value="#20ffffff" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="RevealBtnBorder" Property="Background" Value="#35ffffff" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
                                 <TextBlock
                                     Text="{Binding WizPasswordRevealGlyph}"
-                                    FontSize="14"
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="13"
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center"
                                     Foreground="{StaticResource TextMuted}" />
