@@ -14,6 +14,7 @@ namespace Portal.CredentialProvider;
 public class PortalWinTile : PortalWinTileBase
 {
     private CancellationTokenSource? _activeRequestCts;
+    private string? _cancellationReason;
     private static readonly object _requestSync = new();
     private static readonly object _tilesSync = new();
     private static readonly HashSet<PortalWinTile> _tiles = new();
@@ -98,8 +99,9 @@ public class PortalWinTile : PortalWinTileBase
             return;
         }
 
+        _cancellationReason = "tile_switch";
         _activeRequestCts.Cancel();
-        UpdateStatus("Request cancelled.");
+        UpdateStatus("Cancelled (user switch).");
         ShowRequestButton();
     }
 
@@ -388,6 +390,7 @@ public class PortalWinTile : PortalWinTileBase
             Logger.LogWarning("[Tile] hostRequestCorrelationEnabled=false in config, but Host-Initiated requestId is forced ON for reliable routing.");
         }
 
+        _cancellationReason = null;
         _activeRequestCts = effectiveTimeoutSeconds > 0
             ? new CancellationTokenSource(System.TimeSpan.FromSeconds(effectiveTimeoutSeconds))
             : new CancellationTokenSource();
@@ -413,6 +416,7 @@ public class PortalWinTile : PortalWinTileBase
         {
             using var statusAggregator = new UnlockStatusAggregator(UpdateStatus, effectiveTimeoutSeconds, requestTimer, cts.Token, showProgress);
             var anyRejection = false;
+            Portal.Common.Models.DeviceModel? lastRejectionDevice = null;
             var approvalCompleted = false;
 
             try
@@ -454,6 +458,7 @@ public class PortalWinTile : PortalWinTileBase
                         else if (result == "rejected" || result == "forbidden")
                         {
                             anyRejection = true;
+                            lastRejectionDevice = device;
                             Logger.LogWarning($"[Tile] unlock_request_rejected_partial clientId='{device.ClientId}' elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
                         }
                     }
@@ -461,24 +466,68 @@ public class PortalWinTile : PortalWinTileBase
 
                 if (anyRejection && !approvalCompleted)
                 {
+                    var devName = lastRejectionDevice?.Name;
+                    var statusMsg = !string.IsNullOrWhiteSpace(devName)
+                        ? Localization.TF("Declined by '{0}'.", devName)
+                        : Localization.T("Declined by device.");
                     Logger.LogWarning($"[Tile] unlock_request_denied elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
-                    ActivityJournal.Record("unlock", "🚫", "Unlock request declined", "A paired device declined the remote unlock request.", false);
-                    UpdateStatus("Denied by device.");
+                    ActivityJournal.Record("unlock", "🚫", "Unlock request declined", $"Unlock request was declined by {devName ?? "device"}.", false);
+                    UpdateStatus(statusMsg);
                 }
                 else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
                 {
                     var expectedTimeoutMs = effectiveTimeoutSeconds > 0 ? effectiveTimeoutSeconds * 1000L : -1;
-                    var reason = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 250)
-                        ? "timeout"
-                        : "cancelled";
-                    Logger.LogWarning($"[Tile] unlock_request_cancelled reason={reason} elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
-                    ActivityJournal.Record(
-                        "unlock",
-                        reason == "timeout" ? "⌛" : "↩️",
-                        reason == "timeout" ? "Unlock request timed out" : "Unlock request cancelled",
-                        reason == "timeout" ? "No paired device responded before the request expired." : "The remote unlock request was cancelled.",
-                        false);
-                    UpdateStatus(reason == "timeout" ? "Request timed out." : "Request cancelled.");
+                    var isTimeout = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 500);
+
+                    string statusMsg;
+                    string journalTitle;
+                    string journalIcon;
+                    string journalDetails;
+
+                    if (isTimeout)
+                    {
+                        statusMsg = "Request timed out.";
+                        journalTitle = "Unlock request timed out";
+                        journalIcon = "⌛";
+                        journalDetails = "No paired device responded before the request expired.";
+                    }
+                    else if (_cancellationReason == "manual_typing")
+                    {
+                        statusMsg = "Manual password input.";
+                        journalTitle = "Unlock cancelled";
+                        journalIcon = "⌨️";
+                        journalDetails = "Remote unlock was cancelled due to manual password entry.";
+                    }
+                    else if (_cancellationReason == "user")
+                    {
+                        statusMsg = "Cancelled by user.";
+                        journalTitle = "Unlock cancelled";
+                        journalIcon = "↩️";
+                        journalDetails = "The remote unlock request was cancelled by the user.";
+                    }
+                    else if (_cancellationReason == "tile_switch")
+                    {
+                        statusMsg = "Cancelled (user switch).";
+                        journalTitle = "Unlock cancelled";
+                        journalIcon = "👥";
+                        journalDetails = "The unlock request was cancelled because another tile was selected.";
+                    }
+                    else
+                    {
+                        statusMsg = "Request cancelled.";
+                        journalTitle = "Unlock request cancelled";
+                        journalIcon = "↩️";
+                        journalDetails = "The remote unlock request was cancelled.";
+                    }
+
+                    Logger.LogWarning($"[Tile] unlock_request_cancelled reason={_cancellationReason ?? (isTimeout ? "timeout" : "cancelled")} elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
+                    ActivityJournal.Record("unlock", journalIcon, journalTitle, journalDetails, false);
+                    UpdateStatus(statusMsg);
+                }
+                else if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                {
+                    UpdateStatus("Device unreachable.");
+                    ActivityJournal.Record("unlock", "⚠️", "Device unreachable", "Could not establish connection to paired device.", false);
                 }
             }
             catch (OperationCanceledException) { }
@@ -807,9 +856,10 @@ public class PortalWinTile : PortalWinTileBase
 
     private void OnCancelUnlockClicked()
     {
+        _cancellationReason = "user";
         _activeRequestCts?.Cancel();
         DisconnectAllTransportsFast("Request cancelled by user");
-        UpdateStatus("Request cancelled.");
+        UpdateStatus("Cancelled by user.");
         ShowRequestButton();
     }
 
@@ -819,6 +869,7 @@ public class PortalWinTile : PortalWinTileBase
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
         {
+            _cancellationReason = "manual_typing";
             Logger.Log("[Tile] Manual password input detected; cancelling active remote unlock request.");
             _activeRequestCts.Cancel();
             DisconnectAllTransportsFast("Manual password input");
