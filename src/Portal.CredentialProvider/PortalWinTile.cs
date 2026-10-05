@@ -1044,6 +1044,98 @@ public class PortalWinTile : PortalWinTileBase
             false);
     }
 
+    protected override void OnLogonStatusReported(int ntStatusCode, int ntSubstatusCode, out string optionalStatusText, out Lithnet.CredentialProvider.StatusIcon optionalStatusIcon)
+    {
+        base.OnLogonStatusReported(ntStatusCode, ntSubstatusCode, out optionalStatusText, out optionalStatusIcon);
+
+        try
+        {
+            if (ntStatusCode == 0)
+            {
+                Logger.Log("[Tile] Windows logon succeeded (STATUS_SUCCESS 0x00000000).");
+                ActivityJournal.Record("logon", "✅", "Windows logon succeeded", "Windows accepted the submitted credentials.", true);
+                UpdateStatus("Logon successful.");
+                return;
+            }
+
+            uint uCode = (uint)ntStatusCode;
+            string hex = $"0x{uCode:X8}";
+            string subHex = $"0x{(uint)ntSubstatusCode:X8}";
+
+            string friendlyHeadline;
+            string journalTitle;
+            string journalDetails;
+            string icon;
+
+            switch (uCode)
+            {
+                case 0xC000006A: // STATUS_WRONG_PASSWORD
+                case 0xC000006D: // STATUS_LOGON_FAILURE
+                    friendlyHeadline = "Incorrect Windows password.";
+                    journalTitle = "Windows logon failed: incorrect password";
+                    journalDetails = $"The password stored in LSA Secret was rejected by Windows ({hex}).";
+                    icon = "🔑";
+                    break;
+
+                case 0xC0000234: // STATUS_ACCOUNT_LOCKED_OUT
+                    friendlyHeadline = "Account is locked out.";
+                    journalTitle = "Windows logon failed: account locked";
+                    journalDetails = "The Windows user account has been locked out due to failed logon attempts.";
+                    icon = "🔒";
+                    break;
+
+                case 0xC0000071: // STATUS_PASSWORD_EXPIRED
+                case 0xC0000224: // STATUS_PASSWORD_MUST_CHANGE
+                case 0xC0000193: // STATUS_ACCOUNT_EXPIRED
+                    friendlyHeadline = "Windows password has expired.";
+                    journalTitle = "Windows logon failed: password expired";
+                    journalDetails = "The password for this Windows account has expired and must be updated.";
+                    icon = "⌛";
+                    break;
+
+                case 0xC0000072: // STATUS_ACCOUNT_DISABLED
+                    friendlyHeadline = "Account is disabled.";
+                    journalTitle = "Windows logon failed: account disabled";
+                    journalDetails = "The Windows user account is currently disabled.";
+                    icon = "🚫";
+                    break;
+
+                case 0xC0000064: // STATUS_NO_SUCH_USER
+                    friendlyHeadline = "User account not found.";
+                    journalTitle = "Windows logon failed: user not found";
+                    journalDetails = "The specified Windows user account does not exist.";
+                    icon = "👤";
+                    break;
+
+                case 0xC000005E: // STATUS_NO_LOGON_SERVERS
+                    friendlyHeadline = "No logon servers available.";
+                    journalTitle = "Windows logon failed: no servers";
+                    journalDetails = "Domain controller or authentication server is currently unreachable.";
+                    icon = "🌐";
+                    break;
+
+                default:
+                    friendlyHeadline = Localization.TF("Windows logon failed ({0}).", hex);
+                    journalTitle = "Windows logon failed";
+                    journalDetails = $"Windows returned logon error {hex} (substatus {subHex}).";
+                    icon = "⚠️";
+                    break;
+            }
+
+            Logger.LogError($"[Tile] Windows logon failed: ntStatus={hex} ntSubstatus={subHex} ({friendlyHeadline})");
+            ActivityJournal.Record("logon", icon, journalTitle, journalDetails, false);
+            UpdateStatus(friendlyHeadline);
+            ShowRequestButton();
+
+            optionalStatusText = Localization.T(friendlyHeadline);
+            optionalStatusIcon = Lithnet.CredentialProvider.StatusIcon.Error;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[Tile] Error handling OnLogonStatusReported: {ex.Message}");
+        }
+    }
+
     internal static void ResetAutoRequestClaim()
     {
         lock (_requestSync)

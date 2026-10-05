@@ -458,6 +458,22 @@ public class PortalWinProvider : PortalWinProviderBase
                        || text.Contains("approved")
                        || text.Contains("подтверждения")
                        || text.Contains("подтверждено") => "Awaiting unlock approval",
+            var text when text.Contains("wrong password") || text.Contains("incorrect password") || text.Contains("неверный пароль")
+                => "Incorrect Windows password",
+            var text when text.Contains("locked out") || text.Contains("заблокирован")
+                => "Account is locked out",
+            var text when (text.Contains("password") && text.Contains("expired")) || (text.Contains("парол") && text.Contains("истек"))
+                => "Windows password has expired",
+            var text when text.Contains("account disabled") || text.Contains("отключен")
+                => "Account is disabled",
+            var text when text.Contains("not found") || text.Contains("не найден")
+                => "User account not found",
+            var text when text.Contains("no logon servers") || text.Contains("серверы")
+                => "No logon servers available",
+            var text when text.Contains("logon failed") || text.Contains("ошибка входа")
+                => value,
+            var text when text.Contains("logon successful") || text.Contains("успешно")
+                => "Logon successful",
             _ => "Searching device"
         };
     }
