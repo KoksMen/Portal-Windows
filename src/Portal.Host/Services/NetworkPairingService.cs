@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
 using Portal.Common;
+using Portal.Common.Helpers;
 using Portal.Host.Models;
 using Portal.Host.Services;
 
@@ -280,7 +281,8 @@ public class NetworkPairingService
                 var newAccount = new Portal.Common.Models.DeviceAccount
                 {
                     Username = _pairingContext.TargetUsername,
-                    Domain = _pairingContext.TargetDomain ?? ""
+                    Domain = _pairingContext.TargetDomain ?? "",
+                    UserSid = IdentityHelper.TryResolveUserSid(_pairingContext.TargetUsername, _pairingContext.TargetDomain)
                 };
                 newAccount.SetPassword(_pairingContext.TargetPassword);
                 device.Accounts.Add(newAccount);

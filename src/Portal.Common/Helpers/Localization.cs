@@ -106,6 +106,12 @@ public static class Localization
         ["Active"] = "Активно",
         ["Checking..."] = "Проверка...",
         ["Checking component health..."] = "Проверка компонентов...",
+        ["Password Valid"] = "Пароль верен",
+        ["Invalid Password"] = "Неверный пароль",
+        ["Windows password matches stored credentials."] = "Пароль Windows совпадает с сохранённым.",
+        ["The stored Windows password appears to be incorrect. Click Edit to update it."] = "Сохранённый пароль Windows неверен. Нажмите «Редактировать», чтобы обновить его.",
+        ["Verifying Windows credentials with system LSA..."] = "Проверка учетных данных в системе Windows...",
+        ["Password status not checked yet."] = "Статус пароля ещё не проверялся.",
         ["Enabled (click to disable)"] = "Включено (нажмите, чтобы отключить)",
         ["Disabled (click to enable)"] = "Отключено (нажмите, чтобы включить)",
         ["Wi-Fi / LAN"] = "Wi-Fi / Сеть",
@@ -741,5 +747,10 @@ public static class Localization
         ,["Discrete dots with circular pulse indicator."] = "Дискретные аккуратные точки с круговой индикацией пульса."
         ,["Custom status text displayed on the lock screen tile during unlock requests (leave blank for default 'Awaiting approval...'). The progress bar width adapts dynamically to your text length."] = "Пользовательский текст на плитке экрана блокировки при ожидании запроса (оставьте пустым для текста по умолчанию «Ожидание подтверждения...»). Ширина шкалы автоматически подстраивается под длину фразы."
         ,["Reset"] = "Сброс"
+        ,["Open"] = "Открыть"
+        ,["Later"] = "Позже"
+        ,["Dismiss"] = "Отклонить"
+        ,["New update available"] = "Доступно обновление"
+        ,["Update available"] = "Доступно обновление"
     };
 }

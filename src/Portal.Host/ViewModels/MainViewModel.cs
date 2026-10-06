@@ -1145,15 +1145,22 @@ public partial class MainViewModel : ObservableObject
             var providerDllPath = _providerLocator.FindProviderDll(SettingsDllPath);
             var providerHealth = _providerSetup.CheckProviderHealth(providerDllPath);
             await Task.Delay(180);
-            IsRegisteredOk = providerHealth.CredentialProviderGuidsOk && providerHealth.ComRegistrationOk;
-            ProviderStatusText = IsRegisteredOk
-                ? Services.LocalizationService.T("Installed")
-                : Services.LocalizationService.T("Missing");
-            ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install";
+            IsRegisteredOk = providerHealth.CredentialProviderGuidsOk && providerHealth.ComRegistrationOk && !providerHealth.IsGuardTripped;
+            ProviderStatusText = providerHealth.IsGuardTripped
+                ? Services.LocalizationService.T("Disabled (Safety Guard)")
+                : (IsRegisteredOk ? Services.LocalizationService.T("Installed") : Services.LocalizationService.T("Missing"));
+            ProviderInstallButtonText = providerHealth.IsGuardTripped
+                ? Services.LocalizationService.T("Reset & Reinstall")
+                : (providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install");
             IsCheckingProvider = false;
 
-            // 2. Check Firewall Rule
+            // 2. Check Firewall Rule & Auto-Repair if missing
             var isFirewallOk = await _firewall.CheckFirewallRule(_config.Port);
+            if (!isFirewallOk)
+            {
+                Logger.Log($"[RefreshHealth] Firewall rules missing for port {_config.Port}. Attempting auto-repair...");
+                isFirewallOk = await _firewall.EnsureFirewallRulesAsync(_config.Port);
+            }
             await Task.Delay(180);
             IsFirewallOk = isFirewallOk;
             FirewallStatusText = IsFirewallOk
@@ -1186,7 +1193,10 @@ public partial class MainViewModel : ObservableObject
                 : (IsRussianUi ? "⚠ Требуется настройка службы" : "⚠ Service Setup Required");
 
             var setupIssues = new List<string>();
-            if (!providerHealth.IsHealthy) setupIssues.Add(Services.LocalizationService.T("Credential Provider is not installed or is damaged."));
+            if (providerHealth.IsGuardTripped)
+                setupIssues.Add(Services.LocalizationService.T("Credential Provider was automatically disabled to protect Windows login after repeated startup crashes."));
+            else if (!providerHealth.IsHealthy)
+                setupIssues.Add(Services.LocalizationService.T("Credential Provider is not installed or is damaged."));
             if (!isFirewallOk) setupIssues.Add(Services.LocalizationService.T("Firewall rules are missing."));
             if (!isCertOk) setupIssues.Add(Services.LocalizationService.T("Host SSL certificate is missing."));
 
@@ -1250,39 +1260,74 @@ public partial class MainViewModel : ObservableObject
         {
             foreach (var d in devicesToCheck)
             {
-                var hasIssue = false;
+                var hasSecretIssue = false;
+                var passwordStatus = PasswordValidationStatus.Unknown;
+                string? statusDetail = null;
+
                 if (d.Accounts == null || d.Accounts.Count == 0)
                 {
-                    hasIssue = true;
+                    hasSecretIssue = true;
+                    passwordStatus = PasswordValidationStatus.Unknown;
                 }
                 else
                 {
+                    Application.Current?.Dispatcher.InvokeAsync(() => d.PasswordStatus = PasswordValidationStatus.Checking);
+
                     foreach (var acc in d.Accounts)
                     {
+                        System.Security.SecureString? sec = null;
                         try
                         {
-                            var sec = acc.GetDecryptedSecurePassword();
+                            sec = acc.GetDecryptedSecurePassword();
                             if (sec == null || sec.Length == 0)
                             {
-                                hasIssue = true;
+                                hasSecretIssue = true;
+                                passwordStatus = PasswordValidationStatus.Unknown;
                                 break;
                             }
-                            sec.Dispose();
+
+                            // Real-time verification of Windows password via LogonUserW LOGON32_LOGON_NETWORK
+                            var validation = _credentialValidator.Validate(acc.Username, acc.Domain, sec);
+                            if (validation.IsValid)
+                            {
+                                passwordStatus = PasswordValidationStatus.Valid;
+                                statusDetail = null;
+                            }
+                            else
+                            {
+                                passwordStatus = PasswordValidationStatus.Invalid;
+                                statusDetail = validation.ErrorMessage;
+                                Logger.LogWarning($"[PasswordCheck] Stored password validation failed for user '{acc.Username}' on device '{d.Name}': {validation.ErrorMessage}");
+                            }
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            hasIssue = true;
+                            hasSecretIssue = true;
+                            passwordStatus = PasswordValidationStatus.Unknown;
+                            Logger.LogError($"[PasswordCheck] Error validating credentials for device '{d.Name}'", ex);
                             break;
+                        }
+                        finally
+                        {
+                            sec?.Dispose();
                         }
                     }
                 }
 
-                if (hasIssue)
+                if (hasSecretIssue)
                 {
                     Logger.LogWarning($"[SecretCheck] Secret integrity check failed for device '{d.Name}' ({d.ClientId}). Account credentials may need to be re-entered.");
                 }
 
-                Application.Current?.Dispatcher.InvokeAsync(() => d.HasSecretIntegrityIssue = hasIssue);
+                var finalHasSecretIssue = hasSecretIssue;
+                var finalPasswordStatus = passwordStatus;
+                var finalDetail = statusDetail;
+                Application.Current?.Dispatcher.InvokeAsync(() =>
+                {
+                    d.HasSecretIntegrityIssue = finalHasSecretIssue;
+                    d.PasswordStatus = finalPasswordStatus;
+                    d.PasswordStatusDetail = finalDetail;
+                });
             }
         });
     }
@@ -3850,6 +3895,7 @@ public partial class MainViewModel : ObservableObject
                     WizInputDomain = SelectedLocalAccount.Domain;
                     account.Username = SelectedLocalAccount.Username;
                     account.Domain = SelectedLocalAccount.Domain;
+                    account.UserSid = IdentityHelper.TryResolveUserSid(SelectedLocalAccount.Username, SelectedLocalAccount.Domain);
                     account.SetPassword(submittedPassword);
                     _config.Save();
                     RefreshDevicesList();

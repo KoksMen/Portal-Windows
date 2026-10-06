@@ -2,78 +2,237 @@
     x:Class="Portal.Host.UpdateToastWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Width="340"
-    Height="132"
+    Width="380"
+    SizeToContent="Height"
     ShowInTaskbar="False"
     ShowActivated="False"
     ResizeMode="NoResize"
     WindowStyle="None"
     AllowsTransparency="True"
     Background="Transparent"
-    Topmost="True">
-    <Border
-        Padding="14"
-        Background="#141f33"
-        BorderBrush="#3a5d95"
-        BorderThickness="1"
-        CornerRadius="14">
-        <StackPanel>
+    Topmost="True"
+    SnapsToDevicePixels="True"
+    UseLayoutRounding="True">
+
+    <Window.Resources>
+        <!-- Modern Close Button Style -->
+        <Style x:Key="ToastCloseButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#94A3B8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="BorderRoot"
+                            Width="26"
+                            Height="26"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BorderRoot" Property="Background" Value="#2A384F" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BorderRoot" Property="Background" Value="#1E293B" />
+                                <Setter Property="Foreground" Value="#CBD5E1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Button Style -->
+        <Style x:Key="ToastSecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#1E293B" />
+            <Setter Property="Foreground" Value="#CBD5E1" />
+            <Setter Property="BorderBrush" Value="#334155" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Padding" Value="14,6" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="BorderRoot"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BorderRoot" Property="Background" Value="#2D3D58" />
+                                <Setter TargetName="BorderRoot" Property="BorderBrush" Value="#475569" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BorderRoot" Property="Background" Value="#172033" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary Accent Button Style -->
+        <Style x:Key="ToastPrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="16,6" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            x:Name="BorderRoot"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BorderRoot" Property="Background" Value="#3B82F6" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BorderRoot" Property="Background" Value="#1D4ED8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Outer shadow container with margin so drop shadow is not clipped -->
+    <Border Margin="14">
+        <Border.Effect>
+            <DropShadowEffect
+                BlurRadius="22"
+                Direction="270"
+                Opacity="0.55"
+                RenderingBias="Performance"
+                ShadowDepth="5"
+                Color="#000000" />
+        </Border.Effect>
+
+        <!-- Main Card Border with Fluent acrylic look and rounded corners -->
+        <Border
+            Padding="16,14,16,14"
+            Background="#121824"
+            BorderBrush="#2B3D5C"
+            BorderThickness="1"
+            CornerRadius="16">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse
-                        Width="9"
-                        Height="9"
-                        Margin="0,0,8,0"
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Header: Icon, Titles, and Close Button -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Fluent App/Update Icon Badge -->
+                    <Border
+                        Grid.Column="0"
+                        Width="36"
+                        Height="36"
+                        Margin="0,0,12,0"
                         VerticalAlignment="Center"
-                        Fill="#4cd964" />
-                    <TextBlock
-                        FontSize="14"
+                        Background="#1E2A40"
+                        BorderBrush="#385682"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                        <Path
+                            Width="16"
+                            Height="16"
+                            Data="M 8,2 L 8,11 M 8,11 L 4.5,7.5 M 8,11 L 11.5,7.5 M 2.5,12.5 L 2.5,13.5 C 2.5,14.05 2.95,14.5 3.5,14.5 L 12.5,14.5 C 13.05,14.5 13.5,14.05 13.5,13.5 L 13.5,12.5"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Stroke="#60A5FA"
+                            StrokeEndLineCap="Round"
+                            StrokeLineJoin="Round"
+                            StrokeStartLineCap="Round"
+                            StrokeThickness="1.75" />
+                    </Border>
+
+                    <!-- Title & Subtitle Stack -->
+                    <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="13.5"
+                            FontWeight="SemiBold"
+                            Foreground="#F8FAFC"
+                            Text="{Binding UpdateToastTitle}"
+                            TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            Margin="0,1,0,0"
+                            FontSize="11"
+                            Foreground="#64748B"
+                            Text="Portal-Windows" />
+                    </StackPanel>
+
+                    <!-- Close Button -->
+                    <Button
+                        Grid.Column="2"
+                        VerticalAlignment="Top"
+                        Command="{Binding DismissUpdateToastCommand}"
+                        Content="✕"
+                        FontSize="11"
                         FontWeight="Bold"
-                        Foreground="#f4f8ff"
-                        Text="{Binding UpdateToastTitle}" />
-                </StackPanel>
-                <Button
-                    Grid.Column="1"
-                    Width="24"
-                    Height="24"
-                    Background="#243755"
-                    BorderBrush="#315080"
-                    BorderThickness="1"
-                    Command="{Binding DismissUpdateToastCommand}"
-                    Content="×"
-                    Cursor="Hand"
-                    FontSize="15"
-                    FontWeight="Bold"
-                    Foreground="#dce8ff" />
-            </Grid>
+                        Style="{StaticResource ToastCloseButtonStyle}"
+                        ToolTip="Dismiss" />
+                </Grid>
 
-            <TextBlock
-                Margin="0,8,0,0"
-                FontSize="12"
-                Foreground="#b7c9ee"
-                Text="{Binding UpdateToastMessage}"
-                TextWrapping="Wrap" />
-
-            <StackPanel
-                Margin="0,10,0,0"
-                Orientation="Horizontal"
-                HorizontalAlignment="Right">
-                <Button
-                    Padding="12,6"
-                    Background="#273b5f"
-                    BorderBrush="#3b5f94"
-                    BorderThickness="1"
-                    Command="{Binding OpenUpdateWizardFromToastCommand}"
-                    Content="Open"
-                    Cursor="Hand"
+                <!-- Body: Message Text -->
+                <TextBlock
+                    Grid.Row="1"
+                    Margin="48,8,0,14"
                     FontSize="12"
-                    FontWeight="SemiBold"
-                    Foreground="#eaf1ff" />
-            </StackPanel>
-        </StackPanel>
+                    Foreground="#94A3B8"
+                    LineHeight="17"
+                    Text="{Binding UpdateToastMessage}"
+                    TextWrapping="Wrap" />
+
+                <!-- Footer: Action Buttons -->
+                <StackPanel
+                    Grid.Row="2"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+                    <Button
+                        Margin="0,0,8,0"
+                        Command="{Binding DismissUpdateToastCommand}"
+                        Content="Later"
+                        Style="{StaticResource ToastSecondaryButtonStyle}" />
+                    <Button
+                        Command="{Binding OpenUpdateWizardFromToastCommand}"
+                        Content="Open"
+                        Style="{StaticResource ToastPrimaryButtonStyle}" />
+                </StackPanel>
+            </Grid>
+        </Border>
     </Border>
 </Window>

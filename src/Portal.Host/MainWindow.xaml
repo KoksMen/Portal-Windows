@@ -1691,7 +1691,7 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border
-                                            Margin="0,0,0,10"
+                                            Margin="0,0,0,12"
                                             Padding="14,12"
                                             Background="#101726"
                                             BorderBrush="#253452"
@@ -1704,6 +1704,9 @@
                                                         <DataTrigger Binding="{Binding IsEnabled}" Value="False">
                                                             <Setter Property="Opacity" Value="0.72" />
                                                         </DataTrigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="BorderBrush" Value="#354c78" />
+                                                        </Trigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
@@ -1712,104 +1715,125 @@
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
 
-                                                <!-- Row 0: Header (Device info on left, Power switch on right) -->
+                                                <!-- Row 0: Device Header (Identity, Transport, ID, Date, Power Toggle) -->
                                                 <Grid Grid.Row="0">
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <!-- Left: Device Icon, Name, Transport Badge -->
-                                                    <StackPanel
+                                                    <!-- Device Icon (Squircle) -->
+                                                    <Border
                                                         Grid.Column="0"
-                                                        Orientation="Horizontal"
-                                                        VerticalAlignment="Center"
-                                                        Margin="0,0,8,0">
-                                                        <Border
-                                                            Width="32"
-                                                            Height="32"
-                                                            CornerRadius="8"
-                                                            Background="#18243c"
-                                                            BorderBrush="#2c3e66"
-                                                            BorderThickness="1"
-                                                            Margin="0,0,9,0"
-                                                            VerticalAlignment="Center">
-                                                            <Path
-                                                                Width="14"
-                                                                Height="16"
-                                                                Data="M5 2C3.9 2 3 2.9 3 4v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2H5zm0 3h10v12H5V5zm4 13.5a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"
-                                                                Fill="#7aa2f7"
-                                                                Stretch="Uniform"
-                                                                HorizontalAlignment="Center"
+                                                        Width="36"
+                                                        Height="36"
+                                                        CornerRadius="9"
+                                                        Background="#16233d"
+                                                        BorderBrush="#2a3e68"
+                                                        BorderThickness="1"
+                                                        Margin="0,0,10,0"
+                                                        VerticalAlignment="Center">
+                                                        <Path
+                                                            Width="15"
+                                                            Height="17"
+                                                            Data="M5 2C3.9 2 3 2.9 3 4v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2H5zm0 3h10v12H5V5zm4 13.5a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"
+                                                            Fill="#7aa2f7"
+                                                            Stretch="Uniform"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center" />
+                                                    </Border>
+
+                                                    <!-- Device Info: Line 1 Name + Transport, Line 2 ID & Date -->
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                                                        <!-- Line 1: Name + Transport Badge -->
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
+                                                            <TextBlock
+                                                                Text="{Binding Name}"
+                                                                FontSize="14"
+                                                                FontWeight="SemiBold"
+                                                                Foreground="White"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                MaxWidth="175"
+                                                                ToolTip="{Binding Name}"
                                                                 VerticalAlignment="Center" />
-                                                        </Border>
-                                                        <TextBlock
-                                                            VerticalAlignment="Center"
-                                                            FontSize="14"
-                                                            FontWeight="SemiBold"
-                                                            Foreground="White"
-                                                            TextTrimming="CharacterEllipsis"
-                                                            MaxWidth="200"
-                                                            ToolTip="{Binding Name}"
-                                                            Text="{Binding Name}" />
-                                                        <Border
-                                                            Margin="8,0,0,0"
-                                                            Padding="7,3"
-                                                            Background="#162544"
-                                                            BorderBrush="#29406e"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
-                                                            VerticalAlignment="Center">
+
+                                                            <!-- Transport Badge -->
+                                                            <Border
+                                                                Margin="8,0,0,0"
+                                                                Padding="6,2"
+                                                                Background="#162544"
+                                                                BorderBrush="#29406e"
+                                                                BorderThickness="1"
+                                                                CornerRadius="5"
+                                                                VerticalAlignment="Center">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <Path
+                                                                        Width="10"
+                                                                        Height="10"
+                                                                        Margin="0,0,4,0"
+                                                                        Data="{Binding TransportIconData}"
+                                                                        Fill="#8cb8ff"
+                                                                        Stretch="Uniform"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="Medium"
+                                                                        Foreground="#8cb8ff"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding TransportBadgeText}" />
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </StackPanel>
+
+                                                        <!-- Line 2: Device ID • Paired Date -->
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <!-- Client ID (truncated with tooltip) -->
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{Binding ClientId}" Margin="0,0,6,0">
+                                                                <Path
+                                                                    Width="10"
+                                                                    Height="10"
+                                                                    Margin="0,0,4,0"
+                                                                    VerticalAlignment="Center"
+                                                                    Data="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+                                                                    Fill="#5d6f96"
+                                                                    Stretch="Uniform" />
+                                                                <TextBlock
+                                                                    Text="{Binding ClientId}"
+                                                                    FontSize="10"
+                                                                    FontFamily="Consolas, monospace"
+                                                                    Foreground="#6f82ab"
+                                                                    TextTrimming="CharacterEllipsis"
+                                                                    MaxWidth="115"
+                                                                    VerticalAlignment="Center" />
+                                                            </StackPanel>
+
+                                                            <TextBlock Text="•" FontSize="10" Foreground="#3f5175" Margin="0,0,6,0" VerticalAlignment="Center" />
+
+                                                            <!-- Paired Date -->
                                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                                 <Path
-                                                                    Width="11"
-                                                                    Height="11"
-                                                                    Margin="0,0,5,0"
-                                                                    Data="{Binding TransportIconData}"
-                                                                    Fill="#8cb8ff"
-                                                                    Stretch="Uniform"
-                                                                    VerticalAlignment="Center" />
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    FontWeight="Medium"
-                                                                    Foreground="#8cb8ff"
+                                                                    Width="10"
+                                                                    Height="10"
+                                                                    Margin="0,0,4,0"
                                                                     VerticalAlignment="Center"
-                                                                    Text="{Binding TransportBadgeText}" />
-                                                            </StackPanel>
-                                                        </Border>
-
-                                                        <!-- Secret Integrity Error Badge -->
-                                                        <Border
-                                                            Margin="6,0,0,0"
-                                                            Padding="6,2"
-                                                            Background="#3a111a"
-                                                            BorderBrush="#d94c64"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
-                                                            VerticalAlignment="Center"
-                                                            ToolTip="{Binding SecretIntegrityWarning}"
-                                                            Visibility="{Binding HasSecretIntegrityIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    Data="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"
+                                                                    Fill="#5d6f96"
+                                                                    Stretch="Uniform" />
                                                                 <TextBlock
-                                                                    Text="⚠️ "
+                                                                    Text="{Binding PairedValue}"
                                                                     FontSize="10"
+                                                                    Foreground="#6f82ab"
                                                                     VerticalAlignment="Center" />
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    FontWeight="SemiBold"
-                                                                    Foreground="#ff8099"
-                                                                    VerticalAlignment="Center"
-                                                                    Text="{Binding SecretIntegrityBadgeText}" />
                                                             </StackPanel>
-                                                        </Border>
+                                                        </StackPanel>
                                                     </StackPanel>
 
-                                                    <!-- Right: Power Toggle Switch Button -->
+                                                    <!-- Power Toggle Switch Button -->
                                                     <Button
-                                                        Grid.Column="1"
+                                                        Grid.Column="2"
                                                         VerticalAlignment="Center"
                                                         HorizontalAlignment="Right"
                                                         Command="{Binding DataContext.ToggleDeviceEnabledCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -1854,87 +1878,171 @@
                                                     </Button>
                                                 </Grid>
 
-                                                <!-- Row 1: Subtle Divider -->
-                                                <Border Grid.Row="1" Height="1" Background="#1c2842" Margin="0,10,0,10" />
-
-                                                <!-- Row 2: Metadata Details Section (Full Width, never clipped!) -->
+                                                <!-- Row 1: Bound Account & Security Status Surface -->
                                                 <Border
-                                                    Grid.Row="2"
-                                                    Padding="12,10"
-                                                    Background="#0c121e"
-                                                    BorderBrush="#1b2944"
+                                                    Grid.Row="1"
+                                                    Margin="0,10,0,10"
+                                                    Padding="10,8"
+                                                    Background="#0c1322"
+                                                    BorderBrush="#1b2a47"
                                                     BorderThickness="1"
                                                     CornerRadius="8">
                                                     <Grid>
-                                                        <Grid.RowDefinitions>
-                                                            <RowDefinition Height="Auto" />
-                                                            <RowDefinition Height="Auto" />
-                                                        </Grid.RowDefinitions>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" />
-                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- Account -->
-                                                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,6">
-                                                            <Path
-                                                                Width="11"
-                                                                Height="11"
-                                                                Margin="0,0,5,0"
-                                                                VerticalAlignment="Center"
-                                                                Data="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                                                                Fill="#8a99be"
-                                                                Stretch="Uniform" />
-                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Margin="0,0,6,0" Text="{Binding AccountLabel, FallbackValue='Account:'}" VerticalAlignment="Center" />
-                                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#d4e0f7" TextTrimming="CharacterEllipsis" Text="{Binding AccountValue, FallbackValue='—'}" VerticalAlignment="Center" />
-                                                        </StackPanel>
-
-                                                        <!-- Paired Date -->
-                                                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,6">
-                                                            <Path
-                                                                Width="11"
-                                                                Height="11"
-                                                                Margin="0,0,5,0"
-                                                                VerticalAlignment="Center"
-                                                                Data="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"
-                                                                Fill="#8a99be"
-                                                                Stretch="Uniform" />
-                                                            <TextBlock FontSize="11" Foreground="#8f9bbf" Margin="0,0,6,0" Text="{Binding PairedLabel, FallbackValue='Paired:'}" VerticalAlignment="Center" />
-                                                            <TextBlock FontSize="11" Foreground="#c0caea" Text="{Binding PairedValue}" VerticalAlignment="Center" />
-                                                        </StackPanel>
-
-                                                        <!-- Client ID (Full Width) -->
-                                                        <DockPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" VerticalAlignment="Center">
-                                                            <Path
-                                                                DockPanel.Dock="Left"
-                                                                Width="11"
-                                                                Height="11"
-                                                                Margin="0,0,5,0"
-                                                                VerticalAlignment="Center"
-                                                                Data="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
-                                                                Fill="#66779d"
-                                                                Stretch="Uniform" />
-                                                            <TextBlock DockPanel.Dock="Left" Text="ID:" FontSize="10" Foreground="#6f7ca1" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                        <!-- Left: Account Info -->
+                                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Border
+                                                                Width="22"
+                                                                Height="22"
+                                                                CornerRadius="6"
+                                                                Background="#14213d"
+                                                                BorderBrush="#243863"
+                                                                BorderThickness="1"
+                                                                Margin="0,0,7,0"
+                                                                VerticalAlignment="Center">
+                                                                <Path
+                                                                    Width="11"
+                                                                    Height="11"
+                                                                    Data="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+                                                                    Fill="#7aa2f7"
+                                                                    Stretch="Uniform"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center" />
+                                                            </Border>
                                                             <TextBlock
-                                                                Text="{Binding ClientId}"
-                                                                FontSize="10"
-                                                                FontFamily="Consolas, monospace"
-                                                                Foreground="#7a8bb8"
-                                                                TextTrimming="CharacterEllipsis"
-                                                                ToolTip="{Binding ClientId}"
+                                                                Text="{Binding AccountLabel, FallbackValue='Account:'}"
+                                                                FontSize="11"
+                                                                Foreground="#8393b3"
+                                                                Margin="0,0,5,0"
                                                                 VerticalAlignment="Center" />
-                                                        </DockPanel>
+                                                            <TextBlock
+                                                                Text="{Binding AccountValue, FallbackValue='—'}"
+                                                                FontSize="12"
+                                                                FontWeight="SemiBold"
+                                                                Foreground="#f0f4fc"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                MaxWidth="160"
+                                                                VerticalAlignment="Center" />
+                                                        </StackPanel>
+
+                                                        <!-- Right: Password & Integrity Status Badges -->
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <!-- Secret Integrity Error Badge -->
+                                                            <Border
+                                                                Margin="0,0,6,0"
+                                                                Padding="7,3"
+                                                                Background="#3a111a"
+                                                                BorderBrush="#d94c64"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding SecretIntegrityWarning}"
+                                                                Visibility="{Binding HasSecretIntegrityIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock Text="⚠️ " FontSize="10" VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#ff8099"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding SecretIntegrityBadgeText}" />
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- Password Valid Badge -->
+                                                            <Border
+                                                                Padding="8,3"
+                                                                Background="#0e2b19"
+                                                                BorderBrush="#258c49"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding PasswordStatusToolTip}"
+                                                                Visibility="{Binding IsPasswordValid, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock
+                                                                        Text="✓"
+                                                                        FontSize="11"
+                                                                        FontWeight="Bold"
+                                                                        Foreground="#38d968"
+                                                                        Margin="0,0,4,0"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#5ae684"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding PasswordStatusText}" />
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- Password Invalid Badge -->
+                                                            <Border
+                                                                Padding="8,3"
+                                                                Background="#38131b"
+                                                                BorderBrush="#d9364f"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding PasswordStatusToolTip}"
+                                                                Visibility="{Binding HasPasswordIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock
+                                                                        Text="✕"
+                                                                        FontSize="11"
+                                                                        FontWeight="Bold"
+                                                                        Foreground="#ff4d64"
+                                                                        Margin="0,0,4,0"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#ff7386"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding PasswordStatusText}" />
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- Password Checking Badge -->
+                                                            <Border
+                                                                Padding="8,3"
+                                                                Background="#2b210e"
+                                                                BorderBrush="#b38a1e"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding PasswordStatusToolTip}"
+                                                                Visibility="{Binding IsPasswordChecking, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock
+                                                                        Text="⏳"
+                                                                        FontSize="10"
+                                                                        Margin="0,0,4,0"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#ffd15c"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding PasswordStatusText}" />
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </StackPanel>
                                                     </Grid>
                                                 </Border>
 
-                                                <!-- Row 3: Action Toolbar -->
-                                                <Grid Grid.Row="3" Margin="0,4,0,0">
+                                                <!-- Row 2: Action Toolbar -->
+                                                <Grid Grid.Row="2">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <!-- Left: Prominent Test Connection Button -->
+                                                    <!-- Left: Primary Action (Test Connection) -->
                                                     <Button
                                                         Grid.Column="0"
                                                         HorizontalAlignment="Left"
@@ -1945,7 +2053,7 @@
                                                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                             <Path
                                                                 Width="11"
-                                                                Height="14"
+                                                                Height="13"
                                                                 Margin="0,0,7,0"
                                                                 Data="M11 2 L4 13 L9 13 L7 22 L16 10 L11 10 Z"
                                                                 Fill="#ffcc00"
@@ -1958,9 +2066,9 @@
                                                                 Foreground="#ffe680"
                                                                 VerticalAlignment="Center" />
                                                         </StackPanel>
-                                                     </Button>
+                                                    </Button>
 
-                                                    <!-- Right: Secondary Utility Action Buttons -->
+                                                    <!-- Right: Device Management Actions -->
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                                         <Button
                                                             Margin="0,0,6,0"
@@ -1970,8 +2078,8 @@
                                                             Style="{StaticResource DeviceCardInfoButton}"
                                                             ToolTip="{Binding InfoToolTip}">
                                                             <Path
-                                                                Width="14"
-                                                                Height="14"
+                                                                Width="13"
+                                                                Height="13"
                                                                 Data="M11 7h2v2h-2zm0 4h2v6h-2z M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
                                                                 Fill="#8cb8ff"
                                                                 Stretch="Uniform" />
@@ -1997,8 +2105,8 @@
                                                             Style="{StaticResource DeviceCardDeleteButton}"
                                                             ToolTip="{Binding DeleteToolTip}">
                                                             <Path
-                                                                Width="13"
-                                                                Height="13"
+                                                                Width="12"
+                                                                Height="12"
                                                                 Data="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
                                                                 Fill="#ff6666"
                                                                 Stretch="Uniform" />

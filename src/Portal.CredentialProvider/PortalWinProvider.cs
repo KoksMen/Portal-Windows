@@ -29,6 +29,13 @@ public class PortalWinProvider : PortalWinProviderBase
 
     public override bool IsUsageScenarioSupported(UsageScenario cpus, CredUIWinFlags dwFlags)
     {
+        SecurityHardeningHelper.EnableSafeDllSearchMode();
+        if (!Portal.Common.Services.FailSafeLockoutGuard.CheckAndRecordStartup())
+        {
+            Logger.LogWarning("[PortalWinProvider] Fail-Safe Guard disarmed provider. Bypassing execution.");
+            return false;
+        }
+
         Logger.Log($"[PortalWinProvider] IsUsageScenarioSupported: {cpus}, Flags: {dwFlags}");
         try
         {
@@ -56,6 +63,7 @@ public class PortalWinProvider : PortalWinProviderBase
 
     public override IEnumerable<ControlBase> GetControls(UsageScenario cpus)
     {
+        Portal.Common.Services.FailSafeLockoutGuard.RecordSuccessfulInitialization();
         Logger.Log($"[PortalWinProvider] GetControls called for scenario: {cpus}");
 
         yield return new CredentialProviderLabelControl("ProviderLabel", Localization.T("PortalWin Remote Unlock"));

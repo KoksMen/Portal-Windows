@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+        <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
         <PlatformTarget>x64</PlatformTarget>
         <UseWPF>true</UseWPF>
         <ApplicationIcon>Assets\portal-icon.ico</ApplicationIcon>
@@ -52,11 +52,15 @@
         <Copy
             SourceFiles="@(CredentialProviderOutput)"
             DestinationFolder="$(TargetDir)CredentialProvider"
-            SkipUnchangedFiles="true" />
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' == ''"
+            ContinueOnError="true" />
         <Copy
             SourceFiles="@(CredentialProviderOutputRuntimes)"
             DestinationFiles="@(CredentialProviderOutputRuntimes->'$(TargetDir)CredentialProvider\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
-            SkipUnchangedFiles="true" />
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' == ''"
+            ContinueOnError="true" />
         <Copy
             SourceFiles="@(CredentialProviderOutput)"
             DestinationFolder="$(PublishDir)CredentialProvider"
@@ -77,11 +81,15 @@
         <Copy
             SourceFiles="@(UpdaterOutput)"
             DestinationFolder="$(TargetDir)Updater"
-            SkipUnchangedFiles="true" />
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' == ''"
+            ContinueOnError="true" />
         <Copy
             SourceFiles="@(UpdaterOutputRuntimes)"
             DestinationFiles="@(UpdaterOutputRuntimes->'$(TargetDir)Updater\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
-            SkipUnchangedFiles="true" />
+            SkipUnchangedFiles="true"
+            Condition="'$(PublishDir)' == ''"
+            ContinueOnError="true" />
         <Copy
             SourceFiles="@(UpdaterOutput)"
             DestinationFolder="$(PublishDir)Updater"

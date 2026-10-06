@@ -365,12 +365,12 @@ public partial class LogsWindowViewModel : ObservableObject
 
     private static ColumnSnapshot BuildSnapshot(string kind, DateTime day, IReadOnlyCollection<string> patterns)
     {
-        var files = GetLogFiles(patterns);
+        var files = GetLogFiles(patterns, day);
         if (files.Count == 0)
         {
             return new ColumnSnapshot(
                 new List<LogEntry>(),
-                $"No {kind.ToLowerInvariant()} logs found.\nFolder: {LogDirectoryPath}");
+                $"No {kind.ToLowerInvariant()} logs found for {day:yyyy-MM-dd}.\nFolder: {LogDirectoryPath}");
         }
 
         var entries = new List<LogEntry>();
@@ -394,7 +394,7 @@ public partial class LogsWindowViewModel : ObservableObject
         return new ColumnSnapshot(ordered, string.Empty);
     }
 
-    private static List<string> GetLogFiles(IReadOnlyCollection<string> patterns)
+    private static List<string> GetLogFiles(IReadOnlyCollection<string> patterns, DateTime day)
     {
         try
         {
@@ -403,20 +403,42 @@ public partial class LogsWindowViewModel : ObservableObject
                 return new List<string>();
             }
 
-            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var dayStr = day.ToString("yyyyMMdd");
+            var matchingFiles = new List<FileInfo>();
+
             foreach (var pattern in patterns)
             {
                 foreach (var file in Directory.EnumerateFiles(LogDirectoryPath, pattern, SearchOption.TopDirectoryOnly))
                 {
-                    paths.Add(file);
+                    var fileInfo = new FileInfo(file);
+                    var fileName = fileInfo.Name;
+
+                    // If file name has a date pattern like host20261006.log or provider20261006.log
+                    var match = System.Text.RegularExpressions.Regex.Match(fileName, @"\d{8}");
+                    if (match.Success)
+                    {
+                        // File has explicit date - only include if it matches selected day!
+                        if (match.Value == dayStr)
+                        {
+                            matchingFiles.Add(fileInfo);
+                        }
+                    }
+                    else
+                    {
+                        // Non-dated file (e.g. host.log or provider.log)
+                        // Include if modified today or if selected day is today
+                        if (fileInfo.LastWriteTime.Date >= day.Date)
+                        {
+                            matchingFiles.Add(fileInfo);
+                        }
+                    }
                 }
             }
 
-            return paths
-                .Select(path => new FileInfo(path))
-                .OrderByDescending(file => file.LastWriteTimeUtc)
-                .Take(14)
-                .Select(file => file.FullName)
+            return matchingFiles
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .Select(f => f.FullName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
         catch
@@ -429,11 +451,32 @@ public partial class LogsWindowViewModel : ObservableObject
     {
         var entries = new List<LogEntry>();
         int sequence = 0;
+        const long maxBytesToRead = 3 * 1024 * 1024; // 3 MB max tail
 
         try
         {
+            var fileInfo = new FileInfo(filePath);
+            if (!fileInfo.Exists || fileInfo.Length == 0)
+            {
+                return entries;
+            }
+
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(stream);
+
+            bool isTruncated = false;
+            if (stream.Length > maxBytesToRead)
+            {
+                stream.Seek(stream.Length - maxBytesToRead, SeekOrigin.Begin);
+                isTruncated = true;
+            }
+
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+
+            // If we seeked into the middle of the file, discard the first partial line
+            if (isTruncated)
+            {
+                reader.ReadLine();
+            }
 
             LogEntryBuilder? current = null;
             while (!reader.EndOfStream)
@@ -460,7 +503,16 @@ public partial class LogsWindowViewModel : ObservableObject
 
             if (current != null && current.Timestamp.Date == day.Date)
             {
-                entries.Add(current.Build(sequence, Path.GetFileName(filePath)));
+                entries.Add(current.Build(sequence++, Path.GetFileName(filePath)));
+            }
+
+            if (isTruncated)
+            {
+                entries.Add(new LogEntry(
+                    DateTime.MinValue,
+                    new[] { $"[... Showing newest entries from {fileInfo.Length / (1024.0 * 1024.0):F1} MB log file ...]" },
+                    int.MaxValue,
+                    Path.GetFileName(filePath)));
             }
         }
         catch (Exception ex)

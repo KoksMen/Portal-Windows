@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using Portal.Common.Helpers;
 
 namespace Portal.Common;
 
@@ -38,6 +39,11 @@ public static class PortalStoragePaths
 
     private static void EnsureInitialized()
     {
+        if (_initialized)
+        {
+            return;
+        }
+
         lock (Sync)
         {
             if (_initialized)
@@ -45,16 +51,23 @@ public static class PortalStoragePaths
                 return;
             }
 
-            var newRootDirectory = Path.Combine(GetCommonApplicationData(), CurrentRootFolderName);
-            var newLogsDirectory = Path.Combine(newRootDirectory, "Logs");
-
-            Directory.CreateDirectory(newRootDirectory);
-            EnsureDirectoryPermissions(newRootDirectory);
-
-            Directory.CreateDirectory(newLogsDirectory);
-            EnsureDirectoryPermissions(newLogsDirectory);
-
             _initialized = true;
+
+            try
+            {
+                var newRootDirectory = Path.Combine(GetCommonApplicationData(), CurrentRootFolderName);
+                var newLogsDirectory = Path.Combine(newRootDirectory, "Logs");
+
+                Directory.CreateDirectory(newRootDirectory);
+                EnsureDirectoryPermissions(newRootDirectory);
+
+                Directory.CreateDirectory(newLogsDirectory);
+                EnsureDirectoryPermissions(newLogsDirectory);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PortalStoragePaths] Error during directory initialization: {ex}");
+            }
         }
     }
 
@@ -62,7 +75,7 @@ public static class PortalStoragePaths
     {
         try
         {
-            if (!OperatingSystem.IsWindows())
+            if (!OperatingSystem.IsWindows() || !Directory.Exists(directoryPath))
             {
                 return;
             }
@@ -83,7 +96,7 @@ public static class PortalStoragePaths
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[PortalStoragePaths] Failed to set directory ACLs on '{directoryPath}': {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[PortalStoragePaths] Failed to set directory ACLs on '{directoryPath}': {ex.Message}");
         }
     }
 }

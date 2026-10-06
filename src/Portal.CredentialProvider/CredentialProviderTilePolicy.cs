@@ -42,8 +42,19 @@ public static class CredentialProviderTilePolicy
         DeviceModel targetDevice,
         string? selectedQualifiedUser,
         string? selectedUserName,
-        string? typedUserName)
+        string? typedUserName,
+        string? selectedUserSid = null)
     {
+        if (!string.IsNullOrWhiteSpace(selectedUserSid))
+        {
+            var sidMatch = targetDevice.Accounts.FirstOrDefault(a =>
+                IdentityHelper.MatchesSid(a.UserSid, selectedUserSid));
+            if (sidMatch != null)
+            {
+                return sidMatch;
+            }
+        }
+
         var canonicalUser = IdentityHelper.ToCanonical(selectedQualifiedUser)
             ?? IdentityHelper.ToCanonical(typedUserName)
             ?? IdentityHelper.ToCanonical(selectedUserName);

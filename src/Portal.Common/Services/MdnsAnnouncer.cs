@@ -169,7 +169,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                     var responseRecords = new List<ResourceRecord>();
                     foreach (var q in e.Message.Questions)
                     {
-                        Logger.Log($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
+                        System.Diagnostics.Debug.WriteLine($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
 
                         var qNameStr = q.Name.ToString().TrimEnd('.');
                         bool isHostMatch = hostAliases.Contains(qNameStr)
@@ -204,7 +204,7 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                         _mdns.SendAnswer(response);
                         foreach (var a in responseRecords)
                         {
-                            Logger.Log($"[MdnsAnnouncer] Direct answer sent: {a.Name} ({a.Type}) -> {((AddressRecord)a).Address}");
+                            System.Diagnostics.Debug.WriteLine($"[MdnsAnnouncer] Direct answer sent: {a.Name} ({a.Type}) -> {((AddressRecord)a).Address}");
                         }
                     }
                 }
@@ -214,12 +214,12 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                 }
             };
 
-            // Log answers we send
+            // Log answers we send (debug only to prevent disk flooding)
             _mdns.AnswerReceived += (s, e) =>
             {
                 foreach (var a in e.Message.Answers)
                 {
-                    Logger.Log($"[MdnsAnnouncer] Answer sent: {a.Name} ({a.Type})");
+                    System.Diagnostics.Debug.WriteLine($"[MdnsAnnouncer] Answer sent: {a.Name} ({a.Type})");
                 }
             };
 
