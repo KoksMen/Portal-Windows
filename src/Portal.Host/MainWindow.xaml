@@ -1722,13 +1722,19 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
-                                                    <!-- Left: Device Icon, Name, Transport Badge -->
-                                                    <StackPanel
+                                                    <!-- Left: Device Icon, Name, and Badges in responsive wrap layout -->
+                                                    <Grid
                                                         Grid.Column="0"
-                                                        Orientation="Horizontal"
-                                                        VerticalAlignment="Center"
-                                                        Margin="0,0,8,0">
+                                                        Margin="0,0,8,0"
+                                                        VerticalAlignment="Center">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- Device Icon -->
                                                         <Border
+                                                            Grid.Column="0"
                                                             Width="32"
                                                             Height="32"
                                                             CornerRadius="8"
@@ -1746,145 +1752,155 @@
                                                                 HorizontalAlignment="Center"
                                                                 VerticalAlignment="Center" />
                                                         </Border>
-                                                        <TextBlock
-                                                            VerticalAlignment="Center"
-                                                            FontSize="14"
-                                                            FontWeight="SemiBold"
-                                                            Foreground="White"
-                                                            TextTrimming="CharacterEllipsis"
-                                                            MaxWidth="200"
-                                                            ToolTip="{Binding Name}"
-                                                            Text="{Binding Name}" />
-                                                        <Border
-                                                            Margin="8,0,0,0"
-                                                            Padding="7,3"
-                                                            Background="#162544"
-                                                            BorderBrush="#29406e"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
+
+                                                        <!-- Name and Status Badges (Wraps gracefully if width is constrained) -->
+                                                        <WrapPanel
+                                                            Grid.Column="1"
+                                                            Orientation="Horizontal"
                                                             VerticalAlignment="Center">
-                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <Path
-                                                                    Width="11"
-                                                                    Height="11"
-                                                                    Margin="0,0,5,0"
-                                                                    Data="{Binding TransportIconData}"
-                                                                    Fill="#8cb8ff"
-                                                                    Stretch="Uniform"
-                                                                    VerticalAlignment="Center" />
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    FontWeight="Medium"
-                                                                    Foreground="#8cb8ff"
-                                                                    VerticalAlignment="Center"
-                                                                    Text="{Binding TransportBadgeText}" />
-                                                            </StackPanel>
-                                                        </Border>
+                                                            <TextBlock
+                                                                VerticalAlignment="Center"
+                                                                FontSize="14"
+                                                                FontWeight="SemiBold"
+                                                                Foreground="White"
+                                                                TextTrimming="CharacterEllipsis"
+                                                                MaxWidth="180"
+                                                                Margin="0,2,8,2"
+                                                                ToolTip="{Binding Name}"
+                                                                Text="{Binding Name}" />
 
-                                                        <!-- Secret Integrity Error Badge -->
-                                                        <Border
-                                                            Margin="6,0,0,0"
-                                                            Padding="6,2"
-                                                            Background="#3a111a"
-                                                            BorderBrush="#d94c64"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
-                                                            VerticalAlignment="Center"
-                                                            ToolTip="{Binding SecretIntegrityWarning}"
-                                                            Visibility="{Binding HasSecretIntegrityIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <TextBlock
-                                                                    Text="⚠️ "
-                                                                    FontSize="10"
-                                                                    VerticalAlignment="Center" />
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    FontWeight="SemiBold"
-                                                                    Foreground="#ff8099"
-                                                                    VerticalAlignment="Center"
-                                                                    Text="{Binding SecretIntegrityBadgeText}" />
-                                                            </StackPanel>
-                                                        </Border>
+                                                            <!-- Transport Badge -->
+                                                            <Border
+                                                                Margin="0,2,6,2"
+                                                                Padding="7,3"
+                                                                Background="#162544"
+                                                                BorderBrush="#29406e"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <Path
+                                                                        Width="11"
+                                                                        Height="11"
+                                                                        Margin="0,0,5,0"
+                                                                        Data="{Binding TransportIconData}"
+                                                                        Fill="#8cb8ff"
+                                                                        Stretch="Uniform"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="Medium"
+                                                                        Foreground="#8cb8ff"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding TransportBadgeText}" />
+                                                                </StackPanel>
+                                                            </Border>
 
-                                                        <!-- Password Valid Badge -->
-                                                        <Border
-                                                            Margin="6,0,0,0"
-                                                            Padding="6,2"
-                                                            Background="#102e1c"
-                                                            BorderBrush="#2bb85a"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
-                                                            VerticalAlignment="Center"
-                                                            ToolTip="{Binding PasswordStatusToolTip}"
-                                                            Visibility="{Binding IsPasswordValid, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <TextBlock
-                                                                    Text="✓ "
-                                                                    FontSize="10"
-                                                                    FontWeight="Bold"
-                                                                    Foreground="#4cd964"
-                                                                    VerticalAlignment="Center" />
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    FontWeight="SemiBold"
-                                                                    Foreground="#78e68b"
-                                                                    VerticalAlignment="Center"
-                                                                    Text="{Binding PasswordStatusText}" />
-                                                            </StackPanel>
-                                                        </Border>
+                                                            <!-- Secret Integrity Error Badge -->
+                                                            <Border
+                                                                Margin="0,2,6,2"
+                                                                Padding="6,2"
+                                                                Background="#3a111a"
+                                                                BorderBrush="#d94c64"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding SecretIntegrityWarning}"
+                                                                Visibility="{Binding HasSecretIntegrityIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock
+                                                                        Text="⚠️ "
+                                                                        FontSize="10"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#ff8099"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding SecretIntegrityBadgeText}" />
+                                                                </StackPanel>
+                                                            </Border>
 
-                                                        <!-- Password Invalid Badge -->
-                                                        <Border
-                                                            Margin="6,0,0,0"
-                                                            Padding="6,2"
-                                                            Background="#3d141a"
-                                                            BorderBrush="#e63946"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
-                                                            VerticalAlignment="Center"
-                                                            ToolTip="{Binding PasswordStatusToolTip}"
-                                                            Visibility="{Binding HasPasswordIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <TextBlock
-                                                                    Text="✕ "
-                                                                    FontSize="10"
-                                                                    FontWeight="Bold"
-                                                                    Foreground="#ff5c6c"
-                                                                    VerticalAlignment="Center" />
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    FontWeight="SemiBold"
-                                                                    Foreground="#ff8090"
-                                                                    VerticalAlignment="Center"
-                                                                    Text="{Binding PasswordStatusText}" />
-                                                            </StackPanel>
-                                                        </Border>
+                                                            <!-- Password Valid Badge -->
+                                                            <Border
+                                                                Margin="0,2,6,2"
+                                                                Padding="6,2"
+                                                                Background="#102e1c"
+                                                                BorderBrush="#2bb85a"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding PasswordStatusToolTip}"
+                                                                Visibility="{Binding IsPasswordValid, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock
+                                                                        Text="✓ "
+                                                                        FontSize="10"
+                                                                        FontWeight="Bold"
+                                                                        Foreground="#4cd964"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#78e68b"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding PasswordStatusText}" />
+                                                                </StackPanel>
+                                                            </Border>
 
-                                                        <!-- Password Checking Badge -->
-                                                        <Border
-                                                            Margin="6,0,0,0"
-                                                            Padding="6,2"
-                                                            Background="#302611"
-                                                            BorderBrush="#cca329"
-                                                            BorderThickness="1"
-                                                            CornerRadius="6"
-                                                            VerticalAlignment="Center"
-                                                            ToolTip="{Binding PasswordStatusToolTip}"
-                                                            Visibility="{Binding IsPasswordChecking, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                <TextBlock
-                                                                    Text="⏳ "
-                                                                    FontSize="10"
-                                                                    VerticalAlignment="Center" />
-                                                                <TextBlock
-                                                                    FontSize="10"
-                                                                    FontWeight="SemiBold"
-                                                                    Foreground="#f7d070"
-                                                                    VerticalAlignment="Center"
-                                                                    Text="{Binding PasswordStatusText}" />
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </StackPanel>
+                                                            <!-- Password Invalid Badge -->
+                                                            <Border
+                                                                Margin="0,2,6,2"
+                                                                Padding="6,2"
+                                                                Background="#3d141a"
+                                                                BorderBrush="#e63946"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding PasswordStatusToolTip}"
+                                                                Visibility="{Binding HasPasswordIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock
+                                                                        Text="✕ "
+                                                                        FontSize="10"
+                                                                        FontWeight="Bold"
+                                                                        Foreground="#ff5c6c"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#ff8090"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding PasswordStatusText}" />
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- Password Checking Badge -->
+                                                            <Border
+                                                                Margin="0,2,6,2"
+                                                                Padding="6,2"
+                                                                Background="#302611"
+                                                                BorderBrush="#cca329"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding PasswordStatusToolTip}"
+                                                                Visibility="{Binding IsPasswordChecking, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock
+                                                                        Text="⏳ "
+                                                                        FontSize="10"
+                                                                        VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#f7d070"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding PasswordStatusText}" />
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </WrapPanel>
+                                                    </Grid>
 
                                                     <!-- Right: Power Toggle Switch Button -->
                                                     <Button
