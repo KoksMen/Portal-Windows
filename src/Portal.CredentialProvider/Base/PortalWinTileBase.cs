@@ -347,9 +347,12 @@ public abstract class PortalWinTileBase : CredentialTile2
     {
         try
         {
-            if (_passwordControl != null && _passwordControl.Password != null && _passwordControl.Password.Length > 0)
+            if (string.IsNullOrEmpty(e.PropertyName) || e.PropertyName == "Password")
             {
-                OnManualPasswordInputChanged();
+                if (_passwordControl != null && _passwordControl.Password != null && _passwordControl.Password.Length > 0)
+                {
+                    OnManualPasswordInputChanged();
+                }
             }
         }
         catch

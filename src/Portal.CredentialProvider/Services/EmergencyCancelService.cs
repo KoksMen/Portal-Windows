@@ -221,6 +221,16 @@ public static class EmergencyCancelService
                     triggered = false;
                 }
 
+                // 3. Any typing key (letters, digits, space, etc.) without Ctrl or Alt:
+                // immediately abort active remote unlock so keystrokes go straight into password field
+                if (!isCtrlDown && !isAltDown && IsAnyTypingKeyPressed())
+                {
+                    if (PortalWinTile.HasActiveUnlockRequest)
+                    {
+                        PortalWinTile.OnTypingKeyDetected();
+                    }
+                }
+
                 Thread.Sleep(pollIntervalMs);
             }
             catch (ThreadAbortException)
@@ -233,5 +243,43 @@ public static class EmergencyCancelService
                 Thread.Sleep(200);
             }
         }
+    }
+
+    private static bool IsAnyTypingKeyPressed()
+    {
+        // 0-9 (0x30 - 0x39)
+        for (int vk = 0x30; vk <= 0x39; vk++)
+        {
+            if (GetAsyncKeyState(vk) < 0) return true;
+        }
+
+        // A-Z (0x41 - 0x5A)
+        for (int vk = 0x41; vk <= 0x5A; vk++)
+        {
+            if (GetAsyncKeyState(vk) < 0) return true;
+        }
+
+        // Numpad 0-9 (0x60 - 0x69)
+        for (int vk = 0x60; vk <= 0x69; vk++)
+        {
+            if (GetAsyncKeyState(vk) < 0) return true;
+        }
+
+        // Space (0x20), Backspace (0x08)
+        if (GetAsyncKeyState(0x20) < 0) return true;
+        if (GetAsyncKeyState(0x08) < 0) return true;
+
+        // OEM and punctuation keys: semicolon, plus, comma, minus, period, slash, tilde, brackets, quotes
+        for (int vk = 0xBA; vk <= 0xC0; vk++)
+        {
+            if (GetAsyncKeyState(vk) < 0) return true;
+        }
+
+        for (int vk = 0xDB; vk <= 0xDF; vk++)
+        {
+            if (GetAsyncKeyState(vk) < 0) return true;
+        }
+
+        return false;
     }
 }

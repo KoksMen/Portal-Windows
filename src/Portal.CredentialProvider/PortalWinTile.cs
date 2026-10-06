@@ -23,8 +23,67 @@ public class PortalWinTile : PortalWinTileBase
     private static string? _globalActiveOwner;
     private static volatile bool _isEmergencyRollbackActive;
     public static bool IsEmergencyRollbackActive => _isEmergencyRollbackActive;
+    public static bool HasActiveUnlockRequest
+    {
+        get
+        {
+            lock (_requestSync)
+            {
+                return _globalActiveRequestCts != null && !_globalActiveRequestCts.IsCancellationRequested;
+            }
+        }
+    }
     private bool _isRegisteredInTiles;
     private DateTime _requestStartedTimestamp = DateTime.MinValue;
+
+    public void FocusPasswordField()
+    {
+        if (_passwordControl != null)
+        {
+            try
+            {
+                if (_passwordControl.InteractiveState != FieldInteractiveState.Focused)
+                {
+                    _passwordControl.InteractiveState = FieldInteractiveState.Focused;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Failed to set password control focus: {ex.Message}");
+            }
+        }
+    }
+
+    public static void OnTypingKeyDetected()
+    {
+        PortalWinTile? targetTile;
+        lock (_tilesSync)
+        {
+            targetTile = _selectedTile
+                ?? _tiles.FirstOrDefault(t => t.IsSelected)
+                ?? _tiles.FirstOrDefault(t => t.AllowsHostInitiated)
+                ?? _tiles.FirstOrDefault();
+        }
+
+        if (targetTile == null) return;
+
+        targetTile.EnsureManualTypingMode();
+    }
+
+    public void EnsureManualTypingMode()
+    {
+        if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
+        {
+            _cancellationReason = "manual_typing";
+            Logger.Log("[PortalWinTile] Typing key detected; cancelling active remote unlock request.");
+            try { _activeRequestCts.Cancel(); } catch { }
+            DisconnectAllTransportsFast("Manual typing detected");
+            UpdateStatus("Manual password input.");
+            ShowRequestButton();
+        }
+
+        FocusPasswordField();
+    }
 
     private PortalWinProvider Provider => (PortalWinProvider)_providerBase;
     public bool AllowsHostInitiated => Provider.UnlockMode == UnlockMode.HostInitiated || Provider.UnlockMode == UnlockMode.Both;
@@ -46,6 +105,7 @@ public class PortalWinTile : PortalWinTileBase
             _cancelButton.OnClick = OnCancelUnlockClicked;
 
         ShowRequestButton();
+        FocusPasswordField();
         TryEarlyAutoRequestUnlock();
     }
 
@@ -61,6 +121,7 @@ public class PortalWinTile : PortalWinTileBase
         // Explicit tile selection must win over any provisional/early request
         // started before LogonUI finished selecting the user tile.
         TryAutoRequestUnlock(forceTakeover: true, source: "selected");
+        FocusPasswordField();
     }
 
     protected override void OnDeselected()
@@ -905,6 +966,7 @@ public class PortalWinTile : PortalWinTileBase
         DisconnectAllTransportsFast("Request cancelled by user");
         UpdateStatus("Cancelled by user.");
         ShowRequestButton();
+        FocusPasswordField();
     }
 
     protected override void OnManualPasswordInputChanged()
@@ -920,6 +982,8 @@ public class PortalWinTile : PortalWinTileBase
             UpdateStatus("Manual password input.");
             ShowRequestButton();
         }
+
+        FocusPasswordField();
     }
 
     private static void DisconnectAllTransportsFast(string reason)
@@ -987,6 +1051,7 @@ public class PortalWinTile : PortalWinTileBase
                 : FieldState.Hidden;
         }
         if (_cancelButton != null) _cancelButton.State = FieldState.Hidden;
+        FocusPasswordField();
     }
 
     private void ShowCancelButton()
@@ -1010,6 +1075,7 @@ public class PortalWinTile : PortalWinTileBase
                 : FieldState.DisplayInSelectedTile;
         }
         if (_cancelButton != null && _requestButton != null) _cancelButton.State = FieldState.Hidden;
+        FocusPasswordField();
     }
 
     private bool IsForUser(string username)
@@ -1073,6 +1139,7 @@ public class PortalWinTile : PortalWinTileBase
                 tile._activeRequestCts?.Cancel();
                 tile.UpdateStatus("Emergency rollback: request cancelled");
                 tile.ShowRequestButton();
+                tile.FocusPasswordField();
             }
             catch (Exception ex)
             {

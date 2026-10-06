@@ -80,14 +80,6 @@ public class PortalWinProvider : PortalWinProviderBase
         statusDetailsLabel.State = FieldState.Hidden;
         yield return statusDetailsLabel;
 
-        var showDetailsButton = new CommandLinkControl("ShowDetailsButton", Localization.T("Show details"));
-        showDetailsButton.State = FieldState.DisplayInSelectedTile;
-        yield return showDetailsButton;
-
-        var hideDetailsButton = new CommandLinkControl("HideDetailsButton", Localization.T("Hide details"));
-        hideDetailsButton.State = FieldState.Hidden;
-        yield return hideDetailsButton;
-
         var usernameField = new TextboxControl("UsernameField", Localization.T("Username"));
         usernameField.State = cpus == UsageScenario.CredUI
             ? FieldState.DisplayInSelectedTile
@@ -96,6 +88,7 @@ public class PortalWinProvider : PortalWinProviderBase
 
         var passwordField = new SecurePasswordTextboxControl("PasswordField", Localization.T("Password"));
         passwordField.State = FieldState.DisplayInSelectedTile;
+        passwordField.InteractiveState = FieldInteractiveState.Focused;
         yield return passwordField;
 
         yield return new SubmitButtonControl("SubmitButton", Localization.T("Unlock"), passwordField);
@@ -111,6 +104,14 @@ public class PortalWinProvider : PortalWinProviderBase
         var cancelButton = new CommandLinkControl("CancelButton", Localization.T("Cancel Request")).AsPushButton();
         cancelButton.State = FieldState.Hidden;
         yield return cancelButton;
+
+        var showDetailsButton = new CommandLinkControl("ShowDetailsButton", Localization.T("Show details"));
+        showDetailsButton.State = FieldState.DisplayInSelectedTile;
+        yield return showDetailsButton;
+
+        var hideDetailsButton = new CommandLinkControl("HideDetailsButton", Localization.T("Hide details"));
+        hideDetailsButton.State = FieldState.Hidden;
+        yield return hideDetailsButton;
     }
 
     public override bool ShouldIncludeGenericTile() => CredentialProviderTilePolicy.ShouldIncludeGenericTile(UsageScenario);
