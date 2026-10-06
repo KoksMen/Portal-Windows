@@ -152,6 +152,7 @@ public static class EmergencyCancelService
         int desktopReattachCounter = 0;
         int currentRetryHoldMs = 0;
         bool retryTriggered = false;
+        DateTime lastRetryTriggerTime = DateTime.MinValue;
 
         while (!token.IsCancellationRequested)
         {
@@ -171,9 +172,10 @@ public static class EmergencyCancelService
                 if (isRetryDown)
                 {
                     currentRetryHoldMs += pollIntervalMs;
-                    if (!retryTriggered)
+                    if (!retryTriggered && currentRetryHoldMs >= 30 && (DateTime.UtcNow - lastRetryTriggerTime).TotalMilliseconds > 800)
                     {
                         retryTriggered = true;
+                        lastRetryTriggerTime = DateTime.UtcNow;
                         Logger.LogWarning("[EmergencyCancelService] Retry shortcut detected! (Ctrl + Shift pressed).");
                         try
                         {

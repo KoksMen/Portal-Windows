@@ -602,14 +602,18 @@ public class PortalWinTile : PortalWinTileBase
                 if (string.Equals(_globalActiveOwner, owner, StringComparison.OrdinalIgnoreCase))
                 {
                     // Suppress duplicate auto-triggers when LogonUI is re-shown (e.g. clock -> LogonUI).
-                    // Allow only explicit button re-request to replace the current in-flight request.
-                    if (!string.Equals(source, "button", StringComparison.OrdinalIgnoreCase))
+                    // Allow explicit user actions (button, retry shortcut, Enter) to replace the current in-flight request.
+                    bool isExplicitReRequest = string.Equals(source, "button", StringComparison.OrdinalIgnoreCase)
+                        || source.StartsWith("shortcut", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(source, "keyboard_enter", StringComparison.OrdinalIgnoreCase);
+
+                    if (!isExplicitReRequest)
                     {
                         Logger.Log($"[PortalWinTile] Duplicate request suppressed for owner '{owner}' (source={source}). Active request is still in progress.");
                         return false;
                     }
 
-                    Logger.Log($"[PortalWinTile] Re-request requested by button for '{owner}'. Replacing active request.");
+                    Logger.Log($"[PortalWinTile] Re-request requested by {source} for '{owner}'. Replacing active request.");
                     try { _globalActiveRequestCts.Cancel(); } catch { }
                     _globalActiveOwner = owner;
                     _globalActiveRequestCts = cts;
@@ -1086,10 +1090,8 @@ public class PortalWinTile : PortalWinTileBase
 
     public static bool TryTriggerRetryShortcut(string source = "shortcut_ctrl_shift")
     {
-        if (_isEmergencyRollbackActive)
-        {
-            return false;
-        }
+        // An explicit user retry shortcut MUST clear the emergency rollback state
+        _isEmergencyRollbackActive = false;
 
         PortalWinTile? targetTile;
         lock (_tilesSync)
@@ -1100,29 +1102,40 @@ public class PortalWinTile : PortalWinTileBase
                 ?? _tiles.FirstOrDefault();
         }
 
-        if (targetTile == null || !targetTile.AllowsHostInitiated)
+        if (targetTile == null)
         {
+            Logger.LogWarning($"[PortalWinTile] Retry shortcut ({source}) ignored: no tile found.");
             return false;
         }
 
-        // If an unlock request is already active, ignore retry shortcut
+        if (!targetTile.AllowsHostInitiated)
+        {
+            Logger.LogWarning($"[PortalWinTile] Retry shortcut ({source}) ignored: tile does not allow host-initiated unlock (mode={targetTile.Provider.UnlockMode}).");
+            return false;
+        }
+
+        // If an unlock request is already active, cancel it to allow a clean restart
         if (targetTile._activeRequestCts != null && !targetTile._activeRequestCts.IsCancellationRequested)
         {
-            Logger.Log($"[PortalWinTile] Retry shortcut ({source}) ignored: active request already in progress.");
-            return false;
-        }
-
-        // If user is currently typing password characters, don't interrupt
-        if (targetTile._passwordControl != null && targetTile._passwordControl.Password != null && targetTile._passwordControl.Password.Length > 0)
-        {
-            string? plain = targetTile.GetPlaintextPassword(targetTile._passwordControl.Password);
-            if (!string.IsNullOrWhiteSpace(plain))
+            Logger.Log($"[PortalWinTile] Retry shortcut ({source}): cancelling existing active request to restart fresh.");
+            try
             {
-                return false;
+                targetTile._activeRequestCts.Cancel();
             }
+            catch { }
         }
 
-        Logger.Log($"[PortalWinTile] Retry shortcut (Ctrl + Shift) pressed on idle tile; starting remote unlock retry (source={source}).");
+        // Clear any characters in the password box so tile is clean
+        if (targetTile._passwordControl != null)
+        {
+            try
+            {
+                targetTile._passwordControl.Password = new System.Security.SecureString();
+            }
+            catch { }
+        }
+
+        Logger.Log($"[PortalWinTile] Retry shortcut ({source}) triggered; starting remote unlock retry.");
         targetTile.StartUnlockRequest(forceTakeover: true, source: source);
         return true;
     }
