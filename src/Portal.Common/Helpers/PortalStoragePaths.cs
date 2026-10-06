@@ -39,6 +39,11 @@ public static class PortalStoragePaths
 
     private static void EnsureInitialized()
     {
+        if (_initialized)
+        {
+            return;
+        }
+
         lock (Sync)
         {
             if (_initialized)
@@ -46,31 +51,36 @@ public static class PortalStoragePaths
                 return;
             }
 
-            var newRootDirectory = Path.Combine(GetCommonApplicationData(), CurrentRootFolderName);
-            var newLogsDirectory = Path.Combine(newRootDirectory, "Logs");
-
-            Directory.CreateDirectory(newRootDirectory);
-            // Harden root storage directory: Administrators/SYSTEM full control, Users read only
-            SecurityHardeningHelper.HardenDirectoryPermissions(newRootDirectory);
-
-            Directory.CreateDirectory(newLogsDirectory);
-            // Allow Authenticated Users to write log files in dedicated Logs subfolder
-            EnsureLogsDirectoryPermissions(newLogsDirectory);
-
             _initialized = true;
+
+            try
+            {
+                var newRootDirectory = Path.Combine(GetCommonApplicationData(), CurrentRootFolderName);
+                var newLogsDirectory = Path.Combine(newRootDirectory, "Logs");
+
+                Directory.CreateDirectory(newRootDirectory);
+                EnsureDirectoryPermissions(newRootDirectory);
+
+                Directory.CreateDirectory(newLogsDirectory);
+                EnsureDirectoryPermissions(newLogsDirectory);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[PortalStoragePaths] Error during directory initialization: {ex}");
+            }
         }
     }
 
-    private static void EnsureLogsDirectoryPermissions(string logsDirectoryPath)
+    private static void EnsureDirectoryPermissions(string directoryPath)
     {
         try
         {
-            if (!OperatingSystem.IsWindows())
+            if (!OperatingSystem.IsWindows() || !Directory.Exists(directoryPath))
             {
                 return;
             }
 
-            var dirInfo = new DirectoryInfo(logsDirectoryPath);
+            var dirInfo = new DirectoryInfo(directoryPath);
             var dirSecurity = dirInfo.GetAccessControl();
 
             var authenticatedUsers = new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null);
@@ -86,7 +96,7 @@ public static class PortalStoragePaths
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[PortalStoragePaths] Failed to set directory ACLs on '{logsDirectoryPath}': {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[PortalStoragePaths] Failed to set directory ACLs on '{directoryPath}': {ex.Message}");
         }
     }
 }

@@ -31,11 +31,11 @@ public static class SecurityHardeningHelper
         try
         {
             SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_APPLICATION_DIR);
-            Logger.Log("[SecurityHardening] SetDefaultDllDirectories configured for safe DLL search path.");
+            SafeLog("[SecurityHardening] SetDefaultDllDirectories configured for safe DLL search path.");
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[SecurityHardening] Failed to set default DLL directories: {ex.Message}");
+            SafeLogWarning($"[SecurityHardening] Failed to set default DLL directories: {ex.Message}");
         }
     }
 
@@ -100,17 +100,17 @@ public static class SecurityHardeningHelper
                 AccessControlType.Allow));
 
             dirInfo.SetAccessControl(dirSecurity);
-            Logger.Log($"[SecurityHardening] Hardened directory permissions on '{directoryPath}'.");
+            SafeLog($"[SecurityHardening] Hardened directory permissions on '{directoryPath}'.");
             return true;
         }
         catch (UnauthorizedAccessException ex)
         {
-            Logger.LogWarning($"[SecurityHardening] Insufficient privileges to set ACLs on '{directoryPath}': {ex.Message}");
+            SafeLogWarning($"[SecurityHardening] Insufficient privileges to set ACLs on '{directoryPath}': {ex.Message}");
             return false;
         }
         catch (Exception ex)
         {
-            Logger.LogError($"[SecurityHardening] Failed to harden directory '{directoryPath}'", ex);
+            SafeLogError($"[SecurityHardening] Failed to harden directory '{directoryPath}'", ex);
             return false;
         }
     }
@@ -155,8 +155,62 @@ public static class SecurityHardeningHelper
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[SecurityHardening] Failed to harden file '{filePath}': {ex.Message}");
+            SafeLogWarning($"[SecurityHardening] Failed to harden file '{filePath}': {ex.Message}");
             return false;
+        }
+    }
+
+    private static void SafeLog(string message)
+    {
+        try
+        {
+            if (Logger.IsInitialized)
+            {
+                Logger.Log(message);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine(message);
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private static void SafeLogWarning(string message)
+    {
+        try
+        {
+            if (Logger.IsInitialized)
+            {
+                Logger.LogWarning(message);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine(message);
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private static void SafeLogError(string message, Exception ex)
+    {
+        try
+        {
+            if (Logger.IsInitialized)
+            {
+                Logger.LogError(message, ex);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"{message}: {ex}");
+            }
+        }
+        catch
+        {
         }
     }
 }

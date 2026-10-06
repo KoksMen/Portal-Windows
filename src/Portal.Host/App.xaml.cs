@@ -17,6 +17,7 @@ public partial class App : Application
     private const string ActivationPipeName = "Portal.Host.ActivationPipe";
 
     private Mutex? _singleInstanceMutex;
+    private bool _hasMutexOwnership;
     private CancellationTokenSource? _pipeCts;
     private Task? _pipeServerTask;
 
@@ -138,8 +139,18 @@ public partial class App : Application
         finally
         {
             _pipeCts?.Dispose();
-            _singleInstanceMutex?.ReleaseMutex();
+            if (_hasMutexOwnership && _singleInstanceMutex != null)
+            {
+                try
+                {
+                    _singleInstanceMutex.ReleaseMutex();
+                }
+                catch (ApplicationException)
+                {
+                }
+            }
             _singleInstanceMutex?.Dispose();
+            _singleInstanceMutex = null;
         }
 
         base.OnExit(e);
@@ -150,10 +161,18 @@ public partial class App : Application
         try
         {
             _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out var createdNew);
+            _hasMutexOwnership = createdNew;
+            if (!createdNew)
+            {
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+            }
             return createdNew;
         }
         catch
         {
+            _hasMutexOwnership = false;
+            _singleInstanceMutex = null;
             return false;
         }
     }
