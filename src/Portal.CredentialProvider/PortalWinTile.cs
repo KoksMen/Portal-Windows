@@ -1084,7 +1084,7 @@ public class PortalWinTile : PortalWinTileBase
             false);
     }
 
-    public static bool TryTriggerRetryShortcut(string source = "shortcut_alt_space")
+    public static bool TryTriggerRetryShortcut(string source = "shortcut_ctrl_shift")
     {
         if (_isEmergencyRollbackActive)
         {
@@ -1108,6 +1108,7 @@ public class PortalWinTile : PortalWinTileBase
         // If an unlock request is already active, ignore retry shortcut
         if (targetTile._activeRequestCts != null && !targetTile._activeRequestCts.IsCancellationRequested)
         {
+            Logger.Log($"[PortalWinTile] Retry shortcut ({source}) ignored: active request already in progress.");
             return false;
         }
 
@@ -1121,7 +1122,7 @@ public class PortalWinTile : PortalWinTileBase
             }
         }
 
-        Logger.Log($"[PortalWinTile] Retry shortcut (Left Alt + Space) pressed on idle tile; starting remote unlock retry (source={source}).");
+        Logger.Log($"[PortalWinTile] Retry shortcut (Ctrl + Shift) pressed on idle tile; starting remote unlock retry (source={source}).");
         targetTile.StartUnlockRequest(forceTakeover: true, source: source);
         return true;
     }

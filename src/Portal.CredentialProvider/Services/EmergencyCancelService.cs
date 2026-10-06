@@ -39,7 +39,9 @@ public static class EmergencyCancelService
     private const int VK_LMENU = 0xA4; // Left Alt
     private const int VK_RMENU = 0xA5; // Right Alt
     private const int VK_MENU = 0x12; // Alt
-    private const int VK_SPACE = 0x20; // Spacebar
+    private const int VK_LSHIFT = 0xA0; // Left Shift
+    private const int VK_RSHIFT = 0xA1; // Right Shift
+    private const int VK_SHIFT = 0x10; // Shift
 
     private const uint DESKTOP_READOBJECTS = 0x0001;
     private const uint DESKTOP_WRITEOBJECTS = 0x0080;
@@ -148,7 +150,8 @@ public static class EmergencyCancelService
         int currentHoldMs = 0;
         bool triggered = false;
         int desktopReattachCounter = 0;
-        bool wasRetryShortcutDown = false;
+        int currentRetryHoldMs = 0;
+        bool retryTriggered = false;
 
         while (!token.IsCancellationRequested)
         {
@@ -161,24 +164,35 @@ public static class EmergencyCancelService
 
                 bool isCtrlDown = (GetAsyncKeyState(VK_LCONTROL) < 0) || (GetAsyncKeyState(VK_CONTROL) < 0) || (GetAsyncKeyState(VK_RCONTROL) < 0);
                 bool isAltDown = (GetAsyncKeyState(VK_LMENU) < 0) || (GetAsyncKeyState(VK_MENU) < 0) || (GetAsyncKeyState(VK_RMENU) < 0);
-                bool isSpaceDown = (GetAsyncKeyState(VK_SPACE) < 0);
+                bool isShiftDown = (GetAsyncKeyState(VK_LSHIFT) < 0) || (GetAsyncKeyState(VK_SHIFT) < 0) || (GetAsyncKeyState(VK_RSHIFT) < 0);
 
-                // Left Alt + Space (with Ctrl NOT pressed) triggers remote unlock retry
-                bool isRetryShortcutDown = isAltDown && isSpaceDown && !isCtrlDown;
-                if (isRetryShortcutDown && !wasRetryShortcutDown)
+                // 1. Retry shortcut: Ctrl + Shift (without Alt)
+                bool isRetryDown = isCtrlDown && isShiftDown && !isAltDown;
+                if (isRetryDown)
                 {
-                    try
+                    currentRetryHoldMs += pollIntervalMs;
+                    if (!retryTriggered)
                     {
-                        PortalWinTile.TryTriggerRetryShortcut("shortcut_alt_space");
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("[EmergencyCancelService] Error during retry shortcut trigger (Alt + Space)", ex);
+                        retryTriggered = true;
+                        Logger.LogWarning("[EmergencyCancelService] Retry shortcut detected! (Ctrl + Shift pressed).");
+                        try
+                        {
+                            PortalWinTile.TryTriggerRetryShortcut("shortcut_ctrl_shift");
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError("[EmergencyCancelService] Error during retry shortcut trigger (Ctrl + Shift)", ex);
+                        }
                     }
                 }
-                wasRetryShortcutDown = isRetryShortcutDown;
+                else
+                {
+                    currentRetryHoldMs = 0;
+                    retryTriggered = false;
+                }
 
-                if (emergencyCancelEnabled && isCtrlDown && isAltDown)
+                // 2. Emergency rollback shortcut: Ctrl + Alt (without Shift)
+                if (emergencyCancelEnabled && isCtrlDown && isAltDown && !isShiftDown)
                 {
                     currentHoldMs += pollIntervalMs;
 
