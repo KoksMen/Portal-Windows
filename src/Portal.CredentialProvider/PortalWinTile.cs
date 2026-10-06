@@ -24,6 +24,7 @@ public class PortalWinTile : PortalWinTileBase
     private static volatile bool _isEmergencyRollbackActive;
     public static bool IsEmergencyRollbackActive => _isEmergencyRollbackActive;
     private bool _isRegisteredInTiles;
+    private DateTime _requestStartedTimestamp = DateTime.MinValue;
 
     private PortalWinProvider Provider => (PortalWinProvider)_providerBase;
     public bool AllowsHostInitiated => Provider.UnlockMode == UnlockMode.HostInitiated || Provider.UnlockMode == UnlockMode.Both;
@@ -435,6 +436,7 @@ public class PortalWinTile : PortalWinTileBase
         }
 
         UpdateStatus("Searching device...");
+        _requestStartedTimestamp = DateTime.UtcNow;
         ShowCancelButton();
 
         var requestTimer = Stopwatch.StartNew();
@@ -887,6 +889,13 @@ public class PortalWinTile : PortalWinTileBase
 
     private void OnCancelUnlockClicked()
     {
+        double elapsedFromStartMs = (DateTime.UtcNow - _requestStartedTimestamp).TotalMilliseconds;
+        if (elapsedFromStartMs < 500)
+        {
+            Logger.Log($"[Tile] Cancel request ignored due to start debounce ({elapsedFromStartMs:F0}ms < 500ms).");
+            return;
+        }
+
         _cancellationReason = "user";
         _activeRequestCts?.Cancel();
         DisconnectAllTransportsFast("Request cancelled by user");
@@ -900,6 +909,23 @@ public class PortalWinTile : PortalWinTileBase
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
         {
+            string? plain = GetPlaintextPassword(_passwordControl?.Password);
+
+            // If the password box contains only whitespace (e.g. from pressing Space to retry),
+            // do not cancel the active request. Clean the password box instead.
+            if (string.IsNullOrWhiteSpace(plain))
+            {
+                try
+                {
+                    if (_passwordControl != null && _passwordControl.Password != null && _passwordControl.Password.Length > 0)
+                    {
+                        _passwordControl.Password = new System.Security.SecureString();
+                    }
+                }
+                catch { }
+                return;
+            }
+
             _cancellationReason = "manual_typing";
             Logger.Log("[Tile] Manual password input detected; cancelling active remote unlock request.");
             _activeRequestCts.Cancel();
@@ -912,20 +938,17 @@ public class PortalWinTile : PortalWinTileBase
         // If tile is idle and user typed Space in an empty password field:
         if (AllowsHostInitiated && (_activeRequestCts == null || _activeRequestCts.IsCancellationRequested))
         {
-            if (_passwordControl != null && _passwordControl.Password != null && _passwordControl.Password.Length == 1)
+            string? plain = GetPlaintextPassword(_passwordControl?.Password);
+            if (string.IsNullOrWhiteSpace(plain) && _passwordControl?.Password != null && _passwordControl.Password.Length > 0)
             {
-                string? plain = GetPlaintextPassword(_passwordControl.Password);
-                if (plain == " ")
+                try
                 {
-                    try
-                    {
-                        _passwordControl.Password = new System.Security.SecureString();
-                    }
-                    catch { }
-
-                    Logger.Log("[PortalWinTile] Space key entered in password field on idle tile; starting remote unlock retry (source=keyboard_space).");
-                    StartUnlockRequest(forceTakeover: true, source: "keyboard_space");
+                    _passwordControl.Password = new System.Security.SecureString();
                 }
+                catch { }
+
+                Logger.Log("[PortalWinTile] Space key entered in password field on idle tile; starting remote unlock retry (source=keyboard_space).");
+                StartUnlockRequest(forceTakeover: true, source: "keyboard_space");
             }
         }
     }
@@ -1106,7 +1129,10 @@ public class PortalWinTile : PortalWinTileBase
         PortalWinTile? targetTile;
         lock (_tilesSync)
         {
-            targetTile = _selectedTile ?? _tiles.FirstOrDefault(t => t.IsSelected) ?? (_tiles.Count == 1 ? _tiles.First() : null);
+            targetTile = _selectedTile
+                ?? _tiles.FirstOrDefault(t => t.IsSelected)
+                ?? _tiles.FirstOrDefault(t => t.AllowsHostInitiated)
+                ?? _tiles.FirstOrDefault();
         }
 
         if (targetTile == null || !targetTile.AllowsHostInitiated)

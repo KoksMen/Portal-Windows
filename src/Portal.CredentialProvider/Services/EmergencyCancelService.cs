@@ -131,15 +131,12 @@ public static class EmergencyCancelService
 
         TryAttachToActiveDesktop(callerDesktop);
 
+        bool emergencyCancelEnabled = true;
         int holdDurationMs = 0;
         try
         {
             var config = PortalWinConfig.Load();
-            if (!config.EmergencyCancelEnabled)
-            {
-                Logger.Log("[EmergencyCancelService] Emergency cancel disabled in configuration.");
-                return;
-            }
+            emergencyCancelEnabled = config.EmergencyCancelEnabled;
             holdDurationMs = Math.Max(0, config.EmergencyCancelHoldDurationMs);
         }
         catch (Exception ex)
@@ -179,7 +176,7 @@ public static class EmergencyCancelService
                 }
                 wasSpaceDown = isSpaceDown;
 
-                if (isCtrlDown && isAltDown)
+                if (emergencyCancelEnabled && isCtrlDown && isAltDown)
                 {
                     currentHoldMs += pollIntervalMs;
 
