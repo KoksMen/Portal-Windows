@@ -39,6 +39,7 @@ public static class EmergencyCancelService
     private const int VK_LMENU = 0xA4; // Left Alt
     private const int VK_RMENU = 0xA5; // Right Alt
     private const int VK_MENU = 0x12; // Alt
+    private const int VK_SPACE = 0x20; // Spacebar
 
     private const uint DESKTOP_READOBJECTS = 0x0001;
     private const uint DESKTOP_WRITEOBJECTS = 0x0080;
@@ -150,6 +151,7 @@ public static class EmergencyCancelService
         int currentHoldMs = 0;
         bool triggered = false;
         int desktopReattachCounter = 0;
+        bool wasSpaceDown = false;
 
         while (!token.IsCancellationRequested)
         {
@@ -162,6 +164,20 @@ public static class EmergencyCancelService
 
                 bool isCtrlDown = (GetAsyncKeyState(VK_LCONTROL) < 0) || (GetAsyncKeyState(VK_CONTROL) < 0) || (GetAsyncKeyState(VK_RCONTROL) < 0);
                 bool isAltDown = (GetAsyncKeyState(VK_LMENU) < 0) || (GetAsyncKeyState(VK_MENU) < 0) || (GetAsyncKeyState(VK_RMENU) < 0);
+                bool isSpaceDown = (GetAsyncKeyState(VK_SPACE) < 0);
+
+                if (isSpaceDown && !wasSpaceDown && !isCtrlDown && !isAltDown)
+                {
+                    try
+                    {
+                        PortalWinTile.TryTriggerSpaceRetry();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError("[EmergencyCancelService] Error during space retry trigger", ex);
+                    }
+                }
+                wasSpaceDown = isSpaceDown;
 
                 if (isCtrlDown && isAltDown)
                 {

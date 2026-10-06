@@ -18,6 +18,7 @@ public class PortalWinTile : PortalWinTileBase
     private static readonly object _requestSync = new();
     private static readonly object _tilesSync = new();
     private static readonly HashSet<PortalWinTile> _tiles = new();
+    private static PortalWinTile? _selectedTile;
     private static CancellationTokenSource? _globalActiveRequestCts;
     private static string? _globalActiveOwner;
     private static volatile bool _isEmergencyRollbackActive;
@@ -50,11 +51,27 @@ public class PortalWinTile : PortalWinTileBase
     protected override void OnSelected()
     {
         base.OnSelected();
+        lock (_tilesSync)
+        {
+            _selectedTile = this;
+        }
         CancelHostInitiatedRequestsOnOtherTiles();
         ApplyHostInitiatedTlsPolicy(PortalWinConfig.Load(), "selected");
         // Explicit tile selection must win over any provisional/early request
         // started before LogonUI finished selecting the user tile.
         TryAutoRequestUnlock(forceTakeover: true, source: "selected");
+    }
+
+    protected override void OnDeselected()
+    {
+        base.OnDeselected();
+        lock (_tilesSync)
+        {
+            if (ReferenceEquals(_selectedTile, this))
+            {
+                _selectedTile = null;
+            }
+        }
     }
 
     private void RegisterTileInstance()
@@ -889,6 +906,27 @@ public class PortalWinTile : PortalWinTileBase
             DisconnectAllTransportsFast("Manual password input");
             UpdateStatus("Manual password input.");
             ShowRequestButton();
+            return;
+        }
+
+        // If tile is idle and user typed Space in an empty password field:
+        if (AllowsHostInitiated && (_activeRequestCts == null || _activeRequestCts.IsCancellationRequested))
+        {
+            if (_passwordControl != null && _passwordControl.Password != null && _passwordControl.Password.Length == 1)
+            {
+                string? plain = GetPlaintextPassword(_passwordControl.Password);
+                if (plain == " ")
+                {
+                    try
+                    {
+                        _passwordControl.Password = new System.Security.SecureString();
+                    }
+                    catch { }
+
+                    Logger.Log("[PortalWinTile] Space key entered in password field on idle tile; starting remote unlock retry (source=keyboard_space).");
+                    StartUnlockRequest(forceTakeover: true, source: "keyboard_space");
+                }
+            }
         }
     }
 
@@ -1056,6 +1094,52 @@ public class PortalWinTile : PortalWinTileBase
             Localization.T("Emergency rollback"),
             Localization.T("The authorization process was cancelled via emergency shortcut (Left Ctrl + Left Alt)."),
             false);
+    }
+
+    public static bool TryTriggerSpaceRetry()
+    {
+        if (_isEmergencyRollbackActive)
+        {
+            return false;
+        }
+
+        PortalWinTile? targetTile;
+        lock (_tilesSync)
+        {
+            targetTile = _selectedTile ?? _tiles.FirstOrDefault(t => t.IsSelected) ?? (_tiles.Count == 1 ? _tiles.First() : null);
+        }
+
+        if (targetTile == null || !targetTile.AllowsHostInitiated)
+        {
+            return false;
+        }
+
+        // If an unlock request is already active, ignore space press
+        if (targetTile._activeRequestCts != null && !targetTile._activeRequestCts.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        // Check if user has entered characters into the password field
+        if (targetTile._passwordControl != null && targetTile._passwordControl.Password != null && targetTile._passwordControl.Password.Length > 0)
+        {
+            string? plain = targetTile.GetPlaintextPassword(targetTile._passwordControl.Password);
+            if (!string.IsNullOrWhiteSpace(plain))
+            {
+                // Real password is being typed, do not intercept
+                return false;
+            }
+
+            try
+            {
+                targetTile._passwordControl.Password = new System.Security.SecureString();
+            }
+            catch { }
+        }
+
+        Logger.Log("[PortalWinTile] Space key pressed on idle tile; starting remote unlock retry (source=keyboard_space).");
+        targetTile.StartUnlockRequest(forceTakeover: true, source: "keyboard_space");
+        return true;
     }
 
     protected override void OnLogonStatusReported(int ntStatusCode, int ntSubstatusCode, out string optionalStatusText, out Lithnet.CredentialProvider.StatusIcon optionalStatusIcon)
