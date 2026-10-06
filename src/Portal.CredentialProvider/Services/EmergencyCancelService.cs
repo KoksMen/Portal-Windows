@@ -148,7 +148,7 @@ public static class EmergencyCancelService
         int currentHoldMs = 0;
         bool triggered = false;
         int desktopReattachCounter = 0;
-        bool wasSpaceDown = false;
+        bool wasRetryShortcutDown = false;
 
         while (!token.IsCancellationRequested)
         {
@@ -163,18 +163,20 @@ public static class EmergencyCancelService
                 bool isAltDown = (GetAsyncKeyState(VK_LMENU) < 0) || (GetAsyncKeyState(VK_MENU) < 0) || (GetAsyncKeyState(VK_RMENU) < 0);
                 bool isSpaceDown = (GetAsyncKeyState(VK_SPACE) < 0);
 
-                if (isSpaceDown && !wasSpaceDown && !isCtrlDown && !isAltDown)
+                // Left Alt + Space (with Ctrl NOT pressed) triggers remote unlock retry
+                bool isRetryShortcutDown = isAltDown && isSpaceDown && !isCtrlDown;
+                if (isRetryShortcutDown && !wasRetryShortcutDown)
                 {
                     try
                     {
-                        PortalWinTile.TryTriggerSpaceRetry();
+                        PortalWinTile.TryTriggerRetryShortcut("shortcut_alt_space");
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogError("[EmergencyCancelService] Error during space retry trigger", ex);
+                        Logger.LogError("[EmergencyCancelService] Error during retry shortcut trigger (Alt + Space)", ex);
                     }
                 }
-                wasSpaceDown = isSpaceDown;
+                wasRetryShortcutDown = isRetryShortcutDown;
 
                 if (emergencyCancelEnabled && isCtrlDown && isAltDown)
                 {

@@ -909,47 +909,12 @@ public class PortalWinTile : PortalWinTileBase
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
         {
-            string? plain = GetPlaintextPassword(_passwordControl?.Password);
-
-            // If the password box contains only whitespace (e.g. from pressing Space to retry),
-            // do not cancel the active request. Clean the password box instead.
-            if (string.IsNullOrWhiteSpace(plain))
-            {
-                try
-                {
-                    if (_passwordControl != null && _passwordControl.Password != null && _passwordControl.Password.Length > 0)
-                    {
-                        _passwordControl.Password = new System.Security.SecureString();
-                    }
-                }
-                catch { }
-                return;
-            }
-
             _cancellationReason = "manual_typing";
             Logger.Log("[Tile] Manual password input detected; cancelling active remote unlock request.");
             _activeRequestCts.Cancel();
             DisconnectAllTransportsFast("Manual password input");
             UpdateStatus("Manual password input.");
             ShowRequestButton();
-            return;
-        }
-
-        // If tile is idle and user typed Space in an empty password field:
-        if (AllowsHostInitiated && (_activeRequestCts == null || _activeRequestCts.IsCancellationRequested))
-        {
-            string? plain = GetPlaintextPassword(_passwordControl?.Password);
-            if (string.IsNullOrWhiteSpace(plain) && _passwordControl?.Password != null && _passwordControl.Password.Length > 0)
-            {
-                try
-                {
-                    _passwordControl.Password = new System.Security.SecureString();
-                }
-                catch { }
-
-                Logger.Log("[PortalWinTile] Space key entered in password field on idle tile; starting remote unlock retry (source=keyboard_space).");
-                StartUnlockRequest(forceTakeover: true, source: "keyboard_space");
-            }
         }
     }
 
@@ -1119,7 +1084,7 @@ public class PortalWinTile : PortalWinTileBase
             false);
     }
 
-    public static bool TryTriggerSpaceRetry()
+    public static bool TryTriggerRetryShortcut(string source = "shortcut_alt_space")
     {
         if (_isEmergencyRollbackActive)
         {
@@ -1140,31 +1105,24 @@ public class PortalWinTile : PortalWinTileBase
             return false;
         }
 
-        // If an unlock request is already active, ignore space press
+        // If an unlock request is already active, ignore retry shortcut
         if (targetTile._activeRequestCts != null && !targetTile._activeRequestCts.IsCancellationRequested)
         {
             return false;
         }
 
-        // Check if user has entered characters into the password field
+        // If user is currently typing password characters, don't interrupt
         if (targetTile._passwordControl != null && targetTile._passwordControl.Password != null && targetTile._passwordControl.Password.Length > 0)
         {
             string? plain = targetTile.GetPlaintextPassword(targetTile._passwordControl.Password);
             if (!string.IsNullOrWhiteSpace(plain))
             {
-                // Real password is being typed, do not intercept
                 return false;
             }
-
-            try
-            {
-                targetTile._passwordControl.Password = new System.Security.SecureString();
-            }
-            catch { }
         }
 
-        Logger.Log("[PortalWinTile] Space key pressed on idle tile; starting remote unlock retry (source=keyboard_space).");
-        targetTile.StartUnlockRequest(forceTakeover: true, source: "keyboard_space");
+        Logger.Log($"[PortalWinTile] Retry shortcut (Left Alt + Space) pressed on idle tile; starting remote unlock retry (source={source}).");
+        targetTile.StartUnlockRequest(forceTakeover: true, source: source);
         return true;
     }
 
