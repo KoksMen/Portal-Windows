@@ -79,6 +79,70 @@ public abstract class DeviceModel : INotifyPropertyChanged
     [JsonIgnore]
     public string EditToolTip => Helpers.Localization.T("Edit Account");
 
+    private PasswordValidationStatus _passwordStatus = PasswordValidationStatus.Unknown;
+    private string? _passwordStatusDetail;
+
+    [JsonIgnore]
+    public PasswordValidationStatus PasswordStatus
+    {
+        get => _passwordStatus;
+        set
+        {
+            if (_passwordStatus != value)
+            {
+                _passwordStatus = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PasswordStatus)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PasswordStatusText)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PasswordStatusToolTip)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPasswordValid)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasPasswordIssue)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPasswordChecking)));
+            }
+        }
+    }
+
+    [JsonIgnore]
+    public string? PasswordStatusDetail
+    {
+        get => _passwordStatusDetail;
+        set
+        {
+            if (_passwordStatusDetail != value)
+            {
+                _passwordStatusDetail = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PasswordStatusDetail)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PasswordStatusToolTip)));
+            }
+        }
+    }
+
+    [JsonIgnore]
+    public bool IsPasswordValid => PasswordStatus == PasswordValidationStatus.Valid;
+
+    [JsonIgnore]
+    public bool HasPasswordIssue => PasswordStatus == PasswordValidationStatus.Invalid;
+
+    [JsonIgnore]
+    public bool IsPasswordChecking => PasswordStatus == PasswordValidationStatus.Checking;
+
+    [JsonIgnore]
+    public string PasswordStatusText => PasswordStatus switch
+    {
+        PasswordValidationStatus.Valid => Helpers.Localization.T("Password Valid"),
+        PasswordValidationStatus.Invalid => Helpers.Localization.T("Invalid Password"),
+        PasswordValidationStatus.Checking => Helpers.Localization.T("Checking..."),
+        _ => string.Empty
+    };
+
+    [JsonIgnore]
+    public string PasswordStatusToolTip => PasswordStatus switch
+    {
+        PasswordValidationStatus.Valid => Helpers.Localization.T("Windows password matches stored credentials."),
+        PasswordValidationStatus.Invalid => PasswordStatusDetail ?? Helpers.Localization.T("The stored Windows password appears to be incorrect. Click Edit to update it."),
+        PasswordValidationStatus.Checking => Helpers.Localization.T("Verifying Windows credentials with system LSA..."),
+        _ => Helpers.Localization.T("Password status not checked yet.")
+    };
+
     [JsonIgnore]
     public bool HasSecretIntegrityIssue
     {
@@ -102,4 +166,12 @@ public abstract class DeviceModel : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string IdsSafe() => $"{Name} ({ClientId})";
+}
+
+public enum PasswordValidationStatus
+{
+    Unknown = 0,
+    Checking = 1,
+    Valid = 2,
+    Invalid = 3
 }

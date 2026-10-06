@@ -113,4 +113,61 @@ public static class IdentityHelper
             && !string.IsNullOrWhiteSpace(shortRight)
             && string.Equals(shortLeft, shortRight, StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// Safely resolves the Windows Security Identifier (SID) for a given user identity.
+    /// Handles Local accounts, Domain accounts, and MSA profiles without throwing exceptions.
+    /// </summary>
+    public static string? TryResolveUserSid(string? username, string? domain = null)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            return null;
+
+        try
+        {
+            // 1. Try NTAccount translation with domain\username if domain is specified
+            var effectiveName = string.IsNullOrWhiteSpace(domain) ? username.Trim() : $"{domain.Trim()}\\{username.Trim()}";
+            try
+            {
+                var ntAccount = new System.Security.Principal.NTAccount(effectiveName);
+                var sid = (System.Security.Principal.SecurityIdentifier)ntAccount.Translate(typeof(System.Security.Principal.SecurityIdentifier));
+                return sid.Value;
+            }
+            catch { }
+
+            // 2. If domain-qualified lookup failed, try with short username
+            var shortName = GetShortUsername(username);
+            if (!string.IsNullOrWhiteSpace(shortName) && !string.Equals(shortName, effectiveName, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var ntAccount = new System.Security.Principal.NTAccount(shortName);
+                    var sid = (System.Security.Principal.SecurityIdentifier)ntAccount.Translate(typeof(System.Security.Principal.SecurityIdentifier));
+                    return sid.Value;
+                }
+                catch { }
+            }
+
+            // 3. Fallback: check current Windows session identity
+            try
+            {
+                using var currentIdentity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                if (currentIdentity.User != null && MatchesUser(currentIdentity.Name, username))
+                {
+                    return currentIdentity.User.Value;
+                }
+            }
+            catch { }
+        }
+        catch { }
+
+        return null;
+    }
+
+    public static bool MatchesSid(string? sidA, string? sidB)
+    {
+        return !string.IsNullOrWhiteSpace(sidA)
+            && !string.IsNullOrWhiteSpace(sidB)
+            && string.Equals(sidA.Trim(), sidB.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
 }

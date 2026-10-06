@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Security.AccessControl;
 using System.Security.Principal;
+using Portal.Common.Helpers;
 
 namespace Portal.Common;
 
@@ -49,16 +50,18 @@ public static class PortalStoragePaths
             var newLogsDirectory = Path.Combine(newRootDirectory, "Logs");
 
             Directory.CreateDirectory(newRootDirectory);
-            EnsureDirectoryPermissions(newRootDirectory);
+            // Harden root storage directory: Administrators/SYSTEM full control, Users read only
+            SecurityHardeningHelper.HardenDirectoryPermissions(newRootDirectory);
 
             Directory.CreateDirectory(newLogsDirectory);
-            EnsureDirectoryPermissions(newLogsDirectory);
+            // Allow Authenticated Users to write log files in dedicated Logs subfolder
+            EnsureLogsDirectoryPermissions(newLogsDirectory);
 
             _initialized = true;
         }
     }
 
-    private static void EnsureDirectoryPermissions(string directoryPath)
+    private static void EnsureLogsDirectoryPermissions(string logsDirectoryPath)
     {
         try
         {
@@ -67,7 +70,7 @@ public static class PortalStoragePaths
                 return;
             }
 
-            var dirInfo = new DirectoryInfo(directoryPath);
+            var dirInfo = new DirectoryInfo(logsDirectoryPath);
             var dirSecurity = dirInfo.GetAccessControl();
 
             var authenticatedUsers = new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null);
@@ -83,7 +86,7 @@ public static class PortalStoragePaths
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[PortalStoragePaths] Failed to set directory ACLs on '{directoryPath}': {ex.Message}");
+            Logger.LogWarning($"[PortalStoragePaths] Failed to set directory ACLs on '{logsDirectoryPath}': {ex.Message}");
         }
     }
 }

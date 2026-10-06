@@ -14,6 +14,9 @@ public class DeviceAccount
     [JsonPropertyName("domain")]
     public string Domain { get; set; } = string.Empty;
 
+    [JsonPropertyName("userSid")]
+    public string? UserSid { get; set; }
+
     [JsonPropertyName("encryptedPasswordBlob")]
     public string EncryptedPasswordBlob { get; set; } = string.Empty;
 

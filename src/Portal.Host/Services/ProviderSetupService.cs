@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using Portal.Common;
+using Portal.Common.Services;
 
 namespace Portal.Host.Services;
 
@@ -16,7 +17,9 @@ public sealed class ProviderHealthStatus
     public bool CredentialProviderGuidsOk { get; init; }
     public bool ComRegistrationOk { get; init; }
     public bool FilesOk { get; init; }
-    public bool IsHealthy => CredentialProviderGuidsOk && ComRegistrationOk && FilesOk;
+    public bool IsGuardTripped { get; init; }
+    public string? GuardDisarmReason { get; init; }
+    public bool IsHealthy => CredentialProviderGuidsOk && ComRegistrationOk && FilesOk && !IsGuardTripped;
     public IReadOnlyList<string> FailureReasons { get; init; } = Array.Empty<string>();
 }
 
@@ -50,6 +53,12 @@ public class ProviderSetupService
 
             ValidateRequiredRuntimeFiles(dllPath);
 
+            var providerDir = Path.GetDirectoryName(dllPath);
+            if (!string.IsNullOrWhiteSpace(providerDir))
+            {
+                Portal.Common.Helpers.SecurityHardeningHelper.HardenDirectoryPermissions(providerDir);
+            }
+
             var result = await RunProcessAsync("regsvr32", $"/s \"{dllPath}\"", cancellationToken);
             Logger.Log($"[ProviderSetup] Executed regsvr32. Output: {result}");
 
@@ -61,7 +70,8 @@ public class ProviderSetupService
             // Legacy reverse provider is no longer used by the shared-tile flow.
             CleanupLegacyReverseProviderRegistration();
 
-            cancellationToken.ThrowIfCancellationRequested();
+            // Reset any previous guard lockout
+            FailSafeLockoutGuard.ResetGuard();
 
             var health = CheckProviderHealth(dllPath);
             if (!health.IsHealthy)
@@ -123,6 +133,11 @@ public class ProviderSetupService
         return CheckProviderHealth().IsHealthy;
     }
 
+    public void ResetFailSafeGuard()
+    {
+        FailSafeLockoutGuard.ResetGuard();
+    }
+
     public ProviderHealthStatus CheckProviderHealth(string? dllPath = null)
     {
         var failures = new List<string>();
@@ -138,11 +153,19 @@ public class ProviderSetupService
             // Optional legacy signal (non-blocking): stale reverse registration is logged for diagnostics.
             CheckLegacyReverseComRegistration(expectedComhostPath);
 
+            var guardState = FailSafeLockoutGuard.LoadState();
+            if (guardState.IsDisabledByGuard)
+            {
+                failures.Add($"Fail-Safe Guard active: {guardState.DisarmReason}");
+            }
+
             return new ProviderHealthStatus
             {
                 CredentialProviderGuidsOk = guidRegistryOk,
                 ComRegistrationOk = comRegistrationOk,
                 FilesOk = filesOk,
+                IsGuardTripped = guardState.IsDisabledByGuard,
+                GuardDisarmReason = guardState.DisarmReason,
                 FailureReasons = failures.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             };
         }

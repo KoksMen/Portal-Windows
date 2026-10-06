@@ -110,6 +110,43 @@ public class FirewallService
         return result.ExitCode == 0;
     }
 
+    /// <summary>
+    /// Checks and automatically repairs Windows Firewall rules for LogonUI, consent.exe (UAC), CredentialUIBroker, and Host.
+    /// If any rule is missing or broken, it cleans up and re-creates all required inbound and outbound rules silently.
+    /// </summary>
+    public async Task<bool> EnsureFirewallRulesAsync(int port, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var isOk = await CheckFirewallRule(port, cancellationToken);
+            if (isOk)
+            {
+                return true;
+            }
+
+            Logger.Log($"[FirewallService] One or more firewall rules missing for port {port}. Starting automatic repair...");
+            await RemoveFirewallRule(cancellationToken);
+            var success = await AddFirewallRule(port, cancellationToken);
+
+            if (success)
+            {
+                Logger.Log($"[FirewallService] Firewall rules auto-repaired successfully for port {port}.");
+                ActivityJournal.Record("network", "🛡️", "Firewall rules auto-repaired", $"Restored Windows Firewall rules for LogonUI, UAC, and Host on port {port}.", true);
+            }
+            else
+            {
+                Logger.LogWarning($"[FirewallService] Firewall auto-repair could not add all rules for port {port}.");
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[FirewallService] Exception during firewall auto-repair on port {port}", ex);
+            return false;
+        }
+    }
+
     private static string BuildRuleName(string protocol, string direction, string programPath, int port)
     {
         string fileName = Path.GetFileNameWithoutExtension(programPath);

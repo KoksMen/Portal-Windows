@@ -305,6 +305,23 @@ public class PortalWinConfig
                     }
                 }
 
+                // Backward compatibility: resolve and backfill UserSid for paired devices missing SID
+                foreach (var device in cfg.Devices)
+                {
+                    foreach (var acc in device.Accounts)
+                    {
+                        if (string.IsNullOrWhiteSpace(acc.UserSid) && !string.IsNullOrWhiteSpace(acc.Username))
+                        {
+                            var resolvedSid = IdentityHelper.TryResolveUserSid(acc.Username, acc.Domain);
+                            if (!string.IsNullOrWhiteSpace(resolvedSid))
+                            {
+                                acc.UserSid = resolvedSid;
+                                shouldResave = true;
+                            }
+                        }
+                    }
+                }
+
                 if (shouldResave)
                 {
                     cfg.Save();
@@ -389,10 +406,10 @@ public class PortalWinConfig
     }
 
     /// <summary>
-    /// Find all devices (Network + Bluetooth) that have an account matching the given username.
+    /// Find all devices (Network + Bluetooth) that have an account matching the given username or SID.
     /// Used by Host-Initiated mode to send unlock requests across all transports.
     /// </summary>
-    public List<DeviceModel> FindAllDevicesForUser(string username, string? qualifiedName = null)
+    public List<DeviceModel> FindAllDevicesForUser(string username, string? qualifiedName = null, string? userSid = null)
     {
         var targetCanonical = IdentityHelper.ToCanonical(qualifiedName) ?? IdentityHelper.ToCanonical(username);
         var targetShort = IdentityHelper.GetShortUsername(qualifiedName) ?? IdentityHelper.GetShortUsername(username);
@@ -407,6 +424,12 @@ public class PortalWinConfig
 
             foreach (var account in device.Accounts)
             {
+                if (!string.IsNullOrWhiteSpace(userSid) && IdentityHelper.MatchesSid(account.UserSid, userSid))
+                {
+                    result.Add(device);
+                    break; // don't add same device twice
+                }
+
                 var accountCanonical = IdentityHelper.ToCanonical(account.Username, account.Domain);
                 if (IdentityHelper.EqualsIgnoreCase(targetCanonical, accountCanonical))
                 {

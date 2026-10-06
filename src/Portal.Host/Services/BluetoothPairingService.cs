@@ -8,6 +8,7 @@ using Windows.Devices.Enumeration;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
 using Portal.Common;
+using Portal.Common.Helpers;
 using Portal.Host.Models;
 
 namespace Portal.Host.Services;
@@ -198,7 +199,8 @@ public class BluetoothPairingService : IDisposable
                 var newAccount = new Portal.Common.Models.DeviceAccount
                 {
                     Username = _pairingContext.TargetUsername,
-                    Domain = _pairingContext.TargetDomain ?? ""
+                    Domain = _pairingContext.TargetDomain ?? "",
+                    UserSid = IdentityHelper.TryResolveUserSid(_pairingContext.TargetUsername, _pairingContext.TargetDomain)
                 };
                 newAccount.SetPassword(_pairingContext.TargetPassword);
                 device.Accounts.Add(newAccount);
