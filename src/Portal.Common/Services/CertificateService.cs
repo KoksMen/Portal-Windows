@@ -69,6 +69,8 @@ public static class CertificateService
                 {
                     var fallbackPath = GetFallbackSecretPath(path);
                     if (File.Exists(fallbackPath)) File.Delete(fallbackPath);
+                    var userFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Portal-Windows", ".cert_secret");
+                    if (File.Exists(userFallback)) File.Delete(userFallback);
                 }
                 catch { }
                 return true;
@@ -85,6 +87,12 @@ public static class CertificateService
             {
                 File.WriteAllText(fallbackFile, base64);
                 SecurityHardeningHelper.HardenFilePermissions(fallbackFile);
+                try
+                {
+                    var userFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Portal-Windows", ".cert_secret");
+                    if (File.Exists(userFallback)) File.Delete(userFallback);
+                }
+                catch { }
             }
             catch (UnauthorizedAccessException)
             {

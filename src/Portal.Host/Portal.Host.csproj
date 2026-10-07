@@ -52,15 +52,15 @@
         <Copy
             SourceFiles="@(CredentialProviderOutput)"
             DestinationFolder="$(TargetDir)CredentialProvider"
-            SkipUnchangedFiles="true"
+            SkipUnchangedFiles="false"
             Condition="'$(PublishDir)' == ''"
-            ContinueOnError="true" />
+            ContinueOnError="false" />
         <Copy
             SourceFiles="@(CredentialProviderOutputRuntimes)"
             DestinationFiles="@(CredentialProviderOutputRuntimes->'$(TargetDir)CredentialProvider\runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
-            SkipUnchangedFiles="true"
+            SkipUnchangedFiles="false"
             Condition="'$(PublishDir)' == ''"
-            ContinueOnError="true" />
+            ContinueOnError="false" />
         <Copy
             SourceFiles="@(CredentialProviderOutput)"
             DestinationFolder="$(PublishDir)CredentialProvider"
