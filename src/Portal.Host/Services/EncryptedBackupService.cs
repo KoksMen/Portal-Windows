@@ -39,6 +39,7 @@ public sealed class EncryptedBackupService
         IReadOnlyCollection<DeviceModel> devices,
         byte[] serverCertificatePfx,
         SecureString password,
+        string? serverCertificatePassword = null,
         CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
@@ -74,6 +75,7 @@ public sealed class EncryptedBackupService
                 ConfigJson = JsonSerializer.Serialize(configSnapshot, DeviceJsonOptions),
                 Devices = devices.ToList(),
                 ServerCertificatePfx = Convert.ToBase64String(serverCertificatePfx),
+                ServerCertificatePassword = serverCertificatePassword,
                 CreatedUtc = DateTime.UtcNow
             };
             plaintext = JsonSerializer.SerializeToUtf8Bytes(plaintextPayload, DeviceJsonOptions);
@@ -180,7 +182,7 @@ public sealed class EncryptedBackupService
                 throw new InvalidOperationException("Backup does not contain server certificate.");
             }
 
-            return new DecryptedBackupData(restoredConfig, restoredDevices, certBytes);
+            return new DecryptedBackupData(restoredConfig, restoredDevices, certBytes, payload.ServerCertificatePassword);
         }
         finally
         {
@@ -301,6 +303,9 @@ public sealed class EncryptedBackupService
         [JsonPropertyName("serverCertificatePfx")]
         public string ServerCertificatePfx { get; set; } = string.Empty;
 
+        [JsonPropertyName("serverCertificatePassword")]
+        public string? ServerCertificatePassword { get; set; }
+
         [JsonPropertyName("createdUtc")]
         public DateTime CreatedUtc { get; set; }
     }
@@ -311,12 +316,14 @@ public sealed class DecryptedBackupData : IDisposable
     public PortalWinConfig Config { get; }
     public List<DeviceModel> Devices { get; }
     public byte[] ServerCertificatePfx { get; }
+    public string? ServerCertificatePassword { get; }
 
-    public DecryptedBackupData(PortalWinConfig config, List<DeviceModel> devices, byte[] serverCertificatePfx)
+    public DecryptedBackupData(PortalWinConfig config, List<DeviceModel> devices, byte[] serverCertificatePfx, string? serverCertificatePassword = null)
     {
         Config = config ?? throw new ArgumentNullException(nameof(config));
         Devices = devices ?? throw new ArgumentNullException(nameof(devices));
         ServerCertificatePfx = serverCertificatePfx ?? throw new ArgumentNullException(nameof(serverCertificatePfx));
+        ServerCertificatePassword = serverCertificatePassword;
     }
 
     public void Dispose()
