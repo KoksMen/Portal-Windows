@@ -105,29 +105,48 @@ public class BluetoothPairingService : IDisposable
         _cts?.Dispose();
     }
 
-    private async void OnConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
+    private void OnConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
+    {
+        var socket = args.Socket;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await HandleConnectionReceivedAsync(socket);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[BtPairing] Unhandled error in background connection handler", ex);
+                try { socket.Dispose(); } catch { }
+            }
+        });
+    }
+
+    private async Task HandleConnectionReceivedAsync(StreamSocket socket)
     {
         Logger.Log("[BtPairing] Incoming RFCOMM connection.");
         _statusCallback?.Invoke("Device connecting via Bluetooth...");
 
         try
         {
-            using var socket = args.Socket;
-            var stream = socket.InputStream.AsStreamForRead();
-            var outStream = socket.OutputStream.AsStreamForWrite();
-            var combinedStream = new BtDuplexStream(stream, outStream);
-
-            var device = await ValidateCodeAndRegister(combinedStream, socket);
-            if (device != null)
+            using (socket)
             {
-                await BtProtocol.SendMessageAsync(combinedStream,
-                    new BtPairResponse { Success = true, ClientId = device.ClientId },
-                    _cts?.Token ?? CancellationToken.None);
+                var stream = socket.InputStream.AsStreamForRead();
+                var outStream = socket.OutputStream.AsStreamForWrite();
+                var combinedStream = new BtDuplexStream(stream, outStream);
 
-                Logger.Log($"[BtPairing] Pairing successful! Device: {device.Name} ({device.ClientId}) via BT");
-                _statusCallback?.Invoke($"Paired: {device.Name}");
+                var device = await ValidateCodeAndRegister(combinedStream, socket);
+                if (device != null)
+                {
+                    await BtProtocol.SendMessageAsync(combinedStream,
+                        new BtPairResponse { Success = true, ClientId = device.ClientId },
+                        _cts?.Token ?? CancellationToken.None);
 
-                _pairingTcs?.TrySetResult(new PairingResult { Device = device, Success = true });
+                    Logger.Log($"[BtPairing] Pairing successful! Device: {device.Name} ({device.ClientId}) via BT");
+                    _statusCallback?.Invoke($"Paired: {device.Name}");
+
+                    _pairingTcs?.TrySetResult(new PairingResult { Device = device, Success = true });
+                }
             }
         }
         catch (OperationCanceledException)

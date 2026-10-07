@@ -16,54 +16,109 @@ public class FirewallService
 
     public async Task<bool> AddFirewallRule(int port, CancellationToken cancellationToken = default)
     {
-        string logonUIPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.System),
-            "LogonUI.exe"
-        );
+        // 1. Try native Windows Firewall COM API (instantaneous, in-process)
+        try
+        {
+            var policyType = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
+            var ruleType = Type.GetTypeFromProgID("HNetCfg.FWRule");
+            if (policyType != null && ruleType != null)
+            {
+                dynamic policy = Activator.CreateInstance(policyType)!;
+                dynamic rules = policy.Rules;
 
-        string credUIBrokerPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.System),
-            "CredentialUIBroker.exe"
-        );
+                string logonUIPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "LogonUI.exe");
+                string credUIBrokerPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "CredentialUIBroker.exe");
+                string consentPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "consent.exe");
+                string hostAppPath = Environment.ProcessPath ?? string.Empty;
+                if (string.IsNullOrEmpty(hostAppPath))
+                {
+                    Logger.LogError("[FirewallService] Cannot determine host app path.");
+                    return false;
+                }
 
-        string consentPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.System),
-            "consent.exe"
-        );
+                string combinedPorts = string.Join(",", new[] { port.ToString(), "5353" }.Distinct(StringComparer.OrdinalIgnoreCase));
+                string[] programs = { logonUIPath, credUIBrokerPath, consentPath, hostAppPath };
+                string[] directions = { "in", "out" };
+                string[] protocols = { "TCP", "UDP" };
 
-        string hostAppPath = Environment.ProcessPath ?? string.Empty;
-        if (string.IsNullOrEmpty(hostAppPath))
+                int addedCount = 0;
+                foreach (string program in programs)
+                {
+                    foreach (string protocol in protocols)
+                    {
+                        foreach (string direction in directions)
+                        {
+                            string ruleName = BuildRuleName(protocol, direction, program, port);
+                            dynamic rule = Activator.CreateInstance(ruleType)!;
+                            rule.Name = ruleName;
+                            rule.Description = $"Portal-Windows {protocol} {direction} rule for {Path.GetFileName(program)}";
+                            rule.ApplicationName = program;
+                            rule.Protocol = protocol == "TCP" ? 6 : 17;
+
+                            if (direction == "in")
+                            {
+                                rule.LocalPorts = combinedPorts;
+                                rule.Direction = 1; // NET_FW_RULE_DIR_IN
+                            }
+                            else
+                            {
+                                rule.RemotePorts = combinedPorts;
+                                rule.Direction = 2; // NET_FW_RULE_DIR_OUT
+                            }
+
+                            rule.Action = 1; // NET_FW_ACTION_ALLOW
+                            rule.Profiles = 0x7FFFFFFF; // NET_FW_PROFILE2_ALL (Domain | Private | Public)
+                            rule.Enabled = true;
+
+                            rules.Add(rule);
+                            addedCount++;
+                        }
+                    }
+                }
+
+                Logger.Log($"[FirewallService] AddFirewallRule (COM) successfully added {addedCount} rules.");
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[FirewallService] COM AddFirewallRule failed, attempting netsh fallback: {ex.Message}");
+        }
+
+        // 2. Fallback via netsh / cmd.exe
+        string fallbackLogonUI = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "LogonUI.exe");
+        string fallbackCredUI = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "CredentialUIBroker.exe");
+        string fallbackConsent = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "consent.exe");
+        string fallbackHost = Environment.ProcessPath ?? string.Empty;
+        if (string.IsNullOrEmpty(fallbackHost))
         {
             Logger.LogError("[FirewallService] Cannot determine host app path.");
             return false;
         }
 
-        string combinedPorts = string.Join(",", new[] { port.ToString(), "5353" }.Distinct(StringComparer.OrdinalIgnoreCase));
-        string[] programs = { logonUIPath, credUIBrokerPath, consentPath, hostAppPath };
-        string[] directions = { "in", "out" };
-        string[] protocols = { "TCP", "UDP" };
+        string ports = string.Join(",", new[] { port.ToString(), "5353" }.Distinct(StringComparer.OrdinalIgnoreCase));
+        string[] progs = { fallbackLogonUI, fallbackCredUI, fallbackConsent, fallbackHost };
+        string[] dirs = { "in", "out" };
+        string[] protos = { "TCP", "UDP" };
 
         var firewallRules = new List<string>();
-
-        foreach (string program in programs)
+        foreach (string program in progs)
         {
-            foreach (string protocol in protocols)
+            foreach (string protocol in protos)
             {
-                foreach (string direction in directions)
+                foreach (string direction in dirs)
                 {
                     string portType = direction == "in" ? "localport" : "remoteport";
                     string ruleName = BuildRuleName(protocol, direction, program, port);
-
-                    firewallRules.Add($"netsh advfirewall firewall add rule name=\"{ruleName}\" dir={direction} action=allow protocol={protocol} {portType}={combinedPorts} profile=any program=\"{program}\"");
+                    firewallRules.Add($"netsh advfirewall firewall add rule name=\"{ruleName}\" dir={direction} action=allow protocol={protocol} {portType}={ports} profile=any program=\"{program}\"");
                 }
             }
         }
 
-        // Use && so that if any rule fails to add, we know about it
         string command = string.Join(" && ", firewallRules);
         var result = await RunProcessAsync("cmd.exe", $"/c {command}", cancellationToken);
 
-        Logger.Log($"[FirewallService] AddFirewallRule result: Success={result.IsSuccess}, ExitCode={result.ExitCode}");
+        Logger.Log($"[FirewallService] AddFirewallRule (netsh fallback) result: Success={result.IsSuccess}, ExitCode={result.ExitCode}");
         if (!string.IsNullOrWhiteSpace(result.Error))
             Logger.LogWarning($"[FirewallService] AddFirewallRule stderr: {result.Error}");
 
@@ -72,22 +127,117 @@ public class FirewallService
 
     public async Task<bool> RemoveFirewallRule(CancellationToken cancellationToken = default)
     {
-        // Use PowerShell to delete all rules matching our prefix.
-        // This is port-agnostic, so old rules from different ports are cleaned up too.
+        // 1. Try native Windows Firewall COM API (instantaneous, in-process)
+        try
+        {
+            var policyType = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
+            if (policyType != null)
+            {
+                dynamic policy = Activator.CreateInstance(policyType)!;
+                dynamic rules = policy.Rules;
+                var toRemove = new List<string>();
+
+                foreach (dynamic rule in rules)
+                {
+                    string name = rule.Name;
+                    if (!string.IsNullOrEmpty(name) && name.StartsWith(RulePrefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        toRemove.Add(name);
+                    }
+                }
+
+                foreach (var name in toRemove)
+                {
+                    try
+                    {
+                        rules.Remove(name);
+                    }
+                    catch
+                    {
+                        // Ignore individual remove errors
+                    }
+                }
+
+                Logger.Log($"[FirewallService] RemoveFirewallRule (COM) removed {toRemove.Count} matching rules.");
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[FirewallService] COM RemoveFirewallRule failed, attempting fallback: {ex.Message}");
+        }
+
+        // 2. Fallback via netsh delete rule
+        var netshDeleteResult = await RunProcessAsync("cmd.exe",
+            $"/c netsh advfirewall firewall delete rule name=\"{RulePrefix}*\"",
+            cancellationToken);
+
+        if (netshDeleteResult.IsSuccess)
+        {
+            Logger.Log("[FirewallService] RemoveFirewallRule (netsh fallback) succeeded.");
+            return true;
+        }
+
+        // 3. Fallback via PowerShell if netsh wildcard didn't match
         var deleteResult = await RunProcessAsync("powershell.exe",
             $"-NoProfile -Command \"Get-NetFirewallRule -DisplayName '{RulePrefix}*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue\"",
             cancellationToken);
 
-        Logger.Log($"[FirewallService] RemoveFirewallRule result: ExitCode={deleteResult.ExitCode}");
-        if (!string.IsNullOrWhiteSpace(deleteResult.Error))
-            Logger.LogWarning($"[FirewallService] RemoveFirewallRule stderr: {deleteResult.Error}");
-
-        // Always return true — even if no rules existed, that's fine
+        Logger.Log($"[FirewallService] RemoveFirewallRule (powershell fallback) result: ExitCode={deleteResult.ExitCode}");
         return true;
     }
 
     public async Task<bool> CheckFirewallRule(int? configuredPort = null, CancellationToken cancellationToken = default)
     {
+        // 1. Try native Windows Firewall COM API (reads directly from in-memory cache, < 5ms)
+        try
+        {
+            var policyType = Type.GetTypeFromProgID("HNetCfg.FwPolicy2");
+            if (policyType != null)
+            {
+                dynamic policy = Activator.CreateInstance(policyType)!;
+                dynamic rules = policy.Rules;
+                var existingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (dynamic rule in rules)
+                {
+                    string name = rule.Name;
+                    if (!string.IsNullOrEmpty(name) && name.StartsWith(RulePrefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        existingNames.Add(name);
+                    }
+                }
+
+                if (configuredPort.HasValue)
+                {
+                    var expectedRuleNames = BuildExpectedRuleNames(configuredPort.Value).ToList();
+                    if (existingNames.Count < expectedRuleNames.Count)
+                    {
+                        Logger.Log($"[FirewallService] CheckFirewallRule (COM): Rule count mismatch (found {existingNames.Count}, expected {expectedRuleNames.Count}).");
+                        return false;
+                    }
+
+                    foreach (var expected in expectedRuleNames)
+                    {
+                        if (!existingNames.Contains(expected))
+                        {
+                            Logger.Log($"[FirewallService] CheckFirewallRule (COM): Missing rule '{expected}'.");
+                            return false;
+                        }
+                    }
+
+                    return true;
+                }
+
+                return existingNames.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[FirewallService] COM CheckFirewallRule failed, attempting fallback: {ex.Message}");
+        }
+
+        // 2. Fallback via PowerShell
         if (configuredPort.HasValue)
         {
             var expectedRuleNames = BuildExpectedRuleNames(configuredPort.Value);
@@ -97,16 +247,15 @@ public class FirewallService
                 $"-NoProfile -Command \"{script}\"",
                 cancellationToken);
 
-            Logger.Log($"[FirewallService] CheckFirewallRule(strict) result: ExitCode={strictResult.ExitCode}, HasRules={strictResult.ExitCode == 0}");
+            Logger.Log($"[FirewallService] CheckFirewallRule(strict fallback) result: ExitCode={strictResult.ExitCode}, HasRules={strictResult.ExitCode == 0}");
             return strictResult.ExitCode == 0;
         }
 
-        // Use PowerShell to check if ANY firewall rules with our prefix exist
         var result = await RunProcessAsync("powershell.exe",
             $"-NoProfile -Command \"$rules = Get-NetFirewallRule -DisplayName '{RulePrefix}*' -ErrorAction SilentlyContinue; if ($rules -and $rules.Count -gt 0) {{ exit 0 }} else {{ exit 1 }}\"",
             cancellationToken);
 
-        Logger.Log($"[FirewallService] CheckFirewallRule result: ExitCode={result.ExitCode}, HasRules={result.ExitCode == 0}");
+        Logger.Log($"[FirewallService] CheckFirewallRule (fallback) result: ExitCode={result.ExitCode}, HasRules={result.ExitCode == 0}");
         return result.ExitCode == 0;
     }
 

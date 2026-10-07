@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -15,6 +16,7 @@ namespace Portal.Host.ViewModels;
 public partial class LogsWindowViewModel : ObservableObject
 {
     private static readonly string LogDirectoryPath = PortalStoragePaths.LogsDirectory;
+    private static readonly ConcurrentDictionary<string, CachedLogFile> _fileCache = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly DispatcherTimer _refreshTimer = new()
     {
@@ -105,7 +107,7 @@ public partial class LogsWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshLogsAsync()
     {
-        await RefreshLogsInternalAsync(forceRebuild: false, showLoading: false);
+        await RefreshLogsInternalAsync(forceRebuild: true, showLoading: false);
     }
 
     private async Task RefreshLogsInternalAsync(bool forceRebuild, bool showLoading)
@@ -123,6 +125,11 @@ public partial class LogsWindowViewModel : ObservableObject
 
         try
         {
+            if (forceRebuild)
+            {
+                _fileCache.Clear();
+            }
+
             var day = SelectedDate.Date;
             var hostSnapshot = await Task.Run(() => BuildSnapshot("Host", day, new[] { "host*.log" }));
             var providerSnapshot = await Task.Run(() => BuildSnapshot("Provider", day, new[] { "provider*.log", "portalwin_default*.log" }));
@@ -458,7 +465,18 @@ public partial class LogsWindowViewModel : ObservableObject
             var fileInfo = new FileInfo(filePath);
             if (!fileInfo.Exists || fileInfo.Length == 0)
             {
+                _fileCache.TryRemove(filePath, out _);
                 return entries;
+            }
+
+            if (_fileCache.TryGetValue(filePath, out var cached))
+            {
+                if (cached.LastWriteTimeUtc == fileInfo.LastWriteTimeUtc &&
+                    cached.Length == fileInfo.Length &&
+                    cached.Day == day.Date)
+                {
+                    return cached.Entries;
+                }
             }
 
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -514,9 +532,16 @@ public partial class LogsWindowViewModel : ObservableObject
                     int.MaxValue,
                     Path.GetFileName(filePath)));
             }
+
+            if (_fileCache.Count > 30)
+            {
+                _fileCache.Clear();
+            }
+            _fileCache[filePath] = new CachedLogFile(fileInfo.LastWriteTimeUtc, fileInfo.Length, day.Date, entries);
         }
         catch (Exception ex)
         {
+            _fileCache.TryRemove(filePath, out _);
             entries.Add(new LogEntry(
                 DateTime.MinValue,
                 new[] { $"[Unable to read '{Path.GetFileName(filePath)}': {ex.Message}]" },
@@ -560,6 +585,7 @@ public partial class LogsWindowViewModel : ObservableObject
         }
     }
 
+    private sealed record CachedLogFile(DateTime LastWriteTimeUtc, long Length, DateTime Day, IReadOnlyList<LogEntry> Entries);
     private sealed record LogEntry(DateTime Timestamp, IReadOnlyList<string> Lines, int Sequence, string FileName);
     private sealed record ColumnSnapshot(IReadOnlyList<LogEntry> Entries, string EmptyMessage);
 }

@@ -246,21 +246,47 @@ public class BluetoothUnlockService : IDisposable
         }
     }
 
-    private async void OnConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
+    private void OnConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
+    {
+        var socket = args.Socket;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await HandleConnectionReceivedAsync(socket);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[BtUnlock] Unhandled error in background connection handler", ex);
+                try { socket.Dispose(); } catch { }
+            }
+        });
+    }
+
+    private async Task HandleConnectionReceivedAsync(StreamSocket socket)
     {
         Logger.Log("[BtUnlock] Incoming RFCOMM connection.");
-        var rawBtAddr = args.Socket.Information.RemoteHostName?.DisplayName ?? "Unknown BT";
+        string rawBtAddr;
+        try
+        {
+            rawBtAddr = socket.Information.RemoteHostName?.DisplayName ?? "Unknown BT";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[BtUnlock] Could not inspect remote socket host name: {ex.Message}");
+            try { socket.Dispose(); } catch { }
+            return;
+        }
 
         if (_attemptTracker.IsBlocked(rawBtAddr))
         {
             Logger.LogWarning($"[BtUnlock] Dropping connection from {rawBtAddr}: Too many failed attempts.");
-            args.Socket.Dispose();
+            try { socket.Dispose(); } catch { }
             return;
         }
 
         try
         {
-            var socket = args.Socket;
             var readStream = socket.InputStream.AsStreamForRead();
             var writeStream = socket.OutputStream.AsStreamForWrite();
             var stream = new BtDuplexStream(readStream, writeStream);

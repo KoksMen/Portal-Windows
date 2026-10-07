@@ -14,6 +14,8 @@ public sealed class ProviderGuardState
     public bool IsDisabledByGuard { get; set; }
     public string? DisarmReason { get; set; }
     public DateTime? DisarmedAtUtc { get; set; }
+    public int? LastProcessId { get; set; }
+    public bool IsStartupInProgress { get; set; }
 }
 
 /// <summary>
@@ -94,17 +96,28 @@ public static class FailSafeLockoutGuard
             }
 
             var now = DateTime.UtcNow;
+            int currentPid = Environment.ProcessId;
 
-            // Check if there was an in-flight startup attempt that never finished successfully within the last 90 seconds
-            if (state.LastStartupAttemptUtc.HasValue)
+            // 1. If this is the SAME process calling IsUsageScenarioSupported again
+            // (e.g. logonui probing multiple scenarios in rapid succession),
+            // this is completely normal capability probing and NOT a crash.
+            if (state.LastProcessId.HasValue && state.LastProcessId.Value == currentPid)
+            {
+                state.LastStartupAttemptUtc = now;
+                SaveState(state);
+                return true;
+            }
+
+            // 2. If this is a NEW process starting up:
+            // Check if the previous process crashed in-flight before completing its initialization.
+            if (state.LastStartupAttemptUtc.HasValue && state.IsStartupInProgress)
             {
                 var timeSinceLastAttempt = now - state.LastStartupAttemptUtc.Value;
-                var hadUnfinishedCrash = !state.LastSuccessfulInitUtc.HasValue || state.LastSuccessfulInitUtc.Value < state.LastStartupAttemptUtc.Value;
 
-                if (hadUnfinishedCrash && timeSinceLastAttempt.TotalSeconds < 90)
+                if (timeSinceLastAttempt.TotalSeconds < 90)
                 {
                     state.CrashCount++;
-                    Logger.LogWarning($"[FailSafeGuard] Incomplete startup detected within {timeSinceLastAttempt.TotalSeconds:F0}s. Consecutive crash count: {state.CrashCount}");
+                    Logger.LogWarning($"[FailSafeGuard] Incomplete startup detected from previous process PID {state.LastProcessId} within {timeSinceLastAttempt.TotalSeconds:F0}s. Consecutive crash count: {state.CrashCount}");
 
                     if (state.CrashCount >= 2)
                     {
@@ -112,6 +125,7 @@ public static class FailSafeLockoutGuard
                         state.IsDisabledByGuard = true;
                         state.DisarmReason = $"Multiple consecutive startup crashes detected in logonui.exe (count={state.CrashCount}).";
                         state.DisarmedAtUtc = now;
+                        state.IsStartupInProgress = false;
                         SaveState(state);
 
                         SafelyDeregisterFromRegistry();
@@ -126,13 +140,20 @@ public static class FailSafeLockoutGuard
                         return false;
                     }
                 }
-                else if (timeSinceLastAttempt.TotalSeconds >= 90)
+                else
                 {
-                    // Decay old crash counters
+                    // Decay old crash counters if more than 90 seconds elapsed
                     state.CrashCount = 0;
                 }
             }
+            else if (!state.IsStartupInProgress)
+            {
+                // Previous process finished cleanly
+                state.CrashCount = 0;
+            }
 
+            state.LastProcessId = currentPid;
+            state.IsStartupInProgress = true;
             state.LastStartupAttemptUtc = now;
             SaveState(state);
             return true;
@@ -150,6 +171,7 @@ public static class FailSafeLockoutGuard
             {
                 var state = LoadState();
                 state.CrashCount = 0;
+                state.IsStartupInProgress = false;
                 state.LastSuccessfulInitUtc = DateTime.UtcNow;
                 SaveState(state);
                 Logger.Log("[FailSafeGuard] Initialization marked successful. Crash counter reset to 0.");
@@ -177,7 +199,9 @@ public static class FailSafeLockoutGuard
                     DisarmReason = null,
                     DisarmedAtUtc = null,
                     LastStartupAttemptUtc = null,
-                    LastSuccessfulInitUtc = DateTime.UtcNow
+                    LastSuccessfulInitUtc = DateTime.UtcNow,
+                    LastProcessId = null,
+                    IsStartupInProgress = false
                 };
                 SaveState(state);
                 Logger.Log("[FailSafeGuard] Guard state reset successfully.");
