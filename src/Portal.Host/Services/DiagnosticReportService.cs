@@ -237,7 +237,11 @@ public sealed class DiagnosticReportService
                 return new { exists = false, message = "Certificate file not found." };
             }
 
-            using var cert = new X509Certificate2(certPath, string.Empty, X509KeyStorageFlags.DefaultKeySet);
+            using var cert = CertificateService.LoadCertificate(certPath);
+            if (cert == null)
+            {
+                return new { exists = false, message = "Certificate file exists but could not be loaded." };
+            }
             return new
             {
                 exists = true,

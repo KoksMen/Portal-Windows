@@ -39,17 +39,17 @@ public static class PortalVersionInfo
     });
 
     /// <summary>
-    /// SemVer version string, e.g. "1.5.5".
+    /// SemVer version string, e.g. "1.7.0".
     /// </summary>
     public static string Version => _parsedVersion.Value.version;
 
     /// <summary>
-    /// User-facing display version, e.g. "v1.5.5".
+    /// User-facing display version, e.g. "v1.7.0".
     /// </summary>
     public static string DisplayVersion => "v" + _parsedVersion.Value.version;
 
     /// <summary>
-    /// Full informational version including release codename, e.g. "1.5.5-Herta".
+    /// Full informational version including release codename, e.g. "1.7.0-Herta".
     /// </summary>
     public static string FullVersion => _parsedVersion.Value.fullVersion;
 

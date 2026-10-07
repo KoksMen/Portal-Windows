@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
@@ -20,6 +22,12 @@ namespace Portal.Host.Services;
 /// </summary>
 public class BluetoothPairingService : IDisposable
 {
+    /// <summary>
+    /// Brute-force protection: Tracks failed PIN attempts per Bluetooth remote address.
+    /// Locks out devices after 5 failed attempts for 2 minutes.
+    /// </summary>
+    private static readonly AttemptTracker _attemptTracker = new(maxAttempts: 5, lockoutDuration: TimeSpan.FromMinutes(2));
+
     private RfcommServiceProvider? _provider;
     private StreamSocketListener? _listener;
     private PortalWinConfig? _config;
@@ -29,6 +37,11 @@ public class BluetoothPairingService : IDisposable
     private CancellationTokenSource? _cts;
 
     public bool IsRunning { get; private set; }
+
+    /// <summary>
+    /// Resets brute-force attempt counters for all Bluetooth remotes.
+    /// </summary>
+    public static void ResetAttemptTracker() => _attemptTracker.ResetAll();
 
 
 
@@ -163,20 +176,69 @@ public class BluetoothPairingService : IDisposable
     private async Task<Portal.Common.Models.BluetoothDeviceModel?> ValidateCodeAndRegister(BtDuplexStream combinedStream, StreamSocket socket)
     {
         var socketAddr = socket.Information.RemoteHostName?.DisplayName ?? "";
+        var trackingKey = !string.IsNullOrWhiteSpace(socketAddr)
+            ? PortalWinConfig.NormalizeBluetoothAddress(socketAddr)
+            : "unknown_bt_device";
+
         _statusCallback?.Invoke($"Connected: {socketAddr}. Verifying code...");
+
+        // 1. Check Brute-Force Lockout
+        if (_attemptTracker.IsBlocked(trackingKey))
+        {
+            var remaining = _attemptTracker.GetRemainingLockout(trackingKey);
+            var remainingSec = remaining.HasValue ? (int)Math.Max(1, Math.Ceiling(remaining.Value.TotalSeconds)) : 120;
+            Logger.LogWarning($"[BtPairing] Brute force block: remote device {socketAddr} (Key={trackingKey}) is locked out for {remainingSec}s.");
+
+            await BtProtocol.SendMessageAsync(combinedStream,
+                new BtPairResponse { Success = false, Error = $"Too many failed attempts. Try again in {remainingSec} seconds." },
+                _cts?.Token ?? CancellationToken.None);
+
+            _statusCallback?.Invoke($"Device {socketAddr} temporarily blocked (too many attempts).");
+            return null;
+        }
+
         var msg = await BtProtocol.ReceiveRawMessageAsync(combinedStream, _cts?.Token ?? CancellationToken.None);
 
         if (msg is BtPairRequest pairRequest)
         {
-            if (_pairingContext == null || pairRequest.Code != _pairingContext.PairingCode)
+            var expectedCode = _pairingContext?.PairingCode ?? string.Empty;
+            var providedCode = pairRequest.Code ?? string.Empty;
+
+            var expectedBytes = Encoding.UTF8.GetBytes(expectedCode);
+            var providedBytes = Encoding.UTF8.GetBytes(providedCode);
+
+            var isCodeValid = expectedBytes.Length > 0 &&
+                              expectedBytes.Length == providedBytes.Length &&
+                              CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
+
+            if (_pairingContext == null || !isCodeValid)
             {
-                Logger.LogWarning($"[BtPairing] Invalid pairing code: {pairRequest.Code}");
+                _attemptTracker.RecordFailure(trackingKey);
+                var isNowBlocked = _attemptTracker.IsBlocked(trackingKey);
+
+                Logger.LogWarning($"[BtPairing] Invalid pairing code attempt from {socketAddr} (Key={trackingKey}, Blocked={isNowBlocked})");
+
+                // Thwart rapid automated guessing by introducing an intentional security delay
+                try
+                {
+                    await Task.Delay(1000, _cts?.Token ?? CancellationToken.None);
+                }
+                catch (OperationCanceledException) { }
+
+                var errorMsg = isNowBlocked
+                    ? "Too many failed attempts. Device temporarily blocked."
+                    : "Invalid code";
+
                 await BtProtocol.SendMessageAsync(combinedStream,
-                    new BtPairResponse { Success = false, Error = "Invalid code" },
+                    new BtPairResponse { Success = false, Error = errorMsg },
                     _cts?.Token ?? CancellationToken.None);
-                _statusCallback?.Invoke("Invalid pairing code.");
+
+                _statusCallback?.Invoke(isNowBlocked ? "Device temporarily blocked." : "Invalid pairing code.");
                 return null;
             }
+
+            // Successful code validation: clear failure history for this device
+            _attemptTracker.RecordSuccess(trackingKey);
 
             var clientId = Guid.NewGuid().ToString();
             var btAddress = string.IsNullOrEmpty(socketAddr) ? "Unknown" : socketAddr;

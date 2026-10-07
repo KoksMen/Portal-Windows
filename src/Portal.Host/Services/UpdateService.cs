@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Portal.Common;
+using Portal.Common.Helpers;
 using Portal.Common.Models;
 
 namespace Portal.Host.Services;
@@ -738,7 +739,9 @@ public sealed class UpdateService
         {
             try
             {
+#pragma warning disable SYSLIB0057 // X509Certificate.CreateFromSignedFile is obsolete, but required for PE Authenticode verification
                 currentHostCert = new X509Certificate2(X509Certificate.CreateFromSignedFile(currentHostPath));
+#pragma warning restore SYSLIB0057
             }
             catch
             {
@@ -749,7 +752,9 @@ public sealed class UpdateService
         X509Certificate2? stagedHostCert = null;
         try
         {
+#pragma warning disable SYSLIB0057 // X509Certificate.CreateFromSignedFile is obsolete, but required for PE Authenticode verification
             stagedHostCert = new X509Certificate2(X509Certificate.CreateFromSignedFile(stagedHostPath));
+#pragma warning restore SYSLIB0057
         }
         catch (Exception ex)
         {
@@ -923,7 +928,7 @@ public sealed class UpdateService
     private static string GetSafeVersionText()
     {
         var version = typeof(UpdateService).Assembly.GetName().Version;
-        return version?.ToString(3) ?? "1.5.4";
+        return version?.ToString(3) ?? PortalVersionInfo.Version;
     }
 
     private static string NormalizeRepository(string repository)
