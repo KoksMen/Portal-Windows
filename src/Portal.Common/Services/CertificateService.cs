@@ -328,7 +328,7 @@ public static class CertificateService
         }
 
         // 1. Try secure password from LSA/DPAPI
-        var securePassword = TryGetSecureCertificatePassword();
+        var securePassword = TryGetSecureCertificatePassword(path);
         if (!string.IsNullOrEmpty(securePassword))
         {
             try
@@ -356,12 +356,62 @@ public static class CertificateService
             var cert = new X509Certificate2(path, LegacyCertPassword, storageFlags);
 #endif
             Logger.Log($"[CertificateService] Certificate loaded with legacy password. Thumbprint: {cert.Thumbprint}, Subject: {cert.Subject}");
+
+            // Transparently auto-migrate legacy certificate to secure random password in LSA/DPAPI
+            TryMigrateLegacyCertificate(cert, path);
+
             return cert;
         }
         catch (Exception ex)
         {
             Logger.LogError($"[CertificateService] Failed to load certificate from {path} with any password. Error: {ex.Message}", ex);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Transparently re-encrypts an existing legacy certificate with a new 256-bit random password
+    /// stored in LSA Secrets + DPAPI, preserving the certificate identity, private key, and thumbprint.
+    /// </summary>
+    private static void TryMigrateLegacyCertificate(X509Certificate2 cert, string path)
+    {
+        try
+        {
+            if (!cert.HasPrivateKey)
+            {
+                Logger.LogWarning("[CertificateService] Cannot migrate legacy certificate: missing private key.");
+                return;
+            }
+
+            var newPassword = GenerateRandomCertificatePassword();
+            if (!StoreCertificatePassword(newPassword, path))
+            {
+                Logger.LogWarning("[CertificateService] Aborting legacy certificate migration: failed to store new password.");
+                return;
+            }
+
+            var newPfxBytes = cert.Export(X509ContentType.Pfx, newPassword);
+            var tempPath = path + ".migrating";
+            File.WriteAllBytes(tempPath, newPfxBytes);
+            File.Move(tempPath, path, overwrite: true);
+
+            var dir = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                EnsureCertPermissions(dir);
+            }
+
+            Logger.Log($"[CertificateService] Successfully auto-migrated legacy certificate to secure random password in LSA/DPAPI. Thumbprint: {cert.Thumbprint}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[CertificateService] Legacy certificate auto-migration encountered an error: {ex.Message}");
+            try
+            {
+                var tempPath = path + ".migrating";
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+            catch { }
         }
     }
 
