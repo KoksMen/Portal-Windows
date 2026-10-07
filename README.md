@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Версия-v1.7.0--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.7.0-Herta" /></a>
-  <img src="https://img.shields.io/badge/.NET-8.0%20%7C%2010.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 8.0 | 10.0" />
+  <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
   <img src="https://img.shields.io/badge/Платформа-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
   <a href="LICENSE.txt"><img src="https://img.shields.io/badge/Лицензия-GPL--3.0-orange?style=for-the-badge" alt="License GPL-3.0" /></a>
@@ -103,8 +103,8 @@
 - **Умное переключение фокуса:** Если во время ожидания биометрического подтверждения пользователь начинает вводить пароль на физической клавиатуре, Credential Provider мгновенно отменяет сетевой запрос.
 - **Сохранение введённых символов:** Фокус и каретка плавно возвращаются в нативное поле ввода Windows LogonUI без потери первого введенного символа.
 
-### 🚀 7. Поддержка .NET 10 и компиляция ReadyToRun AOT (NEW v1.7.0)
-- **Форвард-совместимость с .NET 10:** В решении активирована политика `RollForward=Major`, обеспечивающая бесшовный запуск как на .NET 8 LTS, так и на будущих средах выполнения .NET 10 RTM/Preview.
+### 🚀 7. Нативная платформа .NET 10 и компиляция ReadyToRun AOT (NEW v1.7.0)
+- **Нативная сборка .NET 10:** Проект полностью скомпилирован под современный фреймворк .NET 10 (`net10.0-windows10.0.19041.0`) с новейшими оптимизациями JIT и встроенными криптографическими загрузчиками (`X509CertificateLoader`).
 - **Мгновенный старт экрана входа:** Модуль `Portal.CredentialProvider` собирается с ReadyToRun (AOT), исключая JIT-паузы при отрисовке плитки входа `logonui.exe`.
 
 ### ⏳ 8. Живой динамический прогресс-бар и стили
@@ -196,7 +196,7 @@
 
 ### Требования к системе:
 - **ОС:** Windows 10 (версия 1809+) или Windows 11 (любая редакция, x64).
-- **Среда выполнения:** .NET 8.0 Desktop Runtime (или .NET 10 с RollForward; включена в комплект).
+- **Среда выполнения:** .NET 10.0 Desktop Runtime (включена в комплект поставки).
 - **Смартфон:** Android 8.0+ с камерой и биометрическим сканером.
 
 ---
@@ -228,7 +228,7 @@
 ## 💻 Сборка из исходников
 
 Для самостоятельной сборки проекта вам понадобятся:
-- **Visual Studio 2022** (версия 17.8+) или **JetBrains Rider**, либо **.NET 8.0 / .NET 10 SDK**.
+- **Visual Studio 2022** (версия 17.12+) или **JetBrains Rider**, либо **.NET 10 SDK**.
 - Установленная рабочая нагрузка **.NET Desktop Development** (WPF).
 - PowerShell 7+ или Windows PowerShell 5.1.
 
@@ -323,8 +323,8 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 - **Smart Focus Management:** If the user begins typing a password on the keyboard while a remote unlock request is pending, the Credential Provider immediately cancels the remote request.
 - **Zero Keystroke Loss:** Smoothly returns input focus and caret back to the native Windows LogonUI password box without dropping the first typed character.
 
-### 🚀 7. .NET 10 Forward Compatibility & ReadyToRun AOT (NEW v1.7.0)
-- **.NET 10 RollForward:** Configured with `RollForward=Major`, ensuring smooth execution on .NET 8 LTS as well as future .NET 10 RTM/Preview runtimes.
+### 🚀 7. Native .NET 10 Platform & ReadyToRun AOT (NEW v1.7.0)
+- **Native .NET 10 Target:** The solution is exclusively compiled for .NET 10 (`net10.0-windows10.0.19041.0`), leveraging runtime optimizations and modern cryptography APIs (`X509CertificateLoader`).
 - **Zero-Latency LogonUI:** The `Portal.CredentialProvider` COM assembly is pre-compiled via ReadyToRun (AOT), avoiding JIT pauses when rendering the Windows logon screen.
 
 ### ⏳ 8. Live Dynamic Progress Bar & Styles
@@ -414,7 +414,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 ### Prerequisites:
 - **Operating System:** Windows 10 (1809+) or Windows 11 (all editions, x64).
-- **Runtime:** .NET 8.0 Desktop Runtime (or .NET 10 with RollForward; included in distribution package).
+- **Runtime:** .NET 10.0 Desktop Runtime (included in distribution package).
 - **Mobile Device:** Android 8.0+ with camera and biometric scanner (fingerprint / face).
 
 ---
@@ -445,7 +445,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 ## 💻 Building from Source
 
 To build the project from source, you will need:
-- **Visual Studio 2022** (v17.8+) or **JetBrains Rider**, or **.NET 8.0 / .NET 10 SDK**.
+- **Visual Studio 2022** (v17.12+) or **JetBrains Rider**, or **.NET 10 SDK**.
 - **.NET Desktop Development** workload (WPF).
 - PowerShell 7+ or Windows PowerShell 5.1.
 
