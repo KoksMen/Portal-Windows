@@ -139,6 +139,12 @@ public partial class MainWindow : Window
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (string.Equals(e.PropertyName, nameof(MainViewModel.WizTwoFactorPin), StringComparison.Ordinal)
+            && string.IsNullOrEmpty(_viewModel.WizTwoFactorPin) && InputTwoFactorPin != null)
+        {
+            Dispatcher.Invoke(() => InputTwoFactorPin.Password = "");
+        }
+
         if (!string.Equals(e.PropertyName, nameof(MainViewModel.ShowUpdateToast), StringComparison.Ordinal))
         {
             return;
@@ -534,6 +540,15 @@ public partial class MainWindow : Window
         if (sender is ComboBox cb && cb.SelectedIndex >= 0)
         {
             vm.WizInactivityDaysIndex = cb.SelectedIndex;
+        }
+    }
+
+    private void TwoFactorPin_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (sender is PasswordBox pb)
+        {
+            vm.WizTwoFactorPin = pb.Password;
         }
     }
 

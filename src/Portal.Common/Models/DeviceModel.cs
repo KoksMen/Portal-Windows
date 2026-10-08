@@ -172,11 +172,19 @@ public abstract class DeviceModel : INotifyPropertyChanged
     [JsonIgnore]
     public string InactivityWarning => Helpers.Localization.T("Account inactivity period exceeded. Click Edit to re-activate.");
 
+    [JsonIgnore]
+    public bool HasTwoFactorPin => Accounts.Exists(a => a.RequiresTwoFactorPin);
+
+    [JsonIgnore]
+    public string TwoFactorPinBadgeText => Helpers.Localization.T("2FA PIN");
+
     public void NotifyAccountPolicyChanged()
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasInactivityIssue)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InactivityBadgeText)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InactivityWarning)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasTwoFactorPin)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TwoFactorPinBadgeText)));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

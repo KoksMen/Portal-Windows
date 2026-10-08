@@ -591,6 +591,16 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private LocalAccountOption? _selectedLocalAccount;
     [ObservableProperty] private int _wizAccountUnlockModeIndex = 0;
     [ObservableProperty] private int _wizInactivityDaysIndex = 0;
+    [ObservableProperty] private bool _wizRequiresTwoFactorPin = false;
+    [ObservableProperty] private string _wizTwoFactorPin = string.Empty;
+    [ObservableProperty] private string _wizTwoFactorPinHint = string.Empty;
+
+    public bool WizShowTwoFactorPinInput => WizRequiresTwoFactorPin;
+
+    partial void OnWizRequiresTwoFactorPinChanged(bool value)
+    {
+        OnPropertyChanged(nameof(WizShowTwoFactorPinInput));
+    }
 
     private static int InactivityDaysToIndex(int? days) => days switch
     {
@@ -2137,6 +2147,11 @@ public partial class MainViewModel : ObservableObject
         WizShowDeviceNameEdit = true;
         WizAccountUnlockModeIndex = UnlockModeToIndex(account.CustomUnlockMode);
         WizInactivityDaysIndex = InactivityDaysToIndex(account.InactivityExpiryDays);
+        WizRequiresTwoFactorPin = account.RequiresTwoFactorPin;
+        WizTwoFactorPin = string.Empty;
+        WizTwoFactorPinHint = account.RequiresTwoFactorPin && !string.IsNullOrEmpty(account.TwoFactorPinHash)
+            ? Services.LocalizationService.T("PIN is currently configured (••••). Enter a new PIN to change it, or leave blank to keep.")
+            : Services.LocalizationService.T("Enter 4–8 digits or characters.");
         WizCredsNextText = Services.LocalizationService.T("Save Changes");
 
         ShowDashboard = true; // This hides Settings Panel
@@ -2175,6 +2190,8 @@ public partial class MainViewModel : ObservableObject
         IsWizPasswordRevealed = false;
         WizPasswordRevealedText = string.Empty;
         WizPasswordRevealGlyph = "\uE7B3";
+        WizRequiresTwoFactorPin = false;
+        WizTwoFactorPin = string.Empty;
         ShowWizard = false;
         ShowDashboard = false; // Return to Settings
     }
@@ -3261,6 +3278,9 @@ public partial class MainViewModel : ObservableObject
         WizPasswordRevealGlyph = "\uE7B3";
         WizAccountUnlockModeIndex = 0;
         WizInactivityDaysIndex = 0;
+        WizRequiresTwoFactorPin = false;
+        WizTwoFactorPin = string.Empty;
+        WizTwoFactorPinHint = Services.LocalizationService.T("Enter 4–8 digits or characters.");
 
         return sessionId;
     }
@@ -3987,6 +4007,26 @@ public partial class MainViewModel : ObservableObject
                     account.UserSid = IdentityHelper.TryResolveUserSid(SelectedLocalAccount.Username, SelectedLocalAccount.Domain);
                     account.CustomUnlockMode = IndexToUnlockMode(WizAccountUnlockModeIndex);
                     account.InactivityExpiryDays = IndexToInactivityDays(WizInactivityDaysIndex);
+
+                    if (WizRequiresTwoFactorPin)
+                    {
+                        if (!string.IsNullOrWhiteSpace(WizTwoFactorPin))
+                        {
+                            account.SetTwoFactorPin(WizTwoFactorPin);
+                        }
+                        else if (!account.RequiresTwoFactorPin || string.IsNullOrEmpty(account.TwoFactorPinHash))
+                        {
+                            await _dialogService.ShowNotificationAsync(
+                                Services.LocalizationService.T("Error"),
+                                Services.LocalizationService.T("Please enter a PIN (4–8 digits) to enable 2FA PIN."));
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        account.RemoveTwoFactorPin();
+                    }
+
                     account.LastUnlockedAtUtc = DateTime.UtcNow;
                     account.SetPassword(submittedPassword);
                     device.NotifyAccountPolicyChanged();
@@ -3996,6 +4036,8 @@ public partial class MainViewModel : ObservableObject
                 }
 
                 _editingClientId = null;
+                WizRequiresTwoFactorPin = false;
+                WizTwoFactorPin = string.Empty;
                 ShowWizard = false;
                 ShowDashboard = false; // Show settings panel again
                 if (passwordParams is System.Windows.Controls.PasswordBox passBox) passBox.Password = "";
@@ -4040,6 +4082,16 @@ public partial class MainViewModel : ObservableObject
 
             _pairingContext.CustomUnlockMode = IndexToUnlockMode(WizAccountUnlockModeIndex);
             _pairingContext.InactivityExpiryDays = IndexToInactivityDays(WizInactivityDaysIndex);
+            if (WizRequiresTwoFactorPin && !string.IsNullOrWhiteSpace(WizTwoFactorPin))
+            {
+                _pairingContext.RequiresTwoFactorPin = true;
+                _pairingContext.TwoFactorPin = WizTwoFactorPin;
+            }
+            else
+            {
+                _pairingContext.RequiresTwoFactorPin = false;
+                _pairingContext.TwoFactorPin = null;
+            }
 
             _credsSignal?.TrySetResult(true);
         }

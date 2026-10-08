@@ -39,6 +39,113 @@ public class DeviceAccount
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Indicates whether remote unlock requires entering a local 2FA PIN on the lock screen.
+    /// </summary>
+    [JsonPropertyName("requiresTwoFactorPin")]
+    public bool RequiresTwoFactorPin { get; set; } = false;
+
+    /// <summary>
+    /// Base64-encoded 16-byte random salt for PBKDF2-SHA256 PIN hashing.
+    /// </summary>
+    [JsonPropertyName("twoFactorPinSalt")]
+    public string? TwoFactorPinSalt { get; set; }
+
+    /// <summary>
+    /// Base64-encoded 32-byte PBKDF2-SHA256 hash (100,000 iterations) of the 2FA PIN.
+    /// </summary>
+    [JsonPropertyName("twoFactorPinHash")]
+    public string? TwoFactorPinHash { get; set; }
+
+    private const int PinSaltByteCount = 16;
+    private const int PinHashByteCount = 32;
+    private const int PinPbkdf2Iterations = 100_000;
+
+    public void SetTwoFactorPin(string pin)
+    {
+        if (string.IsNullOrWhiteSpace(pin))
+        {
+            RemoveTwoFactorPin();
+            return;
+        }
+
+        byte[] pinBytes = Encoding.UTF8.GetBytes(pin.Trim());
+        byte[] salt = RandomNumberGenerator.GetBytes(PinSaltByteCount);
+        byte[] hash = Rfc2898DeriveBytes.Pbkdf2(
+            pinBytes,
+            salt,
+            PinPbkdf2Iterations,
+            HashAlgorithmName.SHA256,
+            PinHashByteCount);
+
+        try
+        {
+            TwoFactorPinSalt = Convert.ToBase64String(salt);
+            TwoFactorPinHash = Convert.ToBase64String(hash);
+            RequiresTwoFactorPin = true;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(pinBytes);
+            CryptographicOperations.ZeroMemory(hash);
+        }
+    }
+
+    public bool VerifyTwoFactorPin(string pin)
+    {
+        if (!RequiresTwoFactorPin || string.IsNullOrEmpty(TwoFactorPinHash) || string.IsNullOrEmpty(TwoFactorPinSalt))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(pin))
+        {
+            return false;
+        }
+
+        byte[]? pinBytes = null;
+        try
+        {
+            byte[] salt = Convert.FromBase64String(TwoFactorPinSalt);
+            byte[] expectedHash = Convert.FromBase64String(TwoFactorPinHash);
+            pinBytes = Encoding.UTF8.GetBytes(pin.Trim());
+            byte[] actualHash = Rfc2898DeriveBytes.Pbkdf2(
+                pinBytes,
+                salt,
+                PinPbkdf2Iterations,
+                HashAlgorithmName.SHA256,
+                PinHashByteCount);
+
+            try
+            {
+                return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(actualHash);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"Failed to verify 2FA PIN for {Username}", ex);
+            return false;
+        }
+        finally
+        {
+            if (pinBytes != null)
+            {
+                CryptographicOperations.ZeroMemory(pinBytes);
+            }
+        }
+    }
+
+    public void RemoveTwoFactorPin()
+    {
+        RequiresTwoFactorPin = false;
+        TwoFactorPinSalt = null;
+        TwoFactorPinHash = null;
+    }
+
     [JsonIgnore]
     public bool IsExpired => InactivityExpiryDays is > 0 &&
         (DateTime.UtcNow - (LastUnlockedAtUtc ?? CreatedAtUtc)) > TimeSpan.FromDays(InactivityExpiryDays.Value);

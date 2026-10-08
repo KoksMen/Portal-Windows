@@ -288,6 +288,10 @@ public class BluetoothPairingService : IDisposable
                     LastUnlockedAtUtc = DateTime.UtcNow
                 };
                 newAccount.SetPassword(_pairingContext.TargetPassword);
+                if (_pairingContext.RequiresTwoFactorPin && !string.IsNullOrWhiteSpace(_pairingContext.TwoFactorPin))
+                {
+                    newAccount.SetTwoFactorPin(_pairingContext.TwoFactorPin);
+                }
                 device.Accounts.Add(newAccount);
             }
 

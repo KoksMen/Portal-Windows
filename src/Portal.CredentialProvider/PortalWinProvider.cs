@@ -148,23 +148,57 @@ public class PortalWinProvider : PortalWinProviderBase
     {
         Logger.Log($"[PortalWinProvider] OnUnlockRequested for user: '{username}', domain: '{domain}', sid: '{userSid ?? "none"}'");
         CredentialProviderBootstrapper.TlsService?.DisconnectAllWebSocketClients("Unlock approved");
-        UnlockState.SetPending(username, password, domain);
         PortalWinTile.CancelGlobalActiveRequest();
 
         try
         {
+            var config = PortalWinConfig.Load();
             var targetTile = FindMatchingTile<PortalWinTile>(username, domain, userSid);
+
+            Portal.Common.Models.DeviceAccount? targetAccount = null;
             if (targetTile != null)
             {
-                Logger.Log("[PortalWinProvider] Triggering auto-logon on target tile.");
-                targetTile.UpdateStatus(BuildStatusHeadlineForState("Remote unlock approved"), BuildStatusDetailsForState("Preparing Windows sign-in..."));
-                this.SetDefaultTile(targetTile, autoLogon: true);
-                Logger.Log("[PortalWinProvider] Cursor recovery scheduled after unlock approval.");
-                CursorRecoveryService.TriggerAfterUnlock("Unlock approved");
+                targetAccount = targetTile.ResolveCurrentTileAccount(config);
+            }
 
-                // Record unlock activity timestamp for inactivity timer
-                var config = PortalWinConfig.Load();
-                config.RecordAccountUnlockActivity(username, domain, userSid);
+            if (targetAccount == null)
+            {
+                foreach (var device in config.Devices)
+                {
+                    var acc = CredentialProviderTilePolicy.ResolveApprovalAccount(device, null, username, null, userSid);
+                    if (acc != null)
+                    {
+                        targetAccount = acc;
+                        break;
+                    }
+                }
+            }
+
+            if (targetTile != null)
+            {
+                if (targetAccount != null && targetAccount.RequiresTwoFactorPin && !string.IsNullOrEmpty(targetAccount.TwoFactorPinHash))
+                {
+                    // Scenario A: 2FA PIN required on lock screen
+                    Logger.Log($"[PortalWinProvider] Account '{username}' requires 2FA PIN on lock screen. Switching tile to AwaitingTwoFactorPin mode.");
+                    CancelPendingAutoLogon();
+                    targetTile.EnterTwoFactorPinMode(username, password, domain, userSid, targetAccount);
+                    this.SetDefaultTile(targetTile, autoLogon: false);
+                    Logger.Log("[PortalWinProvider] Cursor recovery scheduled for 2FA PIN mode.");
+                    CursorRecoveryService.TriggerAfterUnlock("2FA PIN mode");
+                }
+                else
+                {
+                    // Standard unlock flow (auto-logon)
+                    Logger.Log("[PortalWinProvider] Triggering auto-logon on target tile.");
+                    UnlockState.SetPending(username, password, domain);
+                    targetTile.UpdateStatus(BuildStatusHeadlineForState("Remote unlock approved"), BuildStatusDetailsForState("Preparing Windows sign-in..."));
+                    this.SetDefaultTile(targetTile, autoLogon: true);
+                    Logger.Log("[PortalWinProvider] Cursor recovery scheduled after unlock approval.");
+                    CursorRecoveryService.TriggerAfterUnlock("Unlock approved");
+
+                    // Record unlock activity timestamp for inactivity timer
+                    config.RecordAccountUnlockActivity(username, domain, userSid);
+                }
             }
             else
             {
@@ -173,7 +207,7 @@ public class PortalWinProvider : PortalWinProviderBase
         }
         catch (Exception ex)
         {
-            Logger.LogError("[PortalWinProvider] Critical Failed to trigger auto-logon", ex);
+            Logger.LogError("[PortalWinProvider] Critical Failed to handle unlock request", ex);
         }
     }
 

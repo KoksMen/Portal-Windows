@@ -3758,6 +3758,34 @@
                             Style="{StaticResource PortalComboBox}"
                             Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
+                        <!--  Account Policy: 2FA PIN (Visible only when Editing)  -->
+                        <CheckBox
+                            x:Name="CheckRequireTwoFactorPin"
+                            Margin="0,12,0,5"
+                            Content="Require 2FA PIN on lock screen"
+                            IsChecked="{Binding WizRequiresTwoFactorPin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <StackPanel Visibility="{Binding WizShowTwoFactorPinInput, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock
+                                Margin="0,5,0,5"
+                                FontSize="11"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="2FA PIN (4–8 digits/characters)" />
+                            <PasswordBox
+                                x:Name="InputTwoFactorPin"
+                                Height="42"
+                                VerticalContentAlignment="Center"
+                                Padding="12,0,12,0"
+                                FontSize="14"
+                                PasswordChanged="TwoFactorPin_PasswordChanged" />
+                            <TextBlock
+                                Margin="0,3,0,0"
+                                FontSize="10"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="{Binding WizTwoFactorPinHint}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
                         <Grid Margin="0,20,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />

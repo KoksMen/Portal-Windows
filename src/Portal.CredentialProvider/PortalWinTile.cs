@@ -36,6 +36,16 @@ public class PortalWinTile : PortalWinTileBase
     private bool _isRegisteredInTiles;
     private DateTime _requestStartedTimestamp = DateTime.MinValue;
 
+    private volatile bool _isAwaiting2FaPin;
+    public bool IsAwaitingTwoFactorPin => _isAwaiting2FaPin;
+    private string? _pending2FaUser;
+    private string? _pending2FaDomain;
+    private string? _pending2FaUserSid;
+    private System.Security.SecureString? _pending2FaPassword;
+    private Portal.Common.Models.DeviceAccount? _pending2FaAccount;
+    private int _pinFailedAttempts;
+    private CancellationTokenSource? _twoFactorTimeoutCts;
+
     public void FocusPasswordField()
     {
         if (_passwordControl != null)
@@ -72,6 +82,13 @@ public class PortalWinTile : PortalWinTileBase
 
     public void EnsureManualTypingMode()
     {
+        if (_isAwaiting2FaPin)
+        {
+            // During 2FA PIN entry on lock screen, keyboard typing is expected.
+            FocusPasswordField();
+            return;
+        }
+
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
         {
             _cancellationReason = "manual_typing";
@@ -432,6 +449,231 @@ public class PortalWinTile : PortalWinTileBase
         return userDevices;
     }
 
+    public void EnterTwoFactorPinMode(
+        string username,
+        System.Security.SecureString? password,
+        string domain,
+        string? userSid,
+        Portal.Common.Models.DeviceAccount account)
+    {
+        ClearTwoFactorPinMode("Replacing with new 2FA PIN session");
+
+        _isAwaiting2FaPin = true;
+        _pending2FaUser = username;
+        _pending2FaDomain = domain;
+        _pending2FaUserSid = userSid;
+        _pending2FaAccount = account;
+        _pinFailedAttempts = 0;
+
+        if (password != null && password.Length > 0)
+        {
+            _pending2FaPassword = password.Copy();
+            _pending2FaPassword.MakeReadOnly();
+        }
+
+        // Clear any characters in the password box so tile is clean and focused for PIN
+        if (_passwordControl != null)
+        {
+            try
+            {
+                _passwordControl.Password = new System.Security.SecureString();
+                _passwordControl.InteractiveState = FieldInteractiveState.Focused;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Failed to reset password field for 2FA PIN: {ex.Message}");
+            }
+        }
+
+        UpdateStatus(
+            Localization.T("Phone approved. Enter 2FA PIN"),
+            Localization.T("Enter your 2FA PIN on keyboard and press Enter."));
+
+        FocusPasswordField();
+
+        ActivityJournal.Record(
+            "pin_prompt",
+            "🔐",
+            "2FA PIN requested",
+            $"Phone approved unlock for {username}. Awaiting 2FA PIN on Windows lock screen.",
+            true);
+
+        // 60-second timeout to avoid leaving pending credentials in memory
+        var timeoutCts = new CancellationTokenSource();
+        _twoFactorTimeoutCts = timeoutCts;
+        Task.Delay(TimeSpan.FromSeconds(60), timeoutCts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled) return;
+            if (_isAwaiting2FaPin)
+            {
+                Logger.Log("[PortalWinTile] 2FA PIN timeout expired (60s). Aborting session.");
+                ClearTwoFactorPinMode("Timeout expired");
+                UpdateStatus(Localization.T("PIN timed out. Please retry."), Localization.T("Unlock session expired."));
+                ShowRequestButton();
+            }
+        }, TaskScheduler.Default);
+    }
+
+    public void ClearTwoFactorPinMode(string reason = "Cleared")
+    {
+        _isAwaiting2FaPin = false;
+        _pending2FaUser = null;
+        _pending2FaDomain = null;
+        _pending2FaUserSid = null;
+        _pending2FaAccount = null;
+        _pinFailedAttempts = 0;
+
+        if (_twoFactorTimeoutCts != null)
+        {
+            try { _twoFactorTimeoutCts.Cancel(); } catch { }
+            _twoFactorTimeoutCts.Dispose();
+            _twoFactorTimeoutCts = null;
+        }
+
+        if (_pending2FaPassword != null)
+        {
+            _pending2FaPassword.Dispose();
+            _pending2FaPassword = null;
+        }
+
+        Logger.Log($"[PortalWinTile] 2FA PIN mode cleared (reason: {reason}).");
+    }
+
+    protected override CredentialResponseBase GetCredentials()
+    {
+        if (_isAwaiting2FaPin)
+        {
+            return HandleTwoFactorPinSubmission();
+        }
+
+        return base.GetCredentials();
+    }
+
+    private CredentialResponseBase HandleTwoFactorPinSubmission()
+    {
+        if (!_isAwaiting2FaPin || _pending2FaAccount == null)
+        {
+            return GetFallbackCredentials();
+        }
+
+        string? enteredPin = GetPlaintextPassword(_passwordControl?.Password);
+
+        if (string.IsNullOrWhiteSpace(enteredPin))
+        {
+            UpdateStatus(
+                Localization.T("Phone approved. Enter 2FA PIN"),
+                Localization.T("PIN cannot be empty. Please enter your PIN."));
+            FocusPasswordField();
+            return new CredentialResponseInsecure
+            {
+                IsSuccess = false,
+                StatusText = Localization.T("Please enter your 2FA PIN"),
+                StatusIcon = StatusIcon.Warning
+            };
+        }
+
+        bool isPinValid = _pending2FaAccount.VerifyTwoFactorPin(enteredPin);
+
+        if (isPinValid)
+        {
+            Logger.Log($"[PortalWinTile] 2FA PIN verified successfully for user '{_pending2FaUser}'.");
+            string userToSubmit = !string.IsNullOrEmpty(_pending2FaUser)
+                ? _pending2FaUser
+                : (User != null ? User.UserName : "");
+            string domainToSubmit = _pending2FaDomain ?? System.Environment.MachineName;
+            string passToSubmit = GetPlaintextPassword(_pending2FaPassword) ?? "";
+
+            ActivityJournal.Record(
+                "pin_success",
+                "✅",
+                "2FA PIN verified",
+                $"PIN successfully verified for {userToSubmit}. Proceeding with Windows sign-in.",
+                true);
+
+            // Record successful unlock for inactivity timer
+            try
+            {
+                var config = PortalWinConfig.Load();
+                config.RecordAccountUnlockActivity(userToSubmit, domainToSubmit, _pending2FaUserSid ?? _pending2FaAccount.UserSid);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Failed to record unlock activity: {ex.Message}");
+            }
+
+            CredentialProviderBootstrapper.TlsService?.DisconnectAllWebSocketClients("Unlock serialization (2FA PIN verified)");
+            ClearTwoFactorPinMode("PIN verified successfully");
+
+            return new CredentialResponseInsecure
+            {
+                IsSuccess = true,
+                Username = userToSubmit,
+                Domain = domainToSubmit,
+                Password = passToSubmit
+            };
+        }
+        else
+        {
+            _pinFailedAttempts++;
+            Logger.LogWarning($"[PortalWinTile] Invalid 2FA PIN entered for user '{_pending2FaUser}' (attempt {_pinFailedAttempts}/3).");
+
+            if (_passwordControl != null)
+            {
+                try
+                {
+                    _passwordControl.Password = new System.Security.SecureString();
+                    _passwordControl.InteractiveState = FieldInteractiveState.Focused;
+                }
+                catch { }
+            }
+
+            if (_pinFailedAttempts >= 3)
+            {
+                ActivityJournal.Record(
+                    "pin_lockout",
+                    "🚫",
+                    "2FA PIN lockout",
+                    $"Maximum PIN attempts (3) exceeded for {_pending2FaUser}. Unlock session cancelled.",
+                    false);
+
+                ClearTwoFactorPinMode("Max attempts exceeded");
+                UpdateStatus(
+                    Localization.T("Too many incorrect PIN attempts. Unlock canceled."),
+                    Localization.T("Unlock session canceled."));
+                ShowRequestButton();
+
+                return new CredentialResponseInsecure
+                {
+                    IsSuccess = false,
+                    StatusText = Localization.T("Too many incorrect PIN attempts. Unlock canceled."),
+                    StatusIcon = StatusIcon.Error
+                };
+            }
+            else
+            {
+                int remaining = 3 - _pinFailedAttempts;
+                ActivityJournal.Record(
+                    "pin_invalid",
+                    "⚠️",
+                    "Incorrect 2FA PIN",
+                    $"Failed PIN attempt {_pinFailedAttempts}/3 for {_pending2FaUser}. {remaining} remaining.",
+                    false);
+
+                UpdateStatus(
+                    Localization.TF("Incorrect 2FA PIN. Attempts remaining: {0}", remaining),
+                    Localization.T("Please try again."));
+                FocusPasswordField();
+
+                return new CredentialResponseInsecure
+                {
+                    IsSuccess = false,
+                    StatusText = Localization.TF("Incorrect 2FA PIN ({0} attempts left)", remaining),
+                    StatusIcon = StatusIcon.Warning
+                };
+            }
+        }
+    }
+
     protected override CredentialResponseBase GetFallbackCredentials()
     {
         if (_isEmergencyRollbackActive)
@@ -515,6 +757,7 @@ public class PortalWinTile : PortalWinTileBase
     private void StartUnlockRequest(bool forceTakeover, string source)
     {
         _isEmergencyRollbackActive = false;
+        ClearTwoFactorPinMode("Starting new unlock request");
         if (!AllowsHostInitiated) return;
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested) return;
@@ -1015,6 +1258,16 @@ public class PortalWinTile : PortalWinTileBase
 
     private void OnCancelUnlockClicked()
     {
+        if (_isAwaiting2FaPin)
+        {
+            Logger.Log("[Tile] 2FA PIN mode cancelled by user.");
+            ClearTwoFactorPinMode("Cancelled by user");
+            UpdateStatus(Localization.T("Cancelled by user."));
+            ShowRequestButton();
+            FocusPasswordField();
+            return;
+        }
+
         double elapsedFromStartMs = (DateTime.UtcNow - _requestStartedTimestamp).TotalMilliseconds;
         if (elapsedFromStartMs < 500)
         {
@@ -1033,6 +1286,12 @@ public class PortalWinTile : PortalWinTileBase
     protected override void OnManualPasswordInputChanged()
     {
         base.OnManualPasswordInputChanged();
+
+        if (_isAwaiting2FaPin)
+        {
+            // User is typing 2FA PIN on keyboard; do not cancel session.
+            return;
+        }
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
         {
