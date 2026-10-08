@@ -411,10 +411,9 @@ public class PortalWinConfig
     /// </summary>
     public List<DeviceModel> FindAllDevicesForUser(string username, string? qualifiedName = null, string? userSid = null)
     {
-        var targetCanonical = IdentityHelper.ToCanonical(qualifiedName) ?? IdentityHelper.ToCanonical(username);
-        var targetShort = IdentityHelper.GetShortUsername(qualifiedName) ?? IdentityHelper.GetShortUsername(username);
-
+        var targetDomain = IdentityHelper.GetDomainFromIdentity(qualifiedName);
         var result = new List<DeviceModel>();
+
         foreach (var device in Devices)
         {
             if (!device.IsEnabled)
@@ -424,21 +423,7 @@ public class PortalWinConfig
 
             foreach (var account in device.Accounts)
             {
-                if (!string.IsNullOrWhiteSpace(userSid) && IdentityHelper.MatchesSid(account.UserSid, userSid))
-                {
-                    result.Add(device);
-                    break; // don't add same device twice
-                }
-
-                var accountCanonical = IdentityHelper.ToCanonical(account.Username, account.Domain);
-                if (IdentityHelper.EqualsIgnoreCase(targetCanonical, accountCanonical))
-                {
-                    result.Add(device);
-                    break; // don't add same device twice
-                }
-
-                var accountShort = IdentityHelper.GetShortUsername(account.Username);
-                if (IdentityHelper.EqualsIgnoreCase(targetShort, accountShort))
+                if (IdentityHelper.MatchesAccount(userSid, username, targetDomain, account))
                 {
                     result.Add(device);
                     break; // don't add same device twice
@@ -446,6 +431,41 @@ public class PortalWinConfig
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Updates the last unlock timestamp for matching accounts and persists changes to LSA Secrets.
+    /// </summary>
+    public bool RecordAccountUnlockActivity(string username, string? domain = null, string? userSid = null)
+    {
+        bool changed = false;
+        foreach (var device in Devices)
+        {
+            foreach (var account in device.Accounts)
+            {
+                if (IdentityHelper.MatchesAccount(userSid, username, domain, account))
+                {
+                    account.RecordSuccessfulUnlock();
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            try
+            {
+                TrySaveDevicesToLsa(Devices);
+                Logger.Log($"[PortalWinConfig] Recorded unlock activity timestamp for user '{username}' (SID={userSid ?? "none"}).");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinConfig] Failed to persist unlock activity: {ex.Message}");
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

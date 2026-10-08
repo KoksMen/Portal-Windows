@@ -33,7 +33,7 @@ public class BluetoothUnlockService : IDisposable
     public bool IsRunning { get; private set; }
     public string? StartupError { get; private set; }
 
-    public event Action<string, SecureString?, string>? UnlockRequested;
+    public event Action<string, SecureString?, string, string?>? UnlockRequested;
     public event Action<string, bool>? BtConnectionChanged;
     public event Action? StatusChanged;
 
@@ -334,6 +334,26 @@ public class BluetoothUnlockService : IDisposable
                 var unlockDevice = ResolveDeviceForUnlockRequest(matchedDevices, unlockReq.ClientId);
                 Logger.Log($"[BtUnlock] Client-Initiated unlock from: {unlockDevice.IdsSafe()}");
                 var account = unlockDevice.Accounts.FirstOrDefault();
+                if (account != null && account.IsExpired)
+                {
+                    Logger.LogWarning($"[BtUnlock] Account '{account.Username}' ({unlockDevice.Name}) is expired/inactive.");
+                    await BtProtocol.SendMessageAsync(stream,
+                        new BtUnlockResponse { Success = false, Error = "Account inactive. Reactivate in Portal.Host" },
+                        _cts?.Token ?? CancellationToken.None);
+                    socket.Dispose();
+                    return;
+                }
+
+                if (account != null && account.ResolveEffectiveUnlockMode(config.UnlockMode) == UnlockMode.HostInitiated)
+                {
+                    Logger.LogWarning($"[BtUnlock] Client-initiated unlock rejected: account '{account.Username}' is configured for Host-Initiated only.");
+                    await BtProtocol.SendMessageAsync(stream,
+                        new BtUnlockResponse { Success = false, Error = "Client-initiated unlock disabled for this account" },
+                        _cts?.Token ?? CancellationToken.None);
+                    socket.Dispose();
+                    return;
+                }
+
                 using var securePassword = account?.GetDecryptedSecurePassword();
 
                 if (account != null && securePassword != null && securePassword.Length > 0)
@@ -341,7 +361,7 @@ public class BluetoothUnlockService : IDisposable
                     await BtProtocol.SendMessageAsync(stream,
                         new BtUnlockResponse { Success = true }, _cts?.Token ?? CancellationToken.None);
                     ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{unlockDevice.Name} approved an unlock request over Bluetooth.", deviceName: unlockDevice.Name, transport: "Bluetooth");
-                    UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+                    UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
                 }
                 else
                 {
@@ -378,6 +398,24 @@ public class BluetoothUnlockService : IDisposable
                             var unlockDevice = ResolveDeviceForUnlockRequest(matchedDevices, incomingUnlockReq.ClientId);
                             Logger.Log($"[BtUnlock] Client-Initiated unlock from persistent connection: {unlockDevice.IdsSafe()}");
                             var account = unlockDevice.Accounts.FirstOrDefault();
+                            if (account != null && account.IsExpired)
+                            {
+                                Logger.LogWarning($"[BtUnlock] Account '{account.Username}' ({unlockDevice.Name}) is expired/inactive.");
+                                await BtProtocol.SendMessageAsync(stream,
+                                    new BtUnlockResponse { Success = false, Error = "Account inactive. Reactivate in Portal.Host" },
+                                    _cts?.Token ?? CancellationToken.None);
+                                continue;
+                            }
+
+                            if (account != null && account.ResolveEffectiveUnlockMode(config.UnlockMode) == UnlockMode.HostInitiated)
+                            {
+                                Logger.LogWarning($"[BtUnlock] Client-initiated unlock rejected: account '{account.Username}' is configured for Host-Initiated only.");
+                                await BtProtocol.SendMessageAsync(stream,
+                                    new BtUnlockResponse { Success = false, Error = "Client-initiated unlock disabled for this account" },
+                                    _cts?.Token ?? CancellationToken.None);
+                                continue;
+                            }
+
                             using var securePassword = account?.GetDecryptedSecurePassword();
 
                             if (account != null && securePassword != null && securePassword.Length > 0)
@@ -385,7 +423,7 @@ public class BluetoothUnlockService : IDisposable
                                 await BtProtocol.SendMessageAsync(stream,
                                     new BtUnlockResponse { Success = true }, _cts?.Token ?? CancellationToken.None);
                                 ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{unlockDevice.Name} approved an unlock request over Bluetooth.", deviceName: unlockDevice.Name, transport: "Bluetooth");
-                                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+                                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
                             }
                             else
                             {
@@ -451,12 +489,15 @@ public class BluetoothUnlockService : IDisposable
                 if (device != null && device.IsEnabled)
                 {
                     var account = device.Accounts.FirstOrDefault();
-                    using var securePassword = account?.GetDecryptedSecurePassword();
-                    if (account != null && securePassword != null && securePassword.Length > 0)
+                    if (account != null && !account.IsExpired)
                     {
-                        Logger.Log($"[BtUnlock] Fallback unlock APPROVED for user: {account.Username} from {device.Name}");
-                        ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Bluetooth.", deviceName: device.Name, transport: "Bluetooth");
-                        UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+                        using var securePassword = account.GetDecryptedSecurePassword();
+                        if (securePassword != null && securePassword.Length > 0)
+                        {
+                            Logger.Log($"[BtUnlock] Fallback unlock APPROVED for user: {account.Username} (SID={account.UserSid ?? "none"}) from {device.Name}");
+                            ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Bluetooth.", deviceName: device.Name, transport: "Bluetooth");
+                            UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
+                        }
                     }
                 }
             }

@@ -1931,6 +1931,28 @@
 
                                                         <!-- Right: Password & Integrity Status Badges -->
                                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <!-- Inactivity Expired Badge -->
+                                                            <Border
+                                                                Margin="0,0,6,0"
+                                                                Padding="7,3"
+                                                                Background="#3b2311"
+                                                                BorderBrush="#e08238"
+                                                                BorderThickness="1"
+                                                                CornerRadius="6"
+                                                                VerticalAlignment="Center"
+                                                                ToolTip="{Binding InactivityWarning}"
+                                                                Visibility="{Binding HasInactivityIssue, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <TextBlock Text="⏱️ " FontSize="10" VerticalAlignment="Center" />
+                                                                    <TextBlock
+                                                                        FontSize="10"
+                                                                        FontWeight="SemiBold"
+                                                                        Foreground="#ffa96b"
+                                                                        VerticalAlignment="Center"
+                                                                        Text="{Binding InactivityBadgeText}" />
+                                                                </StackPanel>
+                                                            </Border>
+
                                                             <!-- Secret Integrity Error Badge -->
                                                             <Border
                                                                 Margin="0,0,6,0"
@@ -3705,6 +3727,42 @@
                             x:Name="InputEditDeviceName"
                             Text="{Binding WizDeviceName, UpdateSourceTrigger=PropertyChanged}"
                             Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                        <!--  Account Policy: Unlock Mode (Visible only when Editing)  -->
+                        <TextBlock
+                            Margin="0,10,0,5"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Unlock Mode"
+                            Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <ComboBox
+                            SelectedIndex="{Binding WizAccountUnlockModeIndex}"
+                            Style="{StaticResource PortalComboBox}"
+                            Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ComboBoxItem Content="Inherit from global settings" />
+                            <ComboBoxItem Content="Both PC and phone" />
+                            <ComboBoxItem Content="Client-Initiated only (Phone unlocks PC)" />
+                            <ComboBoxItem Content="Host-Initiated only (PC requests phone)" />
+                        </ComboBox>
+
+                        <!--  Account Policy: Inactivity Expiry (Visible only when Editing)  -->
+                        <TextBlock
+                            Margin="0,10,0,5"
+                            FontSize="11"
+                            Foreground="{StaticResource TextMuted}"
+                            Text="Inactivity Expiry"
+                            Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <ComboBox
+                            SelectedIndex="{Binding WizInactivityDaysIndex}"
+                            Style="{StaticResource PortalComboBox}"
+                            Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ComboBoxItem Content="Disabled (No expiry)" />
+                            <ComboBoxItem Content="7 days" />
+                            <ComboBoxItem Content="14 days" />
+                            <ComboBoxItem Content="30 days" />
+                            <ComboBoxItem Content="60 days" />
+                            <ComboBoxItem Content="90 days" />
+                        </ComboBox>
 
                         <Grid Margin="0,20,0,0">
                             <Grid.ColumnDefinitions>

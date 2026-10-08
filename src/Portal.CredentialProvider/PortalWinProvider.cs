@@ -144,16 +144,16 @@ public class PortalWinProvider : PortalWinProviderBase
         return tile;
     }
 
-    protected internal override void OnUnlockRequested(string username, SecureString? password, string domain)
+    protected internal override void OnUnlockRequested(string username, SecureString? password, string domain, string? userSid = null)
     {
-        Logger.Log($"[PortalWinProvider] OnUnlockRequested for user: '{username}', domain: '{domain}'");
+        Logger.Log($"[PortalWinProvider] OnUnlockRequested for user: '{username}', domain: '{domain}', sid: '{userSid ?? "none"}'");
         CredentialProviderBootstrapper.TlsService?.DisconnectAllWebSocketClients("Unlock approved");
         UnlockState.SetPending(username, password, domain);
         PortalWinTile.CancelGlobalActiveRequest();
 
         try
         {
-            var targetTile = FindMatchingTile<PortalWinTile>(username, domain);
+            var targetTile = FindMatchingTile<PortalWinTile>(username, domain, userSid);
             if (targetTile != null)
             {
                 Logger.Log("[PortalWinProvider] Triggering auto-logon on target tile.");
@@ -161,6 +161,10 @@ public class PortalWinProvider : PortalWinProviderBase
                 this.SetDefaultTile(targetTile, autoLogon: true);
                 Logger.Log("[PortalWinProvider] Cursor recovery scheduled after unlock approval.");
                 CursorRecoveryService.TriggerAfterUnlock("Unlock approved");
+
+                // Record unlock activity timestamp for inactivity timer
+                var config = PortalWinConfig.Load();
+                config.RecordAccountUnlockActivity(username, domain, userSid);
             }
             else
             {

@@ -107,11 +107,63 @@ public static class IdentityHelper
         if (string.Equals(left.Trim(), right.Trim(), StringComparison.OrdinalIgnoreCase))
             return true;
 
+        // If both identities have explicit domains and they differ, they CANNOT match
+        var domainLeft = GetDomainFromIdentity(left);
+        var domainRight = GetDomainFromIdentity(right);
+        if (!string.IsNullOrWhiteSpace(domainLeft) && !string.IsNullOrWhiteSpace(domainRight)
+            && !string.Equals(domainLeft, domainRight, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         var shortLeft = GetShortUsername(left);
         var shortRight = GetShortUsername(right);
         return !string.IsNullOrWhiteSpace(shortLeft)
             && !string.IsNullOrWhiteSpace(shortRight)
             && string.Equals(shortLeft, shortRight, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Strict SID-first matching for a target user identity against a stored DeviceAccount.
+    /// Priority:
+    /// 1. If both SIDs are available, match strictly by SID.
+    /// 2. If SID is not available, match by canonical name (Domain\User or UPN).
+    /// 3. If domain is absent on either side, match by short username only if no domain conflict exists.
+    /// </summary>
+    public static bool MatchesAccount(string? targetSid, string? targetUser, string? targetDomain, Models.DeviceAccount account)
+    {
+        if (account == null) return false;
+
+        // 1. SID match (Highest precision)
+        if (!string.IsNullOrWhiteSpace(targetSid) && !string.IsNullOrWhiteSpace(account.UserSid))
+        {
+            return MatchesSid(targetSid, account.UserSid);
+        }
+
+        // 2. Canonical name match (Domain\User or UPN)
+        var targetCanonical = ToCanonical(targetUser, targetDomain);
+        var accountCanonical = ToCanonical(account.Username, account.Domain);
+        if (!string.IsNullOrWhiteSpace(targetCanonical) && !string.IsNullOrWhiteSpace(accountCanonical))
+        {
+            if (EqualsIgnoreCase(targetCanonical, accountCanonical))
+                return true;
+        }
+
+        // 3. Domain conflict check: if both specify different domains, reject
+        var effTargetDomain = targetDomain ?? GetDomainFromIdentity(targetUser);
+        var effAccountDomain = string.IsNullOrWhiteSpace(account.Domain) ? GetDomainFromIdentity(account.Username) : account.Domain;
+        if (!string.IsNullOrWhiteSpace(effTargetDomain) && !string.IsNullOrWhiteSpace(effAccountDomain)
+            && !string.Equals(effTargetDomain, effAccountDomain, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // 4. Short username fallback (only if no domain conflict)
+        var shortTarget = GetShortUsername(targetUser);
+        var shortAccount = GetShortUsername(account.Username);
+        return !string.IsNullOrWhiteSpace(shortTarget)
+            && !string.IsNullOrWhiteSpace(shortAccount)
+            && string.Equals(shortTarget, shortAccount, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

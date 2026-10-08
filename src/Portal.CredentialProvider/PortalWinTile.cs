@@ -86,7 +86,52 @@ public class PortalWinTile : PortalWinTileBase
     }
 
     private PortalWinProvider Provider => (PortalWinProvider)_providerBase;
-    public bool AllowsHostInitiated => Provider.UnlockMode == UnlockMode.HostInitiated || Provider.UnlockMode == UnlockMode.Both;
+
+    public Portal.Common.Models.DeviceAccount? ResolveCurrentTileAccount(PortalWinConfig config)
+    {
+        var devices = FindAllDevicesForCurrentUser(config);
+        foreach (var device in devices)
+        {
+            var acc = CredentialProviderTilePolicy.ResolveApprovalAccount(
+                device,
+                User?.QualifiedUserName,
+                User?.UserName,
+                _usernameControl?.Text,
+                User?.Sid);
+            if (acc != null)
+                return acc;
+        }
+        return null;
+    }
+
+    public bool IsAccountExpired
+    {
+        get
+        {
+            var config = PortalWinConfig.Load();
+            var account = ResolveCurrentTileAccount(config);
+            return account != null && account.IsExpired;
+        }
+    }
+
+    public bool AllowsHostInitiated
+    {
+        get
+        {
+            var config = PortalWinConfig.Load();
+            var account = ResolveCurrentTileAccount(config);
+            if (account != null)
+            {
+                if (account.IsExpired)
+                    return false;
+
+                var mode = account.ResolveEffectiveUnlockMode(Provider.UnlockMode);
+                return mode == UnlockMode.HostInitiated || mode == UnlockMode.Both;
+            }
+
+            return Provider.UnlockMode == UnlockMode.HostInitiated || Provider.UnlockMode == UnlockMode.Both;
+        }
+    }
 
     public PortalWinTile(PortalWinProviderBase provider) : base(provider) { }
     public PortalWinTile(PortalWinProviderBase provider, CredentialProviderUser user) : base(provider, user) { }
@@ -106,7 +151,21 @@ public class PortalWinTile : PortalWinTileBase
 
         ShowRequestButton();
         FocusPasswordField();
-        TryEarlyAutoRequestUnlock();
+
+        var config = PortalWinConfig.Load();
+        var account = ResolveCurrentTileAccount(config);
+        if (account != null && account.IsExpired)
+        {
+            UpdateStatus(Localization.T("Account Inactive"), Localization.T("Account inactivity period exceeded. Re-enter password in Portal.Host to reactivate."));
+        }
+        else if (account != null && account.ResolveEffectiveUnlockMode(Provider.UnlockMode) == UnlockMode.ClientInitiated)
+        {
+            UpdateStatus(Localization.T("Waiting for remote command"), Localization.T("Waiting for unlock command from phone app."));
+        }
+        else
+        {
+            TryEarlyAutoRequestUnlock();
+        }
     }
 
     protected override void OnSelected()
@@ -420,7 +479,7 @@ public class PortalWinTile : PortalWinTileBase
             return new System.Collections.Generic.List<Portal.Common.Models.DeviceModel>();
         }
 
-        return config.FindAllDevicesForUser(tileUsername ?? "", tileQualifiedName);
+        return config.FindAllDevicesForUser(tileUsername ?? "", tileQualifiedName, User?.Sid);
     }
 
     private void ApplyHostInitiatedTlsPolicy(PortalWinConfig config, string source)
@@ -1011,7 +1070,8 @@ public class PortalWinTile : PortalWinTileBase
                 var submitUser = IdentityHelper.GetShortUsername(targetAccount.Username) ?? targetAccount.Username;
                 var submitDomain = IdentityHelper.GetDomainFromIdentity(targetAccount.Username, targetAccount.Domain)
                     ?? System.Environment.MachineName;
-                Provider.OnUnlockRequested(submitUser, securePassword, submitDomain);
+                var submitSid = targetAccount.UserSid ?? User?.Sid;
+                Provider.OnUnlockRequested(submitUser, securePassword, submitDomain, submitSid);
             }
             else
             {

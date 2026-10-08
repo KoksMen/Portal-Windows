@@ -587,6 +587,44 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _wizCredsNextText = "Next →";
     [ObservableProperty] private LocalAccountOption? _selectedLocalAccount;
+    [ObservableProperty] private int _wizAccountUnlockModeIndex = 0;
+    [ObservableProperty] private int _wizInactivityDaysIndex = 0;
+
+    private static int InactivityDaysToIndex(int? days) => days switch
+    {
+        7 => 1,
+        14 => 2,
+        30 => 3,
+        60 => 4,
+        90 => 5,
+        _ => 0
+    };
+
+    private static int? IndexToInactivityDays(int index) => index switch
+    {
+        1 => 7,
+        2 => 14,
+        3 => 30,
+        4 => 60,
+        5 => 90,
+        _ => null
+    };
+
+    private static int UnlockModeToIndex(UnlockMode? mode) => mode switch
+    {
+        UnlockMode.Both => 1,
+        UnlockMode.ClientInitiated => 2,
+        UnlockMode.HostInitiated => 3,
+        _ => 0
+    };
+
+    private static UnlockMode? IndexToUnlockMode(int index) => index switch
+    {
+        1 => UnlockMode.Both,
+        2 => UnlockMode.ClientInitiated,
+        3 => UnlockMode.HostInitiated,
+        _ => null
+    };
 
     // Transport inputs
     [ObservableProperty] private bool _wizIsNetworkTransport = true;
@@ -2060,12 +2098,17 @@ public partial class MainViewModel : ObservableObject
         WizDeviceName = device.Name;
         WizInputPass = ""; // don't show existing password securely
         WizShowDeviceNameEdit = true;
+        WizAccountUnlockModeIndex = UnlockModeToIndex(account.CustomUnlockMode);
+        WizInactivityDaysIndex = InactivityDaysToIndex(account.InactivityExpiryDays);
         WizCredsNextText = Services.LocalizationService.T("Save Changes");
 
         ShowDashboard = true; // This hides Settings Panel
         ShowWizard = true;
         SetShowStep("StepCreds");
     }
+
+    [RelayCommand]
+    private void ReactivateAccount(string clientId) => EditDeviceAccount(clientId);
 
     [RelayCommand]
     private void ToggleWizPasswordReveal(object? parameter)
@@ -3179,6 +3222,8 @@ public partial class MainViewModel : ObservableObject
         IsWizPasswordRevealed = false;
         WizPasswordRevealedText = string.Empty;
         WizPasswordRevealGlyph = "\uE7B3";
+        WizAccountUnlockModeIndex = 0;
+        WizInactivityDaysIndex = 0;
 
         return sessionId;
     }
@@ -3903,7 +3948,11 @@ public partial class MainViewModel : ObservableObject
                     account.Username = SelectedLocalAccount.Username;
                     account.Domain = SelectedLocalAccount.Domain;
                     account.UserSid = IdentityHelper.TryResolveUserSid(SelectedLocalAccount.Username, SelectedLocalAccount.Domain);
+                    account.CustomUnlockMode = IndexToUnlockMode(WizAccountUnlockModeIndex);
+                    account.InactivityExpiryDays = IndexToInactivityDays(WizInactivityDaysIndex);
+                    account.LastUnlockedAtUtc = DateTime.UtcNow;
                     account.SetPassword(submittedPassword);
+                    device.NotifyAccountPolicyChanged();
                     _config.Save();
                     RefreshDevicesList();
                     await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Success"), Services.LocalizationService.T("Account updated successfully."));
@@ -3951,6 +4000,9 @@ public partial class MainViewModel : ObservableObject
 
                 _pairingContext.SetTargetPassword(submittedPassword);
             }
+
+            _pairingContext.CustomUnlockMode = IndexToUnlockMode(WizAccountUnlockModeIndex);
+            _pairingContext.InactivityExpiryDays = IndexToInactivityDays(WizInactivityDaysIndex);
 
             _credsSignal?.TrySetResult(true);
         }

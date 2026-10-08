@@ -38,7 +38,7 @@ public class TlsUnlockService : IDisposable
     public bool IsRunning { get; private set; }
     public string? CurrentIp => _lastAdvertisedIp ?? ResolveLocalIPv4();
 
-    public event Action<string, SecureString?, string>? UnlockRequested;
+    public event Action<string, SecureString?, string, string?>? UnlockRequested;
     public event Action<string, bool>? NetworkConnectionChanged;
     public event Action? StatusChanged;
 
@@ -59,7 +59,7 @@ public class TlsUnlockService : IDisposable
         _wsManager = wsManager;
         _mdns = mdns;
 
-        _unlockHandler.UnlockRequested += (u, p, d) => UnlockRequested?.Invoke(u, p, d);
+        _unlockHandler.UnlockRequested += (u, p, d, sid) => UnlockRequested?.Invoke(u, p, d, sid);
 
         _wsManager.UnlockApprovedWithoutPending += (clientId, reqId) =>
         {
@@ -75,16 +75,35 @@ public class TlsUnlockService : IDisposable
                 }
 
                 var account = device.Accounts.FirstOrDefault();
-                using var securePassword = account?.GetDecryptedSecurePassword();
-                if (account == null || securePassword == null || securePassword.Length == 0)
+                if (account == null)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: no account configured for device '{device.Name}'.");
+                    return;
+                }
+
+                if (account.IsExpired)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: account '{account.Username}' ({device.Name}) is expired/inactive.");
+                    return;
+                }
+
+                var effectiveMode = account.ResolveEffectiveUnlockMode(config.UnlockMode);
+                if (effectiveMode == UnlockMode.HostInitiated)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: account '{account.Username}' configured for Host-Initiated only.");
+                    return;
+                }
+
+                using var securePassword = account.GetDecryptedSecurePassword();
+                if (securePassword == null || securePassword.Length == 0)
                 {
                     Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: no credentials for device '{device.Name}'.");
                     return;
                 }
 
-                Logger.Log($"[TlsUnlockService] Fallback unlock APPROVED for user: {account.Username} from {device.Name}");
+                Logger.Log($"[TlsUnlockService] Fallback unlock APPROVED for user: {account.Username} (SID={account.UserSid ?? "none"}) from {device.Name}");
                 ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
-                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
             }
             catch (Exception ex)
             {

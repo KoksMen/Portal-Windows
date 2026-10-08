@@ -21,6 +21,36 @@ public class DeviceAccount
     public string EncryptedPasswordBlob { get; set; } = string.Empty;
 
     /// <summary>
+    /// Custom unlock mode override for this account. If null, inherits host global UnlockMode.
+    /// </summary>
+    [JsonPropertyName("customUnlockMode")]
+    public UnlockMode? CustomUnlockMode { get; set; }
+
+    /// <summary>
+    /// Optional inactivity expiry timeout in days (e.g. 7, 14, 30, 60, 90).
+    /// If null or &lt;= 0, inactivity expiry is disabled.
+    /// </summary>
+    [JsonPropertyName("inactivityExpiryDays")]
+    public int? InactivityExpiryDays { get; set; }
+
+    [JsonPropertyName("lastUnlockedAtUtc")]
+    public DateTime? LastUnlockedAtUtc { get; set; }
+
+    [JsonPropertyName("createdAtUtc")]
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonIgnore]
+    public bool IsExpired => InactivityExpiryDays is > 0 &&
+        (DateTime.UtcNow - (LastUnlockedAtUtc ?? CreatedAtUtc)) > TimeSpan.FromDays(InactivityExpiryDays.Value);
+
+    public UnlockMode ResolveEffectiveUnlockMode(UnlockMode globalMode) => CustomUnlockMode ?? globalMode;
+
+    public void RecordSuccessfulUnlock()
+    {
+        LastUnlockedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
     /// Decrypts the DPAPI blob and returns the password. 
     /// The caller holds the string and is responsible for its lifetime.
     /// </summary>

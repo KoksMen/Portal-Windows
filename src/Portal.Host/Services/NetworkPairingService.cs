@@ -295,7 +295,11 @@ public class NetworkPairingService
                 {
                     Username = _pairingContext.TargetUsername,
                     Domain = _pairingContext.TargetDomain ?? "",
-                    UserSid = IdentityHelper.TryResolveUserSid(_pairingContext.TargetUsername, _pairingContext.TargetDomain)
+                    UserSid = IdentityHelper.TryResolveUserSid(_pairingContext.TargetUsername, _pairingContext.TargetDomain),
+                    CustomUnlockMode = _pairingContext.CustomUnlockMode,
+                    InactivityExpiryDays = _pairingContext.InactivityExpiryDays,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    LastUnlockedAtUtc = DateTime.UtcNow
                 };
                 newAccount.SetPassword(_pairingContext.TargetPassword);
                 device.Accounts.Add(newAccount);
