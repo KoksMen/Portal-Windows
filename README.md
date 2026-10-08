@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">✨ Portal-Windows ✨</h1>
-<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.7.0) 🪄</h3>
+<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.8.7) 🪄</h3>
 
 <p align="center">
   <b>Бесшовная, безопасная и мгновенная разблокировка Windows с помощью вашего смартфона или умных часов</b><br>
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Версия-v1.7.0--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.7.0-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Версия-v1.8.7--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.8.7-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
   <img src="https://img.shields.io/badge/Платформа-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows/releases/latest">
-    <img src="https://img.shields.io/badge/📥_Скачать_Portal--Windows_(v1.7.0)-7c4dff?style=for-the-badge&logo=windows" alt="Download Portal-Windows" />
+    <img src="https://img.shields.io/badge/📥_Скачать_Portal--Windows_(v1.8.7)-7c4dff?style=for-the-badge&logo=windows" alt="Download Portal-Windows" />
   </a>
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal">
     <img src="https://img.shields.io/badge/📱_Google_Play_(Android)-34A853?style=for-the-badge&logo=android" alt="Download on Google Play" />
@@ -71,14 +71,14 @@
 
 ## 🌟 Ключевые возможности
 
-### 🔐 1. Живая LSA-валидация пароля на карточке устройства (NEW v1.7.0)
+### 🔐 1. Живая LSA-валидация пароля на карточке устройства (NEW v1.8.7)
 - **Аудит при старте хоста:** При запуске `Portal.Host` и загрузке списка сопряженных устройств выполняется неинтрузивный аудит сохраненного пароля через нативный системный вызов `LogonUserW` (`LOGON32_LOGON_NETWORK`).
 - **Мгновенный статус-бейдж:** В блоке учетной записи на карточке сразу отображается актуальный статус:
   - `[✓ Пароль верен]` (зелёный) — пароль актуален, разблокировка сработает штатно.
   - `[✕ Неверный пароль]` (красный) — пароль учетной записи Windows был изменён в системе, требуется обновить его в настройках карточки.
 - **Предотвращение сбоев на экране блокировки:** Пользователь узнаёт о рассинхронизации пароля заранее в интерфейсе хоста, исключая сюрпризы и сбои аутентификации на заблокированном ПК.
 
-### 🪟 2. Переосмысленный эргономичный Fluent UI карточки устройства (NEW v1.7.0)
+### 🪟 2. Переосмысленный эргономичный Fluent UI карточки устройства (NEW v1.8.7)
 - **Чёткая 3-уровневая визуальная иерархия:**
   1. **Идентификация устройства:** Иконка 36×36 со скруглением, крупное имя устройства, статус-бейдж активного транспорта (`[Wi-Fi]` / `[Bluetooth]`), усеченный моноширинный ClientID (`abc12345...`) и дата сопряжения, компактный toggle-свитч `[⏻ Включено]`.
   2. **Учетная запись и безопасность:** Имя пользователя (`👤 Username`) семантически сгруппировано непосредственно с бейджем валидности пароля (`[✓ Пароль верен]`).
@@ -86,24 +86,24 @@
 - **Адаптивная верстка (No-Wrap down to 480 px):** Элементы карточки сохраняют гармоничную структуру и не накладываются друг на друга даже при сильном сжатии окна.
 - **Эстетика Windows 11:** Эффекты размытия Mica Alt & Acrylic, мягкие скругления и адаптивная тёмная/светлая тема.
 
-### 🆔 3. Криптографическая привязка ClientID к SID пользователя Windows (NEW v1.7.0)
+### 🆔 3. Криптографическая привязка ClientID к SID пользователя Windows (NEW v1.8.7)
 - **Привязка к Security Identifier (SID):** Идентификаторы сопряженных устройств теперь криптографически и контекстно связаны с уникальным SID учетной записи Windows (`System.Security.Principal.SecurityIdentifier`).
 - **Защита от коллизий и переименований:** Поддержка локальных и доменных (Active Directory) пользователей, устойчивость к смене логина и строгая изоляция LSA-секретов.
 
-### 🔔 4. Современное скруглённое окно обновления приложения (NEW v1.7.0)
+### 🔔 4. Современное скруглённое окно обновления приложения (NEW v1.8.7)
 - **Новый Fluent-дизайн уведомления:** Диалоговое окно проверки и загрузки обновлений получило скругленные углы (`CornerRadius="16"`), акцентный визуальный заголовок и чистое форматирование.
 - **Интерактивный список изменений:** Просмотр описания релиза прямо в окне обновления перед установкой.
 - **Безопасная фоновая загрузка:** Автономная проверка цифровой подписи Authenticode и целостности SHA-256.
 
-### 🛡️ 5. Аудит и самовосстановление правил брандмауэра (Self-Repair Firewall) (NEW v1.7.0)
+### 🛡️ 5. Аудит и самовосстановление правил брандмауэра (Self-Repair Firewall) (NEW v1.8.7)
 - **Автоматический мониторинг сетевых портов:** Служба фоново проверяет активность правил входящих подключений Windows Defender Firewall (TCP 51234 для mTLS и UDP 5353 для mDNS) при каждом запуске службы.
 - **Самоисцеление правил:** В случае случайного удаления или сброса правил сторонним антивирусом Host восстанавливает их автоматически без прерывания работы.
 
-### ⌨️ 6. Откат ввода с защитой от сбоев (Fail-Safe Typing Rollback) (NEW v1.7.0)
+### ⌨️ 6. Откат ввода с защитой от сбоев (Fail-Safe Typing Rollback) (NEW v1.8.7)
 - **Умное переключение фокуса:** Если во время ожидания биометрического подтверждения пользователь начинает вводить пароль на физической клавиатуре, Credential Provider мгновенно отменяет сетевой запрос.
 - **Сохранение введённых символов:** Фокус и каретка плавно возвращаются в нативное поле ввода Windows LogonUI без потери первого введенного символа.
 
-### 🚀 7. Нативная платформа .NET 10 и компиляция ReadyToRun AOT (NEW v1.7.0)
+### 🚀 7. Нативная платформа .NET 10 и компиляция ReadyToRun AOT (NEW v1.8.7)
 - **Нативная сборка .NET 10:** Проект полностью скомпилирован под современный фреймворк .NET 10 (`net10.0-windows10.0.19041.0`) с новейшими оптимизациями JIT и встроенными криптографическими загрузчиками (`X509CertificateLoader`).
 - **Мгновенный старт экрана входа:** Модуль `Portal.CredentialProvider` собирается с ReadyToRun (AOT), исключая JIT-паузы при отрисовке плитки входа `logonui.exe`.
 
@@ -206,7 +206,7 @@
 1. **Установите мобильное приложение:**
    - Скачайте клиент из [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) или установите APK из [репозитория Android](https://github.com/xXMRK888YTXx/Portal-Android/releases).
 2. **Скачайте Portal-Windows:**
-   - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.7.0-win-x64.zip`.
+   - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.8.7-win-x64.zip`.
 3. **Распакуйте и запустите:**
    - Распакуйте архив в удобную постоянную папку (например, `C:\Program Files\Portal` или в каталог профиля пользователя).
    - Запустите файл `Portal.Host.exe` от имени администратора.
@@ -291,14 +291,14 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 ## 🌟 Key Features
 
-### 🔐 1. Live LSA Password Validation on Device Cards (NEW v1.7.0)
+### 🔐 1. Live LSA Password Validation on Device Cards (NEW v1.8.7)
 - **Host Startup Audit:** Performs non-intrusive password validation via native Windows LSA `LogonUserW` (`LOGON32_LOGON_NETWORK`) when the Host launches and loads paired devices.
 - **Instant Status Badge:** The account block immediately displays the password status:
   - `[✓ Password valid]` (green) — Password is valid, unlocking will proceed normally.
   - `[✕ Invalid password]` (red) — Windows password changed; needs updating in device card settings.
 - **Proactive Lock Screen Safety:** Catch password desynchronization before locking your screen, avoiding unexpected authentication failures.
 
-### 🪟 2. Redesigned Fluent UI Device Card Hierarchy (NEW v1.7.0)
+### 🪟 2. Redesigned Fluent UI Device Card Hierarchy (NEW v1.8.7)
 - **Ergonomic 3-Tier Layout:**
   1. **Device Identity:** 36×36 squircle icon, prominent device title, active transport badge (`[Wi-Fi]` / `[Bluetooth]`), monospace truncated ClientID (`abc12345...`) with pairing date, and compact `[⏻ Enabled]` toggle switch.
   2. **Account & Security:** Username (`👤 Username`) directly coupled with the live password validity badge (`[✓ Password valid]`).
@@ -306,24 +306,24 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 - **Adaptive Layout (No-Wrap down to 480 px):** Elements remain clearly organized without overlapping or clipping even in narrow window widths.
 - **Windows 11 Aesthetics:** Mica Alt & Acrylic backdrops, smooth corner radiuses, and dynamic dark/light theme switching.
 
-### 🆔 3. Cryptographic ClientID & Windows User SID Binding (NEW v1.7.0)
+### 🆔 3. Cryptographic ClientID & Windows User SID Binding (NEW v1.8.7)
 - **Bound to User SID:** Paired devices are now cryptographically and semantically linked to the Windows user's Security Identifier (`System.Security.Principal.SecurityIdentifier`).
 - **Collision & Rename Protection:** Robust isolation for local and domain (Active Directory) accounts, withstanding account renames while safeguarding LSA secret integrity.
 
-### 🔔 4. Modernized Rounded Update Notification Dialog (NEW v1.7.0)
+### 🔔 4. Modernized Rounded Update Notification Dialog (NEW v1.8.7)
 - **Modern Fluent Design:** Update prompts feature smooth rounded corners (`CornerRadius="16"`), accent update iconography, and clean typography.
 - **Changelog Preview:** Read release notes directly within the update window before initiating the update.
 - **Safe Background Delivery:** Automatic Authenticode signature validation and SHA-256 verification.
 
-### 🛡️ 5. Windows Defender Firewall Self-Repair (NEW v1.7.0)
+### 🛡️ 5. Windows Defender Firewall Self-Repair (NEW v1.8.7)
 - **Automated Rule Audit:** Background watchdog checks inbound rules for Windows Defender Firewall (TCP 51234 for mTLS and UDP 5353 for mDNS) on every service launch.
 - **Zero-Touch Healing:** Missing or purged firewall rules are automatically recreated without interrupting the user or generating unnecessary prompts.
 
-### ⌨️ 6. Fail-Safe Typing Rollback (NEW v1.7.0)
+### ⌨️ 6. Fail-Safe Typing Rollback (NEW v1.8.7)
 - **Smart Focus Management:** If the user begins typing a password on the keyboard while a remote unlock request is pending, the Credential Provider immediately cancels the remote request.
 - **Zero Keystroke Loss:** Smoothly returns input focus and caret back to the native Windows LogonUI password box without dropping the first typed character.
 
-### 🚀 7. Native .NET 10 Platform & ReadyToRun AOT (NEW v1.7.0)
+### 🚀 7. Native .NET 10 Platform & ReadyToRun AOT (NEW v1.8.7)
 - **Native .NET 10 Target:** The solution is exclusively compiled for .NET 10 (`net10.0-windows10.0.19041.0`), leveraging runtime optimizations and modern cryptography APIs (`X509CertificateLoader`).
 - **Zero-Latency LogonUI:** The `Portal.CredentialProvider` COM assembly is pre-compiled via ReadyToRun (AOT), avoiding JIT pauses when rendering the Windows logon screen.
 
@@ -424,7 +424,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 1. **Install the Mobile Companion App:**
    - Get the app on [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) or download the APK from the [Android Repository](https://github.com/xXMRK888YTXx/Portal-Android/releases).
 2. **Download Portal-Windows:**
-   - Grab the latest `PortalWin-1.7.0-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
+   - Grab the latest `PortalWin-1.8.7-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
 3. **Extract & Launch:**
    - Extract to a permanent folder (e.g. `C:\Program Files\Portal`).
    - Run `Portal.Host.exe` as Administrator.
