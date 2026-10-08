@@ -519,6 +519,24 @@ public partial class MainWindow : Window
         }
     }
 
+    private void AccountUnlockMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (sender is ComboBox cb && cb.SelectedIndex >= 0)
+        {
+            vm.WizAccountUnlockModeIndex = cb.SelectedIndex;
+        }
+    }
+
+    private void InactivityDays_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (sender is ComboBox cb && cb.SelectedIndex >= 0)
+        {
+            vm.WizInactivityDaysIndex = cb.SelectedIndex;
+        }
+    }
+
     private async void BtnCopyIp_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm || sender is not Button btn) return;

@@ -146,6 +146,8 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<DeviceModel> Devices { get; } = new();
     public ObservableCollection<ActivityCard> RecentActivity { get; } = new();
+    public ObservableCollection<string> AccountUnlockModeOptions { get; } = new();
+    public ObservableCollection<string> InactivityDaysOptions { get; } = new();
     public ObservableCollection<string> ActivityFilterOptions { get; } = new()
     {
         "All events", "Unlocks", "Pairing", "Network", "System", "Problems"
@@ -755,6 +757,7 @@ public partial class MainViewModel : ObservableObject
         LoadConfigToUi();
         SelectedLanguageCode = string.Equals(_config.UiLanguage, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
         UpdateActivityLanguageOptions();
+        RebuildAccountPolicyOptions();
         RefreshActivityJournal();
         UpdateCurrentVersionText = BuildCurrentVersionText();
         _ = LoadAboutAvatarsAsync();
@@ -1502,6 +1505,40 @@ public partial class MainViewModel : ObservableObject
 
         // Activity section (filter/sort options, summary and cards are language-dependent).
         UpdateActivityLanguageOptions();
+        RebuildAccountPolicyOptions();
+    }
+
+    public void RebuildAccountPolicyOptions()
+    {
+        var modes = new[]
+        {
+            Services.LocalizationService.T("Inherit from global settings"),
+            Services.LocalizationService.T("Both PC and phone"),
+            Services.LocalizationService.T("Client-Initiated only (Phone unlocks PC)"),
+            Services.LocalizationService.T("Host-Initiated only (PC requests phone)")
+        };
+
+        var days = new[]
+        {
+            Services.LocalizationService.T("Disabled (No expiry)"),
+            Services.LocalizationService.T("7 days"),
+            Services.LocalizationService.T("14 days"),
+            Services.LocalizationService.T("30 days"),
+            Services.LocalizationService.T("60 days"),
+            Services.LocalizationService.T("90 days")
+        };
+
+        var prevModeIndex = WizAccountUnlockModeIndex;
+        var prevDaysIndex = WizInactivityDaysIndex;
+
+        AccountUnlockModeOptions.Clear();
+        foreach (var mode in modes) AccountUnlockModeOptions.Add(mode);
+
+        InactivityDaysOptions.Clear();
+        foreach (var day in days) InactivityDaysOptions.Add(day);
+
+        WizAccountUnlockModeIndex = prevModeIndex >= 0 && prevModeIndex < modes.Length ? prevModeIndex : 0;
+        WizInactivityDaysIndex = prevDaysIndex >= 0 && prevDaysIndex < days.Length ? prevDaysIndex : 0;
     }
 
     private void UpdateActivityLanguageOptions()
