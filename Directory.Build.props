@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Centralized Versioning: Single source of truth for the entire solution -->
-    <PortalVersion>1.7.0</PortalVersion>
+    <PortalVersion>1.8.7</PortalVersion>
     <PortalReleaseCodename>Herta</PortalReleaseCodename>
 
     <Version>$(PortalVersion)</Version>

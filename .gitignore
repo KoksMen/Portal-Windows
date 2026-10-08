@@ -368,3 +368,5 @@ FodyWeavers.xsd
 PortalWin*
 *.sig
 *.sha256
+dist/
+publish/

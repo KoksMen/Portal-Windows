@@ -34,22 +34,22 @@ public static class PortalVersionInfo
         }
 
         var v = asm.GetName().Version;
-        var fallbackVer = v != null ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.7.0";
+        var fallbackVer = v != null ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.8.7";
         return (fallbackVer, fallbackVer, string.Empty);
     });
 
     /// <summary>
-    /// SemVer version string, e.g. "1.7.0".
+    /// SemVer version string, e.g. "1.8.7".
     /// </summary>
     public static string Version => _parsedVersion.Value.version;
 
     /// <summary>
-    /// User-facing display version, e.g. "v1.7.0".
+    /// User-facing display version, e.g. "v1.8.7".
     /// </summary>
     public static string DisplayVersion => "v" + _parsedVersion.Value.version;
 
     /// <summary>
-    /// Full informational version including release codename, e.g. "1.7.0-Herta".
+    /// Full informational version including release codename, e.g. "1.8.7-Herta".
     /// </summary>
     public static string FullVersion => _parsedVersion.Value.fullVersion;
 
