@@ -38,6 +38,7 @@ try
     CloseApplicationProcesses(session.ApplicationDirectory);
 
     var sourceRoot = ResolveStagingRoot(session.StagingDirectory);
+    ValidateStagingIntegrity(sourceRoot);
     ReplaceDirectoryContents(sourceRoot, session.ApplicationDirectory);
 
     var providerDllPath = Path.Combine(
@@ -195,6 +196,31 @@ static string ResolveStagingRoot(string stagingDirectory)
     }
 
     return root;
+}
+
+static void ValidateStagingIntegrity(string sourceRoot)
+{
+    var hostExecutable = Path.Combine(sourceRoot, "Portal.Host.exe");
+    if (!File.Exists(hostExecutable))
+    {
+        throw new InvalidOperationException($"Staging validation failed: {hostExecutable} does not exist.");
+    }
+
+    var fileInfo = new FileInfo(hostExecutable);
+    if (fileInfo.Length < 1024 * 50)
+    {
+        throw new InvalidOperationException($"Staging validation failed: {hostExecutable} is suspiciously small ({fileInfo.Length} bytes).");
+    }
+
+    using var stream = File.OpenRead(hostExecutable);
+    var buffer = new byte[2];
+    var read = stream.Read(buffer, 0, 2);
+    if (read < 2 || buffer[0] != 0x4D || buffer[1] != 0x5A) // 'MZ'
+    {
+        throw new InvalidOperationException($"Staging validation failed: {hostExecutable} does not have a valid PE header.");
+    }
+
+    Logger.Log($"[Updater] Staging payload integrity verified successfully for {hostExecutable} ({fileInfo.Length} bytes).");
 }
 
 static void ReplaceDirectoryContents(string sourceDirectory, string destinationDirectory)

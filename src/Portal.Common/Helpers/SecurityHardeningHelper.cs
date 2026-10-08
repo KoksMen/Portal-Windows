@@ -99,6 +99,30 @@ public static class SecurityHardeningHelper
                 PropagationFlags.None,
                 AccessControlType.Allow));
 
+            // If the directory is outside Program Files (e.g. dev workspace), preserve owner write access
+            var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            var isProgramFiles = (!string.IsNullOrEmpty(programFiles) && directoryPath.StartsWith(programFiles, StringComparison.OrdinalIgnoreCase))
+                || (!string.IsNullOrEmpty(programFilesX86) && directoryPath.StartsWith(programFilesX86, StringComparison.OrdinalIgnoreCase));
+
+            if (!isProgramFiles)
+            {
+                try
+                {
+                    var owner = dirInfo.GetAccessControl().GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+                    if (owner != null && owner != adminSid && owner != systemSid)
+                    {
+                        dirSecurity.AddAccessRule(new FileSystemAccessRule(
+                            owner,
+                            FileSystemRights.FullControl,
+                            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                            PropagationFlags.None,
+                            AccessControlType.Allow));
+                    }
+                }
+                catch { }
+            }
+
             dirInfo.SetAccessControl(dirSecurity);
             SafeLog($"[SecurityHardening] Hardened directory permissions on '{directoryPath}'.");
             return true;

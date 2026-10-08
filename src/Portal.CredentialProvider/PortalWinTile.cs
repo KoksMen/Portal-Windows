@@ -551,7 +551,9 @@ public class PortalWinTile : PortalWinTileBase
                         {
                             anyRejection = true;
                             lastRejectionDevice = device;
-                            Logger.LogWarning($"[Tile] unlock_request_rejected_partial clientId='{device.ClientId}' elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
+                            Logger.LogWarning($"[Tile] unlock_request_rejected clientId='{device.ClientId}' elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
+                            try { cts.Cancel(); } catch { }
+                            break;
                         }
                     }
                 }

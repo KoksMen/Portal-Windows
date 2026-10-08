@@ -2567,6 +2567,7 @@ public partial class MainViewModel : ObservableObject
 
             var devicesSnapshot = _config.Devices.Select(d => d).ToList();
             serverCertificatePfx = await File.ReadAllBytesAsync(CertificateService.DefaultCertPath);
+            var serverCertificatePassword = CertificateService.TryGetCertificatePassword();
             ShowCreateBackupDialog = false;
             var outcome = await RunBusyOperationAsync(
                 Services.LocalizationService.T("Creating encrypted backup"),
@@ -2580,6 +2581,7 @@ public partial class MainViewModel : ObservableObject
                         devicesSnapshot,
                         serverCertificatePfx,
                         payload.Password,
+                        serverCertificatePassword,
                         cancellationToken);
                 },
                 minimumDisplayDuration: TimeSpan.FromSeconds(1.2),
@@ -2717,6 +2719,11 @@ public partial class MainViewModel : ObservableObject
                             if (!string.IsNullOrWhiteSpace(certDir))
                             {
                                 CertificateService.EnsureCertPermissions(certDir);
+                            }
+
+                            if (!string.IsNullOrWhiteSpace(restoredData.ServerCertificatePassword))
+                            {
+                                CertificateService.StoreCertificatePassword(restoredData.ServerCertificatePassword);
                             }
                         }, cancellationToken);
 

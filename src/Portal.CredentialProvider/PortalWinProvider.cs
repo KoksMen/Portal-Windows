@@ -52,6 +52,7 @@ public class PortalWinProvider : PortalWinProviderBase
 
             var supported = CredentialProviderTilePolicy.IsUsageScenarioSupported(cpus, dwFlags);
             Logger.Log($"[PortalWinProvider] Scenario supported? {supported}");
+            Portal.Common.Services.FailSafeLockoutGuard.RecordSuccessfulInitialization();
             return supported;
         }
         catch (Exception ex)

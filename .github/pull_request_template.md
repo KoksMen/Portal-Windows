@@ -1,4 +1,4 @@
-## 🚀 Portal-Windows v1.5.5 Herta — Release Summary / Описание изменений
+## 🚀 Portal-Windows v1.7.0 Herta — Release Summary / Описание изменений
 
 ### 🇷🇺 Описание релиза
 
@@ -23,7 +23,7 @@
 
 4. **✍️ Цифровая подпись и сборка:**
    - Все бинарники подписаны сертификатами xXTeam и меткой времени Sectigo RFC 3161 SHA-256.
-   - Сформирован релизный архив: `PortalWin-1.5.5-win-x64.zip`.
+   - Сформирован релизный архив: `PortalWin-1.7.0-win-x64.zip`.
 
 ---
 
@@ -46,4 +46,4 @@
 
 4. **✍️ Code Signing & Packaging:**
    - Authenticode signatures with trusted Sectigo RFC 3161 timestamps.
-   - Packaged artifact: `PortalWin-1.5.5-win-x64.zip`.
+   - Packaged artifact: `PortalWin-1.7.0-win-x64.zip`.

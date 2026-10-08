@@ -8,4 +8,6 @@ public interface IAttemptTracker
     bool IsBlocked(string id);
     void RecordFailure(string id);
     void RecordSuccess(string id);
+    TimeSpan? GetRemainingLockout(string id);
+    void ResetAll();
 }

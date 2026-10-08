@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
@@ -221,11 +223,22 @@ public class NetworkPairingService
 
         if (_attemptTracker.IsBlocked(clientIp))
         {
-            Logger.LogWarning($"Pairing rejected for {clientIp}: Too many failed attempts.");
-            return Results.Json(new { error = "Too many requests" }, statusCode: 429);
+            var remaining = _attemptTracker.GetRemainingLockout(clientIp);
+            var remainingSec = remaining.HasValue ? (int)Math.Max(1, Math.Ceiling(remaining.Value.TotalSeconds)) : 120;
+            Logger.LogWarning($"Pairing rejected for {clientIp}: Too many failed attempts ({remainingSec}s remaining).");
+            return Results.Json(new { error = "Too many requests", retryAfter = remainingSec }, statusCode: 429);
         }
 
-        if (_pairingContext == null || string.IsNullOrEmpty(_pairingContext.PairingCode) || request.Code != _pairingContext.PairingCode)
+        var expectedCode = _pairingContext?.PairingCode ?? string.Empty;
+        var providedCode = request.Code ?? string.Empty;
+        var expectedBytes = Encoding.UTF8.GetBytes(expectedCode);
+        var providedBytes = Encoding.UTF8.GetBytes(providedCode);
+
+        var isCodeValid = expectedBytes.Length > 0 &&
+                          expectedBytes.Length == providedBytes.Length &&
+                          CryptographicOperations.FixedTimeEquals(expectedBytes, providedBytes);
+
+        if (_pairingContext == null || !isCodeValid)
         {
             Logger.LogWarning($"Pairing rejected for {clientIp}: Invalid code.");
             _attemptTracker.RecordFailure(clientIp);

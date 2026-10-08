@@ -4,10 +4,12 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Portal.Common;
+using Portal.Common.Helpers;
 using Portal.Common.Models;
 
 namespace Portal.Host.Services;
@@ -235,6 +237,18 @@ public sealed class UpdateService
             cancellationToken);
 
         ZipFile.ExtractToDirectory(packagePath, stagingDirectory, overwriteFiles: true);
+        var extractedRoot = ResolveExtractedRoot(stagingDirectory);
+
+        await ReportStageAsync(
+            progress,
+            AppUpdateStage.PreparingFiles,
+            "[5/7] Verifying signatures",
+            "Verifying digital signatures and payload integrity...",
+            packageFileName,
+            StagePauseMs,
+            cancellationToken);
+        ValidatePayloadAuthenticode(extractedRoot);
+
         await ReportStageAsync(
             progress,
             AppUpdateStage.PreparingFiles,
@@ -247,7 +261,6 @@ public sealed class UpdateService
         var providerDllRelativePath = string.IsNullOrWhiteSpace(manifest.ProviderDllRelativePath)
             ? DefaultProviderDllRelativePath
             : manifest.ProviderDllRelativePath.Trim();
-        var extractedRoot = ResolveExtractedRoot(stagingDirectory);
         var requiresProviderReinstall = DetectProviderPayload(extractedRoot, providerDllRelativePath);
         manifest.RequiresProviderReinstall = requiresProviderReinstall;
         manifest.ProviderDllRelativePath = providerDllRelativePath;
@@ -401,6 +414,12 @@ public sealed class UpdateService
         var asset = SelectReleaseAsset(release, preferredAssetName)
             ?? throw new InvalidOperationException("No suitable .zip asset was found in the latest GitHub release.");
 
+        var sha256 = NormalizeDigest(asset.Digest);
+        if (string.IsNullOrWhiteSpace(sha256))
+        {
+            sha256 = await TryResolveSha256FromReleaseAsync(release, asset, accessToken, cancellationToken);
+        }
+
         return new AppUpdateManifest
         {
             Version = release.TagName.Trim(),
@@ -408,13 +427,87 @@ public sealed class UpdateService
             PackageApiUri = string.IsNullOrWhiteSpace(asset.ApiUrl) ? null : asset.ApiUrl.Trim(),
             PackageFileName = asset.Name.Trim(),
             PackageSizeBytes = asset.Size > 0 ? asset.Size : null,
-            Sha256 = NormalizeDigest(asset.Digest),
+            Sha256 = sha256,
             ReleaseNotes = release.Body,
             ProviderDllRelativePath = DefaultProviderDllRelativePath,
             SourceRepository = repository,
             ReleasePageUrl = string.IsNullOrWhiteSpace(release.HtmlUrl) ? null : release.HtmlUrl.Trim(),
             PublishedAtUtc = release.PublishedAtUtc
         };
+    }
+
+    private async Task<string?> TryResolveSha256FromReleaseAsync(
+        GitHubReleaseDto release,
+        GitHubReleaseAssetDto targetAsset,
+        string? accessToken,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (release.Assets != null && release.Assets.Count > 0)
+            {
+                var shaAsset = release.Assets.FirstOrDefault(a =>
+                    !string.IsNullOrWhiteSpace(a.Name) &&
+                    (string.Equals(a.Name, $"{targetAsset.Name}.sha256", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(a.Name, $"{targetAsset.Name}.sha256sum", StringComparison.OrdinalIgnoreCase) ||
+                     (a.Name.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase) && a.Name.Contains("PortalWin", StringComparison.OrdinalIgnoreCase))));
+
+                if (shaAsset != null)
+                {
+                    var shaUrl = !string.IsNullOrWhiteSpace(accessToken) && !string.IsNullOrWhiteSpace(shaAsset.ApiUrl)
+                        ? shaAsset.ApiUrl
+                        : shaAsset.BrowserDownloadUrl;
+
+                    if (!string.IsNullOrWhiteSpace(shaUrl))
+                    {
+                        using var request = new HttpRequestMessage(HttpMethod.Get, shaUrl);
+                        if (!string.IsNullOrWhiteSpace(accessToken))
+                        {
+                            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken.Trim());
+                        }
+
+                        if (Uri.TryCreate(shaUrl, UriKind.Absolute, out var uri) &&
+                            string.Equals(uri.Host, "api.github.com", StringComparison.OrdinalIgnoreCase))
+                        {
+                            request.Headers.Accept.Clear();
+                            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+                        }
+
+                        using var response = await _httpClient.SendAsync(request, cancellationToken);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var text = await response.Content.ReadAsStringAsync(cancellationToken);
+                            var match = System.Text.RegularExpressions.Regex.Match(text, @"\b[a-fA-F0-9]{64}\b");
+                            if (match.Success)
+                            {
+                                Logger.Log($"[UpdateService] Resolved release SHA-256 checksum from '{shaAsset.Name}': {match.Value}");
+                                return match.Value.ToLowerInvariant();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fallback: check release.Body for SHA256
+            if (!string.IsNullOrWhiteSpace(release.Body))
+            {
+                var bodyMatch = System.Text.RegularExpressions.Regex.Match(
+                    release.Body,
+                    @"(?:SHA-?256|checksum|hash)\s*[:=]?\s*([a-fA-F0-9]{64})",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (bodyMatch.Success)
+                {
+                    Logger.Log($"[UpdateService] Resolved release SHA-256 checksum from release body: {bodyMatch.Groups[1].Value}");
+                    return bodyMatch.Groups[1].Value.ToLowerInvariant();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[UpdateService] Could not resolve SHA-256 checksum from release assets: {ex.Message}");
+        }
+
+        return null;
     }
 
     private static GitHubReleaseAssetDto? SelectReleaseAsset(GitHubReleaseDto release, string preferredAssetName)
@@ -607,16 +700,105 @@ public sealed class UpdateService
 
         if (string.IsNullOrWhiteSpace(manifest.Sha256))
         {
+            Logger.LogWarning("[UpdateService] Package SHA-256 checksum not provided in release metadata; skipping hash verification.");
             return;
         }
 
         await using var stream = File.OpenRead(packagePath);
         var hashBytes = await SHA256.HashDataAsync(stream, cancellationToken);
-        var actualHash = Convert.ToHexString(hashBytes);
-        if (!string.Equals(actualHash, manifest.Sha256.Trim(), StringComparison.OrdinalIgnoreCase))
+        var actualHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
+        var expectedHash = manifest.Sha256.Trim().ToLowerInvariant();
+        if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Package hash validation failed.");
+            throw new InvalidOperationException($"Package SHA-256 verification failed! Expected: {expectedHash}, Computed: {actualHash}.");
         }
+
+        Logger.Log($"[UpdateService] Package SHA-256 verified successfully: {actualHash}");
+    }
+
+    private static void ValidatePayloadAuthenticode(string extractedRoot)
+    {
+        var stagedHostPath = Path.Combine(extractedRoot, "Portal.Host.exe");
+        if (!File.Exists(stagedHostPath))
+        {
+            var found = Directory.GetFiles(extractedRoot, "Portal.Host.exe", SearchOption.AllDirectories).FirstOrDefault();
+            if (found != null)
+            {
+                stagedHostPath = found;
+            }
+        }
+
+        if (!File.Exists(stagedHostPath))
+        {
+            throw new InvalidOperationException("Payload validation failed: Portal.Host.exe was not found in update package.");
+        }
+
+        X509Certificate2? currentHostCert = null;
+        var currentHostPath = Environment.ProcessPath;
+        if (!string.IsNullOrWhiteSpace(currentHostPath) && File.Exists(currentHostPath))
+        {
+            try
+            {
+#pragma warning disable SYSLIB0057 // X509Certificate.CreateFromSignedFile is obsolete, but required for PE Authenticode verification
+                currentHostCert = new X509Certificate2(X509Certificate.CreateFromSignedFile(currentHostPath));
+#pragma warning restore SYSLIB0057
+            }
+            catch
+            {
+                // Unsigned in development environment
+            }
+        }
+
+        X509Certificate2? stagedHostCert = null;
+        try
+        {
+#pragma warning disable SYSLIB0057 // X509Certificate.CreateFromSignedFile is obsolete, but required for PE Authenticode verification
+            stagedHostCert = new X509Certificate2(X509Certificate.CreateFromSignedFile(stagedHostPath));
+#pragma warning restore SYSLIB0057
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[UpdateService] Could not read signature from staged Portal.Host.exe: {ex.Message}");
+        }
+
+        if (stagedHostCert == null)
+        {
+            if (currentHostCert != null)
+            {
+                throw new InvalidOperationException("Authenticode validation failed: Current application is digitally signed, but update payload executable is unsigned!");
+            }
+
+            Logger.LogWarning("[UpdateService] Update payload is unsigned (development build). Skipping Authenticode verification.");
+            return;
+        }
+
+        const string KnownDeveloperToken = "xXKoksMenXx";
+        const string KnownTeamToken = "xXTeam";
+        const string KnownThumbprint = "F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B";
+
+        bool isKnownPublisher =
+            stagedHostCert.Thumbprint.Equals(KnownThumbprint, StringComparison.OrdinalIgnoreCase) ||
+            stagedHostCert.Subject.Contains(KnownDeveloperToken, StringComparison.OrdinalIgnoreCase) ||
+            stagedHostCert.Subject.Contains(KnownTeamToken, StringComparison.OrdinalIgnoreCase) ||
+            (currentHostCert != null && string.Equals(stagedHostCert.Thumbprint, currentHostCert.Thumbprint, StringComparison.OrdinalIgnoreCase)) ||
+            (currentHostCert != null && string.Equals(stagedHostCert.Subject, currentHostCert.Subject, StringComparison.OrdinalIgnoreCase));
+
+        bool isChainTrusted = false;
+        try
+        {
+            using var chain = new X509Chain();
+            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+            isChainTrusted = chain.Build(stagedHostCert);
+        }
+        catch { }
+
+        if (!isKnownPublisher && !isChainTrusted)
+        {
+            throw new InvalidOperationException(
+                $"Untrusted update signature! Publisher: '{stagedHostCert.Subject}', Thumbprint: '{stagedHostCert.Thumbprint}'. Update rejected.");
+        }
+
+        Logger.Log($"[UpdateService] Authenticode signature verified for {Path.GetFileName(stagedHostPath)}. Signer: {stagedHostCert.Subject}, Thumbprint: {stagedHostCert.Thumbprint}");
     }
 
     private static Uri ResolvePackageUri(string packageUriValue)
@@ -746,7 +928,7 @@ public sealed class UpdateService
     private static string GetSafeVersionText()
     {
         var version = typeof(UpdateService).Assembly.GetName().Version;
-        return version?.ToString(3) ?? "1.5.4";
+        return version?.ToString(3) ?? PortalVersionInfo.Version;
     }
 
     private static string NormalizeRepository(string repository)

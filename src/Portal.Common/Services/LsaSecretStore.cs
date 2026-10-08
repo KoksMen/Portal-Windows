@@ -73,6 +73,68 @@ internal static class LsaSecretStore
         }
     }
 
+    public static bool TryDeleteSecret(string secretName)
+    {
+        if (string.IsNullOrWhiteSpace(secretName))
+        {
+            return false;
+        }
+
+        IntPtr policyHandle = IntPtr.Zero;
+        IntPtr secretNameBuffer = IntPtr.Zero;
+
+        try
+        {
+            var objectAttributes = new LsaObjectAttributes
+            {
+                Length = Marshal.SizeOf<LsaObjectAttributes>()
+            };
+
+            var openStatus = LsaOpenPolicy(
+                IntPtr.Zero,
+                ref objectAttributes,
+                POLICY_CREATE_SECRET,
+                out policyHandle);
+
+            if (openStatus != 0)
+            {
+                LogLsaError("LsaOpenPolicy(delete)", openStatus);
+                return false;
+            }
+
+            var secretNameLsa = InitLsaString(secretName, out secretNameBuffer);
+            var deleteStatus = LsaStorePrivateData(policyHandle, ref secretNameLsa, IntPtr.Zero);
+            if (deleteStatus != 0)
+            {
+                const uint STATUS_OBJECT_NAME_NOT_FOUND = 0xC0000034;
+                if (deleteStatus != STATUS_OBJECT_NAME_NOT_FOUND)
+                {
+                    LogLsaError("LsaStorePrivateData(delete)", deleteStatus);
+                }
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[LsaSecretStore] Failed to delete secret.", ex);
+            return false;
+        }
+        finally
+        {
+            if (policyHandle != IntPtr.Zero)
+            {
+                LsaClose(policyHandle);
+            }
+
+            if (secretNameBuffer != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(secretNameBuffer);
+            }
+        }
+    }
+
     public static bool TryReadSecret(string secretName, out string? secretValue)
     {
         secretValue = null;
@@ -211,6 +273,12 @@ internal static class LsaSecretStore
         IntPtr policyHandle,
         ref LsaUnicodeString keyName,
         ref LsaUnicodeString privateData);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern uint LsaStorePrivateData(
+        IntPtr policyHandle,
+        ref LsaUnicodeString keyName,
+        IntPtr privateData);
 
     [DllImport("advapi32.dll", SetLastError = true)]
     private static extern uint LsaRetrievePrivateData(

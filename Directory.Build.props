@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Centralized Versioning: Single source of truth for the entire solution -->
-    <PortalVersion>1.7.0</PortalVersion>
+    <PortalVersion>1.8.7</PortalVersion>
     <PortalReleaseCodename>Herta</PortalReleaseCodename>
 
     <Version>$(PortalVersion)</Version>
@@ -10,9 +10,8 @@
     <InformationalVersion>$(PortalVersion)-$(PortalReleaseCodename)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 
-    <!-- Unified Framework & Runtime RollForward Configuration -->
-    <!-- Default target framework: net8.0-windows10.0.19041.0 with RollForward=Major to run on .NET 10. Can be overridden via /p:DefaultTargetFramework=net10.0-windows10.0.19041.0 when .NET 10 SDK is installed -->
-    <DefaultTargetFramework Condition="'$(DefaultTargetFramework)' == ''">net8.0-windows10.0.19041.0</DefaultTargetFramework>
+    <!-- Unified Framework & Runtime Configuration: Target .NET 10 exclusively -->
+    <DefaultTargetFramework Condition="'$(DefaultTargetFramework)' == ''">net10.0-windows10.0.19041.0</DefaultTargetFramework>
     <RollForward>Major</RollForward>
   </PropertyGroup>
 </Project>
