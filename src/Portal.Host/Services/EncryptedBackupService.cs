@@ -70,12 +70,43 @@ public sealed class EncryptedBackupService
 
         try
         {
+            var devicesJson = JsonSerializer.Serialize(devices, DeviceJsonOptions);
+            var backupDevices = JsonSerializer.Deserialize<List<DeviceModel>>(devicesJson, DeviceJsonOptions) ?? new List<DeviceModel>();
+            var accountPasswords = new Dictionary<string, string>();
+
+            for (int i = 0; i < devices.Count && i < backupDevices.Count; i++)
+            {
+                var originalDev = devices.ElementAt(i);
+                var clonedDev = backupDevices[i];
+
+                for (int j = 0; j < originalDev.Accounts.Count && j < clonedDev.Accounts.Count; j++)
+                {
+                    var originalAcc = originalDev.Accounts[j];
+                    var clonedAcc = clonedDev.Accounts[j];
+
+                    clonedAcc.EncryptedPasswordBlob = string.Empty;
+
+                    var plainPassword = originalAcc.GetDecryptedPassword();
+                    if (!string.IsNullOrEmpty(plainPassword))
+                    {
+                        var accKey = GetAccountKey(clonedDev.ClientId, clonedAcc.Username, clonedAcc.Domain);
+                        accountPasswords[accKey] = plainPassword;
+                    }
+                    else if (!string.IsNullOrEmpty(originalAcc.EncryptedPasswordBlob))
+                    {
+                        // Retain existing blob as fallback if password cannot be decrypted on current machine
+                        clonedAcc.EncryptedPasswordBlob = originalAcc.EncryptedPasswordBlob;
+                    }
+                }
+            }
+
             var plaintextPayload = new BackupPlaintext
             {
                 ConfigJson = JsonSerializer.Serialize(configSnapshot, DeviceJsonOptions),
-                Devices = devices.ToList(),
+                Devices = backupDevices,
                 ServerCertificatePfx = Convert.ToBase64String(serverCertificatePfx),
                 ServerCertificatePassword = serverCertificatePassword,
+                AccountPasswords = accountPasswords,
                 CreatedUtc = DateTime.UtcNow
             };
             plaintext = JsonSerializer.SerializeToUtf8Bytes(plaintextPayload, DeviceJsonOptions);
@@ -95,7 +126,7 @@ public sealed class EncryptedBackupService
             var envelope = new EncryptedBackupEnvelope
             {
                 Format = "Portal.EncryptedDeviceBackup",
-                Version = 1,
+                Version = 2,
                 CreatedUtc = DateTime.UtcNow,
                 Kdf = "PBKDF2-HMAC-SHA256",
                 Iterations = Pbkdf2Iterations,
@@ -173,6 +204,23 @@ public sealed class EncryptedBackupService
                 : (JsonSerializer.Deserialize<PortalWinConfig>(payload.ConfigJson, DeviceJsonOptions) ?? new PortalWinConfig());
 
             var restoredDevices = payload.Devices ?? new List<DeviceModel>();
+
+            // If portable passwords are present (v2 format), re-encrypt under the current machine's DPAPI
+            if (payload.AccountPasswords != null && payload.AccountPasswords.Count > 0)
+            {
+                foreach (var device in restoredDevices)
+                {
+                    foreach (var acc in device.Accounts)
+                    {
+                        var accKey = GetAccountKey(device.ClientId, acc.Username, acc.Domain);
+                        if (payload.AccountPasswords.TryGetValue(accKey, out var plainPassword) && !string.IsNullOrEmpty(plainPassword))
+                        {
+                            acc.SetPassword(plainPassword);
+                        }
+                    }
+                }
+            }
+
             var certBytes = string.IsNullOrWhiteSpace(payload.ServerCertificatePfx)
                 ? Array.Empty<byte>()
                 : Convert.FromBase64String(payload.ServerCertificatePfx);
@@ -203,7 +251,7 @@ public sealed class EncryptedBackupService
             throw new InvalidOperationException($"Unsupported backup format: {envelope.Format}");
         }
 
-        if (envelope.Version != 1)
+        if (envelope.Version != 1 && envelope.Version != 2)
         {
             throw new InvalidOperationException($"Unsupported backup version: {envelope.Version}");
         }
@@ -306,8 +354,17 @@ public sealed class EncryptedBackupService
         [JsonPropertyName("serverCertificatePassword")]
         public string? ServerCertificatePassword { get; set; }
 
+        [JsonPropertyName("accountPasswords")]
+        public Dictionary<string, string>? AccountPasswords { get; set; }
+
         [JsonPropertyName("createdUtc")]
         public DateTime CreatedUtc { get; set; }
+    }
+
+    private static string GetAccountKey(string clientId, string username, string domain)
+    {
+        var canonical = Portal.Common.Helpers.IdentityHelper.ToCanonical(username, domain) ?? username;
+        return $"{clientId}::{canonical}".ToLowerInvariant();
     }
 }
 

@@ -3743,11 +3743,11 @@ public partial class MainViewModel : ObservableObject
             Logger.LogWarning($"[Host] Failed to enumerate user profiles via WMI: {ex.Message}");
         }
 
-        // 3. Discover accounts from Win32_UserAccount (including domain and local accounts).
+        // 3. Discover accounts from Win32_UserAccount (restricted to local accounts to prevent Active Directory enumeration hangs).
         try
         {
             using var searcher = new ManagementObjectSearcher(
-                "SELECT Name, Domain, Disabled, Lockout FROM Win32_UserAccount");
+                "SELECT Name, Domain, Disabled, Lockout FROM Win32_UserAccount WHERE LocalAccount = True");
 
             foreach (ManagementObject account in searcher.Get())
             {
@@ -3764,7 +3764,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Logger.LogWarning($"[Host] Failed to enumerate user accounts via WMI: {ex.Message}");
+            Logger.LogWarning($"[Host] Failed to enumerate local user accounts via WMI: {ex.Message}");
         }
 
         AvailableLocalAccounts.Clear();
