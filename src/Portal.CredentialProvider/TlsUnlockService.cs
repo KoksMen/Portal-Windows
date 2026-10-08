@@ -9,7 +9,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
 using Portal.Common;
+using Portal.Common.Abstractions;
 using Portal.Common.Models;
+using Portal.Common.Services;
 using Portal.CredentialProvider.Services;
 
 namespace Portal.CredentialProvider;
@@ -22,6 +24,7 @@ public class TlsUnlockService : IDisposable
     private readonly UnlockRequestHandler _unlockHandler;
     private readonly WebSocketConnectionManager _wsManager;
     private readonly MdnsAnnouncer _mdns;
+    private readonly INetworkRateLimiter _rateLimiter;
     private readonly object _wsPolicyLock = new();
 
     private Microsoft.AspNetCore.Builder.WebApplication? _app;
@@ -44,7 +47,7 @@ public class TlsUnlockService : IDisposable
 
     public TlsUnlockService(PortalWinConfig config)
         : this(config, new UnlockRequestHandler(config, new AttemptTracker()),
-               new WebSocketConnectionManager(), new MdnsAnnouncer())
+               new WebSocketConnectionManager(), new MdnsAnnouncer(), new NetworkRateLimiter())
     {
     }
 
@@ -52,12 +55,14 @@ public class TlsUnlockService : IDisposable
         PortalWinConfig config,
         UnlockRequestHandler unlockHandler,
         WebSocketConnectionManager wsManager,
-        MdnsAnnouncer mdns)
+        MdnsAnnouncer mdns,
+        INetworkRateLimiter? rateLimiter = null)
     {
         _config = config;
         _unlockHandler = unlockHandler;
         _wsManager = wsManager;
         _mdns = mdns;
+        _rateLimiter = rateLimiter ?? new NetworkRateLimiter();
 
         _unlockHandler.UnlockRequested += (u, p, d, sid) => UnlockRequested?.Invoke(u, p, d, sid);
 
@@ -168,12 +173,37 @@ public class TlsUnlockService : IDisposable
         builder.Services.AddLogging();
         _app = builder.Build();
 
-        // НОВОЕ: Встроенный Middleware для моментальной блокировки неавторизованных сессий по отпечатку
+        // Rate Limiting & Auth-Failure Ban: моментальная защита от флуда и сканеров
         _app.Use(async (context, next) =>
         {
+            var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+
+            if (_config.RateLimitingEnabled)
+            {
+                if (_rateLimiter.IsIpBanned(remoteIp, out var banRetryAfter))
+                {
+                    Logger.LogWarning($"[RateLimiter] Rejected connection from {remoteIp}: IP temporarily banned ({banRetryAfter}s remaining).");
+                    context.Response.Headers.RetryAfter = banRetryAfter.ToString();
+                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    return;
+                }
+
+                if (!_rateLimiter.TryAcquireIp(remoteIp, out var ipRetryAfter))
+                {
+                    Logger.LogWarning($"[RateLimiter] Throttled connection from {remoteIp}: General IP rate limit exceeded ({ipRetryAfter}s retry-after).");
+                    context.Response.Headers.RetryAfter = ipRetryAfter.ToString();
+                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    return;
+                }
+            }
+
             var clientCert = context.Connection.ClientCertificate;
             if (clientCert == null)
             {
+                if (_config.RateLimitingEnabled)
+                {
+                    _rateLimiter.RecordAuthFailure(remoteIp);
+                }
                 Logger.LogWarning($"[Middleware] Connection rejected from {context.Connection.RemoteIpAddress}: No certificate.");
                 context.Response.StatusCode = 401;
                 return;
@@ -184,9 +214,18 @@ public class TlsUnlockService : IDisposable
 
             if (device == null)
             {
+                if (_config.RateLimitingEnabled)
+                {
+                    _rateLimiter.RecordAuthFailure(remoteIp);
+                }
                 Logger.LogWarning($"[Middleware] Connection rejected from {context.Connection.RemoteIpAddress}: Unknown cert hash.");
                 context.Response.StatusCode = 403;
                 return;
+            }
+
+            if (_config.RateLimitingEnabled)
+            {
+                _rateLimiter.RecordAuthSuccess(remoteIp);
             }
 
             if (string.Equals(context.Request.Path.Value, "/ws", StringComparison.OrdinalIgnoreCase)
@@ -471,6 +510,19 @@ public class TlsUnlockService : IDisposable
     {
         app.MapPost("/api/unlock", (UnlockRequest request, HttpContext context) =>
         {
+            if (_config.RateLimitingEnabled)
+            {
+                var clientCert = context.Connection.ClientCertificate;
+                var certHash = clientCert != null ? CertificateService.GetCertHash(clientCert) : null;
+                if (!string.IsNullOrEmpty(certHash) && !_rateLimiter.TryAcquireCertificate(certHash, "unlock", out var retryAfter))
+                {
+                    var shortHash = certHash.Length > 8 ? certHash[..8] : certHash;
+                    Logger.LogWarning($"[RateLimiter] Unlock request throttled for cert '{shortHash}' ({retryAfter}s retry-after).");
+                    context.Response.Headers.RetryAfter = retryAfter.ToString();
+                    return Results.Json(new UnlockResponse(false, "Too many requests"), statusCode: StatusCodes.Status429TooManyRequests);
+                }
+            }
+
             return _unlockHandler.HandleUnlockRequest(request, context);
         });
 
@@ -488,6 +540,19 @@ public class TlsUnlockService : IDisposable
                 {
                     context.Response.StatusCode = 403;
                     return;
+                }
+
+                if (_config.RateLimitingEnabled)
+                {
+                    var clientCert = context.Connection.ClientCertificate;
+                    var certHash = clientCert != null ? CertificateService.GetCertHash(clientCert) : null;
+                    if (!string.IsNullOrEmpty(certHash) && !_rateLimiter.TryAcquireCertificate(certHash, "ws_connect", out var retryAfter))
+                    {
+                        Logger.LogWarning($"[RateLimiter] WS connection throttled for device '{device.Name}' ({retryAfter}s retry-after).");
+                        context.Response.Headers.RetryAfter = retryAfter.ToString();
+                        context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                        return;
+                    }
                 }
 
                 if (_config.StrictSelectedTileWebSocketConnections

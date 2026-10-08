@@ -132,6 +132,13 @@ public class PortalWinConfig
     public bool DisableKestrelClientCertificateValidation { get; set; } = false;
 
     /// <summary>
+    /// Enables dual-layer rate limiting (by IP and client certificate) to prevent network flooding and DoS.
+    /// Default: true.
+    /// </summary>
+    [JsonPropertyName("rateLimitingEnabled")]
+    public bool RateLimitingEnabled { get; set; } = true;
+
+    /// <summary>
     /// Hidden feature-flag for experimental Host functionality.
     /// false (default): hide experimental UI sections such as FAQ and Updates.
     /// true: expose experimental UI sections and flows.

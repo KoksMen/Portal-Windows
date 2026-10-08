@@ -24,6 +24,7 @@ public class NetworkPairingService
     private WebApplication? _app;
     private readonly MdnsAnnouncer _mdns = new();
     private readonly AttemptTracker _attemptTracker = new();
+    private readonly Portal.Common.Services.NetworkRateLimiter _rateLimiter = new();
     private readonly NetworkService _networkService;
     private PairingContext? _pairingContext;
     private Action<string>? _pairingStatusCallback;
@@ -221,6 +222,23 @@ public class NetworkPairingService
         var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
         Logger.Log($"Pairing request received from {clientIp}...");
 
+        if (config.RateLimitingEnabled)
+        {
+            if (_rateLimiter.IsIpBanned(clientIp, out var banRetryAfter))
+            {
+                Logger.LogWarning($"[RateLimiter] Pairing rejected for {clientIp}: IP temporarily banned ({banRetryAfter}s remaining).");
+                context.Response.Headers.RetryAfter = banRetryAfter.ToString();
+                return Results.Json(new { error = "Too many requests", retryAfter = banRetryAfter }, statusCode: StatusCodes.Status429TooManyRequests);
+            }
+
+            if (!_rateLimiter.TryAcquireIp(clientIp, out var ipRetryAfter))
+            {
+                Logger.LogWarning($"[RateLimiter] Pairing throttled for {clientIp}: General IP rate limit exceeded ({ipRetryAfter}s retry-after).");
+                context.Response.Headers.RetryAfter = ipRetryAfter.ToString();
+                return Results.Json(new { error = "Too many requests", retryAfter = ipRetryAfter }, statusCode: StatusCodes.Status429TooManyRequests);
+            }
+        }
+
         if (_attemptTracker.IsBlocked(clientIp))
         {
             var remaining = _attemptTracker.GetRemainingLockout(clientIp);
@@ -242,6 +260,7 @@ public class NetworkPairingService
         {
             Logger.LogWarning($"Pairing rejected for {clientIp}: Invalid code.");
             _attemptTracker.RecordFailure(clientIp);
+            if (config.RateLimitingEnabled) _rateLimiter.RecordAuthFailure(clientIp);
             return Results.Json(new { error = "Invalid code or pairing not active" }, statusCode: 403);
         }
 
@@ -252,10 +271,12 @@ public class NetworkPairingService
             {
                 Logger.LogWarning($"Pairing rejected for {clientIp}: No client certificate.");
                 _attemptTracker.RecordFailure(clientIp);
+                if (config.RateLimitingEnabled) _rateLimiter.RecordAuthFailure(clientIp);
                 return Results.Json(new { error = "No client certificate" }, statusCode: 401);
             }
 
             _attemptTracker.RecordSuccess(clientIp);
+            if (config.RateLimitingEnabled) _rateLimiter.RecordAuthSuccess(clientIp);
 
             var clientCertHash = CertificateService.GetCertHash(clientCert);
             var clientId = Guid.NewGuid().ToString();
