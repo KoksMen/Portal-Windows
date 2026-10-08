@@ -103,16 +103,18 @@ public static class EmergencyCancelService
         }
     }
 
-    private static void TryAttachToActiveDesktop(IntPtr fallbackDesktop)
+    private static IntPtr AttachToActiveDesktop(IntPtr fallbackDesktop)
     {
         try
         {
             IntPtr hInput = OpenInputDesktop(0, false, DESKTOP_READOBJECTS | DESKTOP_WRITEOBJECTS);
             if (hInput != IntPtr.Zero)
             {
-                SetThreadDesktop(hInput);
+                if (SetThreadDesktop(hInput))
+                {
+                    return hInput;
+                }
                 CloseDesktop(hInput);
-                return;
             }
         }
         catch { }
@@ -125,122 +127,173 @@ public static class EmergencyCancelService
             }
             catch { }
         }
+
+        return IntPtr.Zero;
+    }
+
+    private static IntPtr RefreshActiveDesktop(IntPtr currentHandle, IntPtr fallbackDesktop)
+    {
+        try
+        {
+            IntPtr hInput = OpenInputDesktop(0, false, DESKTOP_READOBJECTS | DESKTOP_WRITEOBJECTS);
+            if (hInput != IntPtr.Zero)
+            {
+                if (hInput == currentHandle)
+                {
+                    // Desktop unchanged; close duplicate open handle
+                    CloseDesktop(hInput);
+                    return currentHandle;
+                }
+
+                if (SetThreadDesktop(hInput))
+                {
+                    if (currentHandle != IntPtr.Zero && currentHandle != fallbackDesktop)
+                    {
+                        CloseDesktop(currentHandle);
+                    }
+                    return hInput;
+                }
+                CloseDesktop(hInput);
+            }
+        }
+        catch { }
+
+        return currentHandle;
     }
 
     private static void MonitorLoop(object? state, IntPtr callerDesktop)
     {
         var token = state is CancellationToken ct ? ct : CancellationToken.None;
 
-        TryAttachToActiveDesktop(callerDesktop);
-
-        bool emergencyCancelEnabled = true;
-        int holdDurationMs = 0;
+        IntPtr activeDesktopHandle = IntPtr.Zero;
         try
         {
-            var config = PortalWinConfig.Load();
-            emergencyCancelEnabled = config.EmergencyCancelEnabled;
-            holdDurationMs = Math.Max(0, config.EmergencyCancelHoldDurationMs);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning($"[EmergencyCancelService] Failed to load config, using default {holdDurationMs}ms: {ex.Message}");
-        }
+            activeDesktopHandle = AttachToActiveDesktop(callerDesktop);
 
-        const int pollIntervalMs = 10;
-        int currentHoldMs = 0;
-        bool triggered = false;
-        int desktopReattachCounter = 0;
-        int currentRetryHoldMs = 0;
-        bool retryTriggered = false;
-        DateTime lastRetryTriggerTime = DateTime.MinValue;
-
-        while (!token.IsCancellationRequested)
-        {
+            bool emergencyCancelEnabled = true;
+            int holdDurationMs = 0;
             try
             {
-                if (++desktopReattachCounter % 50 == 0) // periodically re-verify active desktop attachment
-                {
-                    TryAttachToActiveDesktop(callerDesktop);
-                }
-
-                bool isCtrlDown = (GetAsyncKeyState(VK_LCONTROL) < 0) || (GetAsyncKeyState(VK_CONTROL) < 0) || (GetAsyncKeyState(VK_RCONTROL) < 0);
-                bool isAltDown = (GetAsyncKeyState(VK_LMENU) < 0) || (GetAsyncKeyState(VK_MENU) < 0) || (GetAsyncKeyState(VK_RMENU) < 0);
-                bool isShiftDown = (GetAsyncKeyState(VK_LSHIFT) < 0) || (GetAsyncKeyState(VK_SHIFT) < 0) || (GetAsyncKeyState(VK_RSHIFT) < 0);
-
-                // 1. Retry shortcut: Ctrl + Shift (without Alt)
-                bool isRetryDown = isCtrlDown && isShiftDown && !isAltDown;
-                if (isRetryDown)
-                {
-                    currentRetryHoldMs += pollIntervalMs;
-                    if (!retryTriggered && currentRetryHoldMs >= 30 && (DateTime.UtcNow - lastRetryTriggerTime).TotalMilliseconds > 800)
-                    {
-                        retryTriggered = true;
-                        lastRetryTriggerTime = DateTime.UtcNow;
-                        Logger.LogWarning("[EmergencyCancelService] Retry shortcut detected! (Ctrl + Shift pressed).");
-                        try
-                        {
-                            PortalWinTile.TryTriggerRetryShortcut("shortcut_ctrl_shift");
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.LogError("[EmergencyCancelService] Error during retry shortcut trigger (Ctrl + Shift)", ex);
-                        }
-                    }
-                }
-                else
-                {
-                    currentRetryHoldMs = 0;
-                    retryTriggered = false;
-                }
-
-                // 2. Emergency rollback shortcut: Ctrl + Alt (without Shift)
-                if (emergencyCancelEnabled && isCtrlDown && isAltDown && !isShiftDown)
-                {
-                    currentHoldMs += pollIntervalMs;
-
-                    if (currentHoldMs >= holdDurationMs)
-                    {
-                        if (!triggered)
-                        {
-                            triggered = true;
-                            Logger.LogWarning("[EmergencyCancelService] Emergency rollback shortcut detected! (Ctrl + Alt pressed).");
-                            try
-                            {
-                                PortalWinTile.TriggerEmergencyRollback();
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.LogError("[EmergencyCancelService] Error during emergency rollback trigger", ex);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    currentHoldMs = 0;
-                    triggered = false;
-                }
-
-                // 3. Any typing key (letters, digits, space, etc.) without Ctrl or Alt:
-                // immediately abort active remote unlock so keystrokes go straight into password field
-                if (!isCtrlDown && !isAltDown && IsAnyTypingKeyPressed())
-                {
-                    if (PortalWinTile.HasActiveUnlockRequest)
-                    {
-                        PortalWinTile.OnTypingKeyDetected();
-                    }
-                }
-
-                Thread.Sleep(pollIntervalMs);
-            }
-            catch (ThreadAbortException)
-            {
-                break;
+                var config = PortalWinConfig.Load();
+                emergencyCancelEnabled = config.EmergencyCancelEnabled;
+                holdDurationMs = Math.Max(0, config.EmergencyCancelHoldDurationMs);
             }
             catch (Exception ex)
             {
-                Logger.LogError("[EmergencyCancelService] Error in monitor loop", ex);
-                Thread.Sleep(200);
+                Logger.LogWarning($"[EmergencyCancelService] Failed to load config, using default {holdDurationMs}ms: {ex.Message}");
+            }
+
+            int currentHoldMs = 0;
+            bool triggered = false;
+            int desktopReattachCounter = 0;
+            int currentRetryHoldMs = 0;
+            bool retryTriggered = false;
+            DateTime lastRetryTriggerTime = DateTime.MinValue;
+
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    bool hasActiveUnlock = PortalWinTile.HasActiveUnlockRequest;
+                    int pollIntervalMs = hasActiveUnlock ? 15 : 30;
+
+                    // Periodically verify active desktop attachment (~every 2-3 seconds)
+                    if (++desktopReattachCounter % 75 == 0)
+                    {
+                        var newHandle = RefreshActiveDesktop(activeDesktopHandle, callerDesktop);
+                        if (newHandle != activeDesktopHandle)
+                        {
+                            activeDesktopHandle = newHandle;
+                        }
+                    }
+
+                    bool isCtrlDown = (GetAsyncKeyState(VK_LCONTROL) < 0) || (GetAsyncKeyState(VK_CONTROL) < 0) || (GetAsyncKeyState(VK_RCONTROL) < 0);
+                    bool isAltDown = (GetAsyncKeyState(VK_LMENU) < 0) || (GetAsyncKeyState(VK_MENU) < 0) || (GetAsyncKeyState(VK_RMENU) < 0);
+                    bool isShiftDown = (GetAsyncKeyState(VK_LSHIFT) < 0) || (GetAsyncKeyState(VK_SHIFT) < 0) || (GetAsyncKeyState(VK_RSHIFT) < 0);
+
+                    // 1. Retry shortcut: Ctrl + Shift (without Alt)
+                    bool isRetryDown = isCtrlDown && isShiftDown && !isAltDown;
+                    if (isRetryDown)
+                    {
+                        currentRetryHoldMs += pollIntervalMs;
+                        if (!retryTriggered && currentRetryHoldMs >= 30 && (DateTime.UtcNow - lastRetryTriggerTime).TotalMilliseconds > 800)
+                        {
+                            retryTriggered = true;
+                            lastRetryTriggerTime = DateTime.UtcNow;
+                            Logger.LogWarning("[EmergencyCancelService] Retry shortcut detected! (Ctrl + Shift pressed).");
+                            try
+                            {
+                                PortalWinTile.TryTriggerRetryShortcut("shortcut_ctrl_shift");
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogError("[EmergencyCancelService] Error during retry shortcut trigger (Ctrl + Shift)", ex);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        currentRetryHoldMs = 0;
+                        retryTriggered = false;
+                    }
+
+                    // 2. Emergency rollback shortcut: Ctrl + Alt (without Shift)
+                    if (emergencyCancelEnabled && isCtrlDown && isAltDown && !isShiftDown)
+                    {
+                        currentHoldMs += pollIntervalMs;
+
+                        if (currentHoldMs >= holdDurationMs)
+                        {
+                            if (!triggered)
+                            {
+                                triggered = true;
+                                Logger.LogWarning("[EmergencyCancelService] Emergency rollback shortcut detected! (Ctrl + Alt pressed).");
+                                try
+                                {
+                                    PortalWinTile.TriggerEmergencyRollback();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.LogError("[EmergencyCancelService] Error during emergency rollback trigger", ex);
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        currentHoldMs = 0;
+                        triggered = false;
+                    }
+
+                    // 3. Any typing key (letters, digits, space, etc.) without Ctrl or Alt:
+                    // Only poll full typing set when a remote unlock request is actually active!
+                    if (hasActiveUnlock && !isCtrlDown && !isAltDown && IsAnyTypingKeyPressed())
+                    {
+                        PortalWinTile.OnTypingKeyDetected();
+                    }
+
+                    Thread.Sleep(pollIntervalMs);
+                }
+                catch (ThreadAbortException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError("[EmergencyCancelService] Error in monitor loop", ex);
+                    Thread.Sleep(200);
+                }
+            }
+        }
+        finally
+        {
+            if (activeDesktopHandle != IntPtr.Zero && activeDesktopHandle != callerDesktop)
+            {
+                try
+                {
+                    CloseDesktop(activeDesktopHandle);
+                }
+                catch { }
             }
         }
     }

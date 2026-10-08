@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
+using System.Threading;
 using Portal.Common.Abstractions;
 
 namespace Portal.Common;
@@ -12,19 +14,26 @@ public class AttemptTracker : IAttemptTracker
         public DateTime FirstFailureTime { get; init; }
     }
 
+    public const int DefaultMaxTrackedEntries = 1000;
+
     private readonly ConcurrentDictionary<string, AttemptRecord> _records = new();
     private readonly int _maxAttempts;
     private readonly TimeSpan _lockoutDuration;
+    private readonly int _maxTrackedEntries;
+    private int _pruningInProgress;
 
-    public AttemptTracker(int maxAttempts = 5, int lockoutMinutes = 5)
-        : this(maxAttempts, TimeSpan.FromMinutes(lockoutMinutes))
+    public int TrackedEntriesCount => _records.Count;
+
+    public AttemptTracker(int maxAttempts = 5, int lockoutMinutes = 5, int maxTrackedEntries = DefaultMaxTrackedEntries)
+        : this(maxAttempts, TimeSpan.FromMinutes(lockoutMinutes), maxTrackedEntries)
     {
     }
 
-    public AttemptTracker(int maxAttempts, TimeSpan lockoutDuration)
+    public AttemptTracker(int maxAttempts, TimeSpan lockoutDuration, int maxTrackedEntries = DefaultMaxTrackedEntries)
     {
         _maxAttempts = maxAttempts;
         _lockoutDuration = lockoutDuration;
+        _maxTrackedEntries = maxTrackedEntries > 0 ? maxTrackedEntries : DefaultMaxTrackedEntries;
     }
 
     public bool IsBlocked(string id)
@@ -73,6 +82,8 @@ public class AttemptTracker : IAttemptTracker
         if (string.IsNullOrEmpty(id)) return;
 
         var now = DateTime.UtcNow;
+        PruneIfNeeded(now);
+
         _records.AddOrUpdate(id,
             _ => new AttemptRecord { FailedCount = 1, FirstFailureTime = now },
             (_, existing) =>
@@ -89,6 +100,58 @@ public class AttemptTracker : IAttemptTracker
                     FirstFailureTime = existing.FirstFailureTime
                 };
             });
+    }
+
+    private void PruneIfNeeded(DateTime now)
+    {
+        if (_records.Count < _maxTrackedEntries)
+        {
+            return;
+        }
+
+        if (Interlocked.CompareExchange(ref _pruningInProgress, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            // 1. Evict expired entries
+            foreach (var kvp in _records)
+            {
+                if (now - kvp.Value.FirstFailureTime >= _lockoutDuration)
+                {
+                    _records.TryRemove(kvp.Key, out _);
+                }
+            }
+
+            // 2. If still over capacity, evict oldest entries down to 80% capacity
+            if (_records.Count >= _maxTrackedEntries)
+            {
+                var targetCount = (int)(_maxTrackedEntries * 0.8);
+                var toEvictCount = _records.Count - targetCount;
+                if (toEvictCount > 0)
+                {
+                    var oldest = _records
+                        .OrderBy(kvp => kvp.Value.FirstFailureTime)
+                        .Take(toEvictCount)
+                        .ToList();
+
+                    foreach (var kvp in oldest)
+                    {
+                        _records.TryRemove(kvp.Key, out _);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Pruning is opportunistic, never fail tracking operation
+        }
+        finally
+        {
+            Volatile.Write(ref _pruningInProgress, 0);
+        }
     }
 
     public void RecordSuccess(string id)
