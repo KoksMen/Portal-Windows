@@ -65,45 +65,39 @@ public static class CertificateService
             if (storedInLsa)
             {
                 Logger.Log("[CertificateService] Secure certificate password stored in LSA Secrets.");
-                try
-                {
-                    var fallbackPath = GetFallbackSecretPath(path);
-                    if (File.Exists(fallbackPath)) File.Delete(fallbackPath);
-                    var userFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Portal-Windows", ".cert_secret");
-                    if (File.Exists(userFallback)) File.Delete(userFallback);
-                }
-                catch { }
-                return true;
+            }
+            else
+            {
+                Logger.LogWarning("[CertificateService] LSA Secrets write unavailable. Storing in DPAPI fallback file.");
             }
 
-            Logger.LogWarning("[CertificateService] LSA Secrets write unavailable. Storing in DPAPI fallback file.");
-            var fallbackFile = GetFallbackSecretPath(path);
-            var dir = Path.GetDirectoryName(fallbackFile);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
+            // Always maintain DPAPI fallback file for non-elevated consumers and emergency redundancy
             try
             {
+                var fallbackFile = GetFallbackSecretPath(path);
+                var dir = Path.GetDirectoryName(fallbackFile);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
                 File.WriteAllText(fallbackFile, base64);
                 SecurityHardeningHelper.HardenFilePermissions(fallbackFile);
+            }
+            catch (Exception)
+            {
                 try
                 {
                     var userFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Portal-Windows", ".cert_secret");
-                    if (File.Exists(userFallback)) File.Delete(userFallback);
+                    var userDir = Path.GetDirectoryName(userFallback);
+                    if (!string.IsNullOrEmpty(userDir) && !Directory.Exists(userDir))
+                    {
+                        Directory.CreateDirectory(userDir);
+                    }
+                    File.WriteAllText(userFallback, base64);
                 }
                 catch { }
             }
-            catch (UnauthorizedAccessException)
-            {
-                var userFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Portal-Windows", ".cert_secret");
-                var userDir = Path.GetDirectoryName(userFallback);
-                if (!string.IsNullOrEmpty(userDir) && !Directory.Exists(userDir))
-                {
-                    Directory.CreateDirectory(userDir);
-                }
-                File.WriteAllText(userFallback, base64);
-            }
+
             return true;
         }
         catch (Exception ex)
@@ -133,36 +127,33 @@ public static class CertificateService
             Logger.LogWarning($"[CertificateService] Failed reading from LSA Secrets ({ex.Message}), trying fallback...");
         }
 
-        // 2. Try DPAPI fallback files (check whichever is newest between system and user fallback)
+        // 2. Try DPAPI fallback files (check candidates across certificates, root, config, and user folder)
         try
         {
-            var fallbackFile = GetFallbackSecretPath(path);
-            var userFallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Portal-Windows", ".cert_secret");
+            var fallbackCandidates = new List<string>
+            {
+                GetFallbackSecretPath(path),
+                Path.Combine(PortalStoragePaths.CertificatesDirectory, ".cert_secret"),
+                Path.Combine(PortalStoragePaths.RootDirectory, ".cert_secret"),
+                Path.Combine(PortalStoragePaths.ConfigDirectory, ".cert_secret"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Portal-Windows", ".cert_secret")
+            };
 
-            string? chosenFile = null;
-            if (File.Exists(fallbackFile) && File.Exists(userFallback))
+            foreach (var candidate in fallbackCandidates.Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                chosenFile = File.GetLastWriteTimeUtc(userFallback) > File.GetLastWriteTimeUtc(fallbackFile)
-                    ? userFallback
-                    : fallbackFile;
-            }
-            else if (File.Exists(fallbackFile))
-            {
-                chosenFile = fallbackFile;
-            }
-            else if (File.Exists(userFallback))
-            {
-                chosenFile = userFallback;
-            }
-
-            if (chosenFile != null)
-            {
-                var base64 = File.ReadAllText(chosenFile).Trim();
-                if (!string.IsNullOrWhiteSpace(base64))
+                if (File.Exists(candidate))
                 {
-                    var encrypted = Convert.FromBase64String(base64);
-                    var decrypted = ProtectedData.Unprotect(encrypted, DpapiEntropy, DataProtectionScope.LocalMachine);
-                    return Encoding.UTF8.GetString(decrypted);
+                    try
+                    {
+                        var base64 = File.ReadAllText(candidate).Trim();
+                        if (!string.IsNullOrWhiteSpace(base64))
+                        {
+                            var encrypted = Convert.FromBase64String(base64);
+                            var decrypted = ProtectedData.Unprotect(encrypted, DpapiEntropy, DataProtectionScope.LocalMachine);
+                            return Encoding.UTF8.GetString(decrypted);
+                        }
+                    }
+                    catch { }
                 }
             }
         }
@@ -325,8 +316,34 @@ public static class CertificateService
 
         if (!File.Exists(path))
         {
-            Logger.LogWarning($"[CertificateService] Certificate file not found at: {path}");
-            return null;
+            var candidates = new[]
+            {
+                DefaultCertPath,
+                Path.Combine(PortalStoragePaths.CertificatesDirectory, "host_cert.pfx"),
+                Path.Combine(PortalStoragePaths.RootDirectory, "host_cert.pfx"),
+                Path.Combine(PortalStoragePaths.ConfigDirectory, "host_cert.pfx")
+            };
+
+            string? resolvedPath = null;
+            foreach (var candidate in candidates)
+            {
+                if (!string.IsNullOrEmpty(candidate) && File.Exists(candidate))
+                {
+                    resolvedPath = candidate;
+                    break;
+                }
+            }
+
+            if (resolvedPath != null)
+            {
+                Logger.Log($"[CertificateService] Certificate resolved from fallback location: {resolvedPath} (requested: {path})");
+                path = resolvedPath;
+            }
+            else
+            {
+                Logger.LogWarning($"[CertificateService] Certificate file not found at: {path}");
+                return null;
+            }
         }
 
         var storageFlags = X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable;

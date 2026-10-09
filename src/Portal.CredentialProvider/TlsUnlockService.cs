@@ -928,8 +928,7 @@ public class TlsUnlockService : IDisposable
     {
         try
         {
-            var pfxPath = Path.Combine(PortalWinConfig.ConfigDir, "host_cert.pfx");
-            return CertificateService.LoadCertificate(pfxPath, machineKeySet: true);
+            return CertificateService.LoadCertificate(CertificateService.DefaultCertPath, machineKeySet: true);
         }
         catch (Exception ex)
         {

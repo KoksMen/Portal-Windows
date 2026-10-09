@@ -108,6 +108,20 @@ public static class PortalStoragePaths
                 }
             }
 
+            var certInConfig = Path.Combine(ConfigDirectory, "host_cert.pfx");
+            if (File.Exists(certInConfig))
+            {
+                try
+                {
+                    File.Copy(certInConfig, certInSubdir, overwrite: false);
+                    return certInSubdir;
+                }
+                catch
+                {
+                    return certInConfig;
+                }
+            }
+
             return certInSubdir;
         }
     }
@@ -177,12 +191,27 @@ public static class PortalStoragePaths
                 try { File.Copy(rootConfig, targetConfig, overwrite: false); } catch { }
             }
 
-            // Migrate host_cert.pfx from root to certificates\
+            // Migrate host_cert.pfx from root/config to certificates\
             var rootCert = Path.Combine(root, "host_cert.pfx");
+            var configCert = Path.Combine(configDir, "host_cert.pfx");
             var targetCert = Path.Combine(certsDir, "host_cert.pfx");
-            if (File.Exists(rootCert) && !File.Exists(targetCert))
+
+            if (!File.Exists(targetCert))
             {
-                try { File.Copy(rootCert, targetCert, overwrite: false); } catch { }
+                if (File.Exists(rootCert))
+                {
+                    try { File.Copy(rootCert, targetCert, overwrite: false); } catch { }
+                }
+                else if (File.Exists(configCert))
+                {
+                    try { File.Copy(configCert, targetCert, overwrite: false); } catch { }
+                }
+            }
+
+            // Also synchronize to config directory if possible to guarantee legacy readers don't fail
+            if (File.Exists(targetCert) && !File.Exists(configCert))
+            {
+                try { File.Copy(targetCert, configCert, overwrite: false); } catch { }
             }
 
             // Migrate legacy uppercase Logs directory if present
