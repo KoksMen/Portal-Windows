@@ -20,7 +20,7 @@ public abstract class PortalWinTileBase : CredentialTile2
     protected CommandLinkControl? _requestButton;
     protected CommandLinkControl? _cancelButton;
     private bool _isDetailsVisible;
-    private string _lastStatusRaw = "Waiting for remote command.";
+    protected internal string _lastStatusRaw = "Waiting for remote command.";
 
     protected PortalWinTileBase(PortalWinProviderBase provider) : base(provider)
     {
@@ -155,6 +155,21 @@ public abstract class PortalWinTileBase : CredentialTile2
     {
         if (PortalWinTile.IsEmergencyRollbackActive)
         {
+            return;
+        }
+
+        if (this is PortalWinTile pwt && pwt.IsAwaitingTwoFactorPin)
+        {
+            if (_providerBase is PortalWinProvider p)
+            {
+                UpdateStatus(
+                    p.BuildStatusHeadlineForState("Enter 2FA PIN"),
+                    p.BuildStatusDetailsForState("Enter 2FA PIN"));
+            }
+            else
+            {
+                UpdateStatus(Localization.T("Enter 2FA PIN"), null);
+            }
             return;
         }
 

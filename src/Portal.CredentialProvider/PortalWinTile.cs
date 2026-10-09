@@ -499,10 +499,9 @@ public class PortalWinTile : PortalWinTileBase
             }
         }
 
-        UpdateStatus(
-            Localization.T("Phone approved. Enter 2FA PIN"),
-            Localization.T("Enter your 2FA PIN on keyboard and press Enter."));
-
+        _lastStatusRaw = "Enter 2FA PIN";
+        UpdateStatus("Enter 2FA PIN");
+        ShowCancelButton();
         FocusPasswordField();
 
         ActivityJournal.Record(
@@ -574,14 +573,13 @@ public class PortalWinTile : PortalWinTileBase
 
         if (string.IsNullOrWhiteSpace(enteredPin))
         {
-            UpdateStatus(
-                Localization.T("Phone approved. Enter 2FA PIN"),
-                Localization.T("PIN cannot be empty. Please enter your PIN."));
+            _lastStatusRaw = "Enter 2FA PIN";
+            UpdateStatus("Enter 2FA PIN");
             FocusPasswordField();
             return new CredentialResponseInsecure
             {
                 IsSuccess = false,
-                StatusText = Localization.T("Please enter your 2FA PIN"),
+                StatusText = Localization.T("PIN cannot be empty. Please enter your PIN."),
                 StatusIcon = StatusIcon.Warning
             };
         }
@@ -651,6 +649,7 @@ public class PortalWinTile : PortalWinTileBase
                     false);
 
                 ClearTwoFactorPinMode("Max attempts exceeded");
+                _lastStatusRaw = "Too many incorrect PIN attempts";
                 UpdateStatus(
                     Localization.T("Too many incorrect PIN attempts. Unlock canceled."),
                     Localization.T("Unlock session canceled."));
@@ -673,8 +672,10 @@ public class PortalWinTile : PortalWinTileBase
                     $"Failed PIN attempt {_pinFailedAttempts}/3 for {_pending2FaUser}. {remaining} remaining.",
                     false);
 
+                string errHeadline = Localization.TF("Incorrect 2FA PIN. Attempts remaining: {0}", remaining);
+                _lastStatusRaw = errHeadline;
                 UpdateStatus(
-                    Localization.TF("Incorrect 2FA PIN. Attempts remaining: {0}", remaining),
+                    errHeadline,
                     Localization.T("Please try again."));
                 FocusPasswordField();
 
@@ -852,6 +853,7 @@ public class PortalWinTile : PortalWinTileBase
                         if (result == "ok")
                         {
                             approvalCompleted = true;
+                            statusAggregator.Dispose();
                             Logger.Log($"[Tile] unlock_request_approved elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
                             ActivityJournal.Record(
                                 "unlock",
@@ -1329,7 +1331,6 @@ public class PortalWinTile : PortalWinTileBase
 
     private void HandleApproval(PortalWinConfig config, Portal.Common.Models.DeviceModel targetDevice)
     {
-        UpdateStatus("Approved! Loading credentials...");
         var targetAccount = CredentialProviderTilePolicy.ResolveApprovalAccount(
             targetDevice,
             User?.QualifiedUserName,
@@ -1346,6 +1347,10 @@ public class PortalWinTile : PortalWinTileBase
                     ?? System.Environment.MachineName;
                 var submitSid = targetAccount.UserSid ?? User?.Sid;
                 Provider.OnUnlockRequested(submitUser, securePassword, submitDomain, submitSid);
+                if (_isAwaiting2FaPin)
+                {
+                    return;
+                }
             }
             else
             {
