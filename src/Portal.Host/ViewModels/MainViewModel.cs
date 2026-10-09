@@ -1419,6 +1419,22 @@ public partial class MainViewModel : ObservableObject
         };
     }
 
+    [RelayCommand]
+    private async Task ClearActivityJournalAsync()
+    {
+        var isRussian = SelectedLanguageCode != "en";
+        var confirmed = await _dialogService.ShowNotificationAsync(
+            isRussian ? "Очистить журнал" : "Clear Activity Journal",
+            isRussian ? "Вы уверены, что хотите удалить все записи журнала активности?" : "Are you sure you want to clear all activity history?",
+            isQuestion: true);
+
+        if (confirmed)
+        {
+            ActivityJournal.Clear();
+            RefreshActivityJournal();
+        }
+    }
+
     partial void OnSelectedActivityFilterChanged(string value) => RefreshActivityJournal();
     partial void OnSelectedActivitySortChanged(string value) => RefreshActivityJournal();
     partial void OnSelectedLanguageCodeChanged(string value)
@@ -2151,7 +2167,7 @@ public partial class MainViewModel : ObservableObject
         WizTwoFactorPin = string.Empty;
         WizTwoFactorPinHint = account.RequiresTwoFactorPin && !string.IsNullOrEmpty(account.TwoFactorPinHash)
             ? Services.LocalizationService.T("PIN is currently configured (••••). Enter a new PIN to change it, or leave blank to keep.")
-            : Services.LocalizationService.T("Enter 4–8 digits or characters.");
+            : Services.LocalizationService.T("Enter 4–30 digits or characters.");
         WizCredsNextText = Services.LocalizationService.T("Save Changes");
 
         ShowDashboard = true; // This hides Settings Panel
@@ -3280,7 +3296,7 @@ public partial class MainViewModel : ObservableObject
         WizInactivityDaysIndex = 0;
         WizRequiresTwoFactorPin = false;
         WizTwoFactorPin = string.Empty;
-        WizTwoFactorPinHint = Services.LocalizationService.T("Enter 4–8 digits or characters.");
+        WizTwoFactorPinHint = Services.LocalizationService.T("Enter 4–30 digits or characters.");
 
         return sessionId;
     }
@@ -4018,7 +4034,7 @@ public partial class MainViewModel : ObservableObject
                         {
                             await _dialogService.ShowNotificationAsync(
                                 Services.LocalizationService.T("Error"),
-                                Services.LocalizationService.T("Please enter a PIN (4–8 digits) to enable 2FA PIN."));
+                                Services.LocalizationService.T("Please enter a PIN (4–30 characters) to enable 2FA PIN."));
                             return;
                         }
                     }

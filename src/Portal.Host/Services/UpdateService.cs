@@ -85,7 +85,7 @@ public sealed class UpdateService
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
     }
 
-    public string UpdatesRootDirectory => Path.Combine(PortalWinConfig.ConfigDir, "updates");
+    public string UpdatesRootDirectory => PortalStoragePaths.UpdatesDirectory;
     public string LastUpdateResultPath => Path.Combine(UpdatesRootDirectory, "last-update-result.json");
     public static string BuiltInRepository => $"{GitHubRepoOwner}/{GitHubRepoName}";
     public static string BuiltInSourceLabel => $"GitHub Releases - {BuiltInRepository}";
@@ -772,16 +772,28 @@ public sealed class UpdateService
             return;
         }
 
-        const string KnownDeveloperToken = "xXKoksMenXx";
-        const string KnownTeamToken = "xXTeam";
-        const string KnownThumbprint = "F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B";
+        // Certificate Pinning by Thumbprint (SHA-1) and SHA-256 fingerprint hash.
+        // String/name checking of Subject is forbidden to prevent spoofing with self-signed rogue certificates.
+        var pinnedThumbprints = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "F1A00AC831420B2AADEFD0BCCDFD99FDAF246D7B" // Official Portal Release Signing Key
+        };
 
-        bool isKnownPublisher =
-            stagedHostCert.Thumbprint.Equals(KnownThumbprint, StringComparison.OrdinalIgnoreCase) ||
-            stagedHostCert.Subject.Contains(KnownDeveloperToken, StringComparison.OrdinalIgnoreCase) ||
-            stagedHostCert.Subject.Contains(KnownTeamToken, StringComparison.OrdinalIgnoreCase) ||
-            (currentHostCert != null && string.Equals(stagedHostCert.Thumbprint, currentHostCert.Thumbprint, StringComparison.OrdinalIgnoreCase)) ||
-            (currentHostCert != null && string.Equals(stagedHostCert.Subject, currentHostCert.Subject, StringComparison.OrdinalIgnoreCase));
+        var pinnedSha256Fingerprints = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "26E5EE682A77EEBCD084EC8145E3CF85D932B184321C88506F616EDB3F3D0EE4" // Official Release Cert SHA-256
+        };
+
+        var stagedThumbprint = stagedHostCert.Thumbprint ?? string.Empty;
+        var stagedSha256 = Convert.ToHexString(SHA256.HashData(stagedHostCert.RawData));
+
+        bool isPinnedCertificate =
+            pinnedThumbprints.Contains(stagedThumbprint) ||
+            pinnedSha256Fingerprints.Contains(stagedSha256);
+
+        bool isSameSignerAsCurrentHost =
+            currentHostCert != null &&
+            string.Equals(stagedThumbprint, currentHostCert.Thumbprint, StringComparison.OrdinalIgnoreCase);
 
         bool isChainTrusted = false;
         try
@@ -792,13 +804,13 @@ public sealed class UpdateService
         }
         catch { }
 
-        if (!isKnownPublisher && !isChainTrusted)
+        if (!isPinnedCertificate && !isSameSignerAsCurrentHost && !isChainTrusted)
         {
             throw new InvalidOperationException(
-                $"Untrusted update signature! Publisher: '{stagedHostCert.Subject}', Thumbprint: '{stagedHostCert.Thumbprint}'. Update rejected.");
+                $"Untrusted update signature! Certificate Thumbprint: '{stagedThumbprint}', SHA-256: '{stagedSha256}'. Payload rejected (Subject name checking disabled).");
         }
 
-        Logger.Log($"[UpdateService] Authenticode signature verified for {Path.GetFileName(stagedHostPath)}. Signer: {stagedHostCert.Subject}, Thumbprint: {stagedHostCert.Thumbprint}");
+        Logger.Log($"[UpdateService] Authenticode signature verified for {Path.GetFileName(stagedHostPath)}. Thumbprint: {stagedThumbprint}, SHA-256: {stagedSha256}");
     }
 
     private static Uri ResolvePackageUri(string packageUriValue)

@@ -45,6 +45,7 @@ public class PortalWinTile : PortalWinTileBase
     private Portal.Common.Models.DeviceAccount? _pending2FaAccount;
     private int _pinFailedAttempts;
     private CancellationTokenSource? _twoFactorTimeoutCts;
+    private CancellationTokenSource? _autoResetCts;
 
     public void FocusPasswordField()
     {
@@ -166,7 +167,7 @@ public class PortalWinTile : PortalWinTileBase
         if (_cancelButton != null)
             _cancelButton.OnClick = OnCancelUnlockClicked;
 
-        ShowRequestButton();
+        ShowRequestButton(isInitial: true);
         FocusPasswordField();
 
         var config = PortalWinConfig.Load();
@@ -456,6 +457,7 @@ public class PortalWinTile : PortalWinTileBase
         string? userSid,
         Portal.Common.Models.DeviceAccount account)
     {
+        CancelScheduledAutoReset();
         ClearTwoFactorPinMode("Replacing with new 2FA PIN session");
 
         _isAwaiting2FaPin = true;
@@ -756,6 +758,7 @@ public class PortalWinTile : PortalWinTileBase
 
     private void StartUnlockRequest(bool forceTakeover, string source)
     {
+        CancelScheduledAutoReset();
         _isEmergencyRollbackActive = false;
         ClearTwoFactorPinMode("Starting new unlock request");
         if (!AllowsHostInitiated) return;
@@ -1360,11 +1363,11 @@ public class PortalWinTile : PortalWinTileBase
         };
     }
 
-    private void ShowRequestButton()
+    private void ShowRequestButton(bool isInitial = false)
     {
         if (_requestButton != null)
         {
-            _requestButton.Label = Localization.T("Retry");
+            _requestButton.Label = isInitial ? Localization.T("Request Remote Unlock") : Localization.T("Retry");
             _requestButton.OnClick = OnRequestUnlockClicked;
             _requestButton.AsPushButton();
             _requestButton.State = AllowsHostInitiated
@@ -1373,10 +1376,17 @@ public class PortalWinTile : PortalWinTileBase
         }
         if (_cancelButton != null) _cancelButton.State = FieldState.Hidden;
         FocusPasswordField();
+
+        if (!isInitial)
+        {
+            ScheduleAutoResetToReadyState(6);
+        }
     }
 
     private void ShowCancelButton()
     {
+        CancelScheduledAutoReset();
+
         if (_requestButton != null)
         {
             _requestButton.Label = Localization.T("Cancel Request");
@@ -1396,6 +1406,82 @@ public class PortalWinTile : PortalWinTileBase
                 : FieldState.DisplayInSelectedTile;
         }
         if (_cancelButton != null && _requestButton != null) _cancelButton.State = FieldState.Hidden;
+        FocusPasswordField();
+    }
+
+    public void ScheduleAutoResetToReadyState(int delaySeconds = 6)
+    {
+        CancelScheduledAutoReset();
+
+        var cts = new CancellationTokenSource();
+        _autoResetCts = cts;
+
+        Task.Delay(TimeSpan.FromSeconds(delaySeconds), cts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled) return;
+
+            if (_isAwaiting2FaPin || HasActiveUnlockRequest || (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested))
+            {
+                return;
+            }
+
+            try
+            {
+                ResetToReadyState();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Auto-reset to ready error: {ex.Message}");
+            }
+        }, TaskScheduler.Default);
+    }
+
+    private void CancelScheduledAutoReset()
+    {
+        try
+        {
+            _autoResetCts?.Cancel();
+            _autoResetCts?.Dispose();
+            _autoResetCts = null;
+        }
+        catch { }
+    }
+
+    public void ResetToReadyState()
+    {
+        CancelScheduledAutoReset();
+
+        if (_isAwaiting2FaPin || HasActiveUnlockRequest)
+        {
+            return;
+        }
+
+        var config = PortalWinConfig.Load();
+        var account = ResolveCurrentTileAccount(config);
+        if (account != null && account.IsExpired)
+        {
+            UpdateStatus(Localization.T("Account Inactive"), Localization.T("Account inactivity period exceeded. Re-enter password in Portal.Host to reactivate."));
+        }
+        else if (account != null && account.ResolveEffectiveUnlockMode(Provider.UnlockMode) == UnlockMode.ClientInitiated)
+        {
+            UpdateStatus(Localization.T("Waiting for remote command"), Localization.T("Waiting for unlock command from phone app."));
+        }
+        else
+        {
+            UpdateStatus(Localization.T("Waiting for remote command"), Localization.T("Waiting for remote unlock command"));
+        }
+
+        if (_requestButton != null)
+        {
+            _requestButton.Label = Localization.T("Request Remote Unlock");
+            _requestButton.OnClick = OnRequestUnlockClicked;
+            _requestButton.AsPushButton();
+            _requestButton.State = AllowsHostInitiated
+                ? (Provider.UsageScenario == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
+                : FieldState.Hidden;
+        }
+        if (_cancelButton != null) _cancelButton.State = FieldState.Hidden;
+
         FocusPasswordField();
     }
 

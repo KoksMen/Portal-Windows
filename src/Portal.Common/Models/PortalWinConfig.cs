@@ -12,7 +12,7 @@ public class PortalWinConfig
 {
     private const string DevicesSecretName = "L$Portal-Windows.Devices";
 
-    public static string ConfigDir => PortalStoragePaths.RootDirectory;
+    public static string ConfigDir => PortalStoragePaths.ConfigDirectory;
 
     private static string ConfigPath => Path.Combine(ConfigDir, "config.json");
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -220,6 +220,15 @@ public class PortalWinConfig
     {
         try
         {
+            if (!File.Exists(ConfigPath))
+            {
+                var legacyPath = Path.Combine(PortalStoragePaths.RootDirectory, "config.json");
+                if (File.Exists(legacyPath))
+                {
+                    try { File.Copy(legacyPath, ConfigPath, overwrite: false); } catch { }
+                }
+            }
+
             if (File.Exists(ConfigPath))
             {
                 var json = File.ReadAllText(ConfigPath);

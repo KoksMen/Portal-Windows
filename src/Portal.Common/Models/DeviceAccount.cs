@@ -69,7 +69,13 @@ public class DeviceAccount
             return;
         }
 
-        byte[] pinBytes = Encoding.UTF8.GetBytes(pin.Trim());
+        var trimmed = pin.Trim();
+        if (trimmed.Length < 4 || trimmed.Length > 30)
+        {
+            throw new ArgumentException("2FA PIN must be between 4 and 30 characters.", nameof(pin));
+        }
+
+        byte[] pinBytes = Encoding.UTF8.GetBytes(trimmed);
         byte[] salt = RandomNumberGenerator.GetBytes(PinSaltByteCount);
         byte[] hash = Rfc2898DeriveBytes.Pbkdf2(
             pinBytes,

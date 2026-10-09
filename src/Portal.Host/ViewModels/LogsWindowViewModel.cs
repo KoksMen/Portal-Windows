@@ -105,6 +105,17 @@ public partial class LogsWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ClearArchivedLogsAsync()
+    {
+        await Task.Run(() =>
+        {
+            Logger.PruneOldLogs(TimeSpan.FromDays(1), maxTotalBytes: 5 * 1024 * 1024);
+            _fileCache.Clear();
+        });
+        await RefreshLogsInternalAsync(forceRebuild: true, showLoading: true);
+    }
+
+    [RelayCommand]
     private async Task RefreshLogsAsync()
     {
         await RefreshLogsInternalAsync(forceRebuild: true, showLoading: false);

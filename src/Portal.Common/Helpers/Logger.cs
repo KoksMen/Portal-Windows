@@ -17,17 +17,28 @@ public static class Logger
 
     /// <summary>
     /// Initialize the logger with a specific log file name.
-    /// Call this once at application startup.
+    /// Thread-safe and supports switching log targets (e.g. from default provider.log to host.log).
     /// </summary>
     public static void Initialize(string logFileName)
     {
         lock (_lock)
         {
-            if (_isInitialized || _isInitializing) return;
+            if (_isInitialized && string.Equals(_logFileName, logFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (_isInitializing) return;
             _isInitializing = true;
 
             try
             {
+                if (_isInitialized)
+                {
+                    try { Serilog.Log.CloseAndFlush(); } catch { }
+                    _isInitialized = false;
+                }
+
                 _logFileName = logFileName;
                 var logsDir = PortalStoragePaths.LogsDirectory;
                 Directory.CreateDirectory(logsDir);
@@ -40,8 +51,9 @@ public static class Logger
                     .WriteTo.File(
                         logPath,
                         rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 7,
-                        fileSizeLimitBytes: null,
+                        rollOnFileSizeLimit: true,
+                        fileSizeLimitBytes: 10 * 1024 * 1024, // 10 MB per log segment
+                        retainedFileCountLimit: 7,            // Retain up to 7 daily log files
                         outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
                         shared: true)
                     .CreateLogger();
@@ -116,6 +128,62 @@ public static class Logger
         else
         {
             System.Diagnostics.Debug.WriteLine(message);
+        }
+    }
+
+    /// <summary>
+    /// Prunes log files older than maxAge or when total logs directory size exceeds maxTotalBytes.
+    /// Excludes activity.journal.jsonl.
+    /// </summary>
+    public static void PruneOldLogs(TimeSpan? maxAge = null, long maxTotalBytes = 50 * 1024 * 1024)
+    {
+        try
+        {
+            var logsDir = PortalStoragePaths.LogsDirectory;
+            if (!Directory.Exists(logsDir)) return;
+
+            var thresholdDate = DateTime.UtcNow - (maxAge ?? TimeSpan.FromDays(7));
+            var logFiles = Directory.GetFiles(logsDir, "*.log*")
+                .Where(f => !f.EndsWith("activity.journal.jsonl", StringComparison.OrdinalIgnoreCase))
+                .Select(f => new FileInfo(f))
+                .Where(fi => fi.Exists)
+                .OrderBy(fi => fi.LastWriteTimeUtc)
+                .ToList();
+
+            // 1. Delete files older than retention period
+            foreach (var fi in logFiles.ToList())
+            {
+                if (fi.LastWriteTimeUtc < thresholdDate)
+                {
+                    try
+                    {
+                        fi.Delete();
+                        logFiles.Remove(fi);
+                    }
+                    catch { }
+                }
+            }
+
+            // 2. If total size still exceeds maxTotalBytes, prune oldest files
+            long totalBytes = logFiles.Sum(f => f.Length);
+            while (totalBytes > maxTotalBytes && logFiles.Count > 1)
+            {
+                var oldest = logFiles[0];
+                try
+                {
+                    totalBytes -= oldest.Length;
+                    oldest.Delete();
+                    logFiles.RemoveAt(0);
+                }
+                catch
+                {
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[Logger] PruneOldLogs error: {ex.Message}");
         }
     }
 

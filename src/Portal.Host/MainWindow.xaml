@@ -489,47 +489,50 @@
         </DataTemplate>
 
         <Style x:Key="PortalCheckBox" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#e6edff" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
-                        <StackPanel Orientation="Horizontal">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Border
                                 x:Name="Box"
-                                Width="18"
-                                Height="18"
+                                Width="20"
+                                Height="20"
                                 Margin="0,0,10,0"
                                 VerticalAlignment="Center"
-                                Background="#0f1630"
-                                BorderBrush="#486dbd"
-                                BorderThickness="1"
+                                Background="#10172B"
+                                BorderBrush="#3D6EC8"
+                                BorderThickness="1.5"
                                 CornerRadius="5">
                                 <Path
                                     x:Name="Mark"
-                                    Margin="4,2,0,0"
-                                    Data="M 1 5 L 4 8 L 10 2"
-                                    Stroke="White"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,0,0"
+                                    Data="M 1 5 L 4.5 8.5 L 11 2"
+                                    Stroke="#FFFFFF"
                                     StrokeThickness="2"
                                     StrokeEndLineCap="Round"
                                     StrokeStartLineCap="Round"
                                     Visibility="Collapsed" />
                             </Border>
-                            <ContentPresenter VerticalAlignment="Center" />
+                            <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True" />
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#6b95f7" />
-                                <Setter TargetName="Box" Property="Background" Value="#15234b" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#6B95F7" />
+                                <Setter TargetName="Box" Property="Background" Value="#182752" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Box" Property="Background" Value="#3d6ec8" />
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#76a3ff" />
+                                <Setter TargetName="Box" Property="Background" Value="#2B62D9" />
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#7AA7FF" />
                                 <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.55" />
+                                <Setter Property="Opacity" Value="0.5" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -3761,30 +3764,46 @@
                         <!--  Account Policy: 2FA PIN (Visible only when Editing)  -->
                         <CheckBox
                             x:Name="CheckRequireTwoFactorPin"
-                            Margin="0,12,0,5"
+                            Style="{StaticResource PortalCheckBox}"
+                            Margin="0,16,0,8"
                             Content="Require 2FA PIN on lock screen"
                             IsChecked="{Binding WizRequiresTwoFactorPin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             Visibility="{Binding WizShowDeviceNameEdit, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                        <StackPanel Visibility="{Binding WizShowTwoFactorPinInput, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <TextBlock
-                                Margin="0,5,0,5"
-                                FontSize="11"
-                                Foreground="{StaticResource TextMuted}"
-                                Text="2FA PIN (4–8 digits/characters)" />
-                            <PasswordBox
-                                x:Name="InputTwoFactorPin"
-                                Height="42"
-                                VerticalContentAlignment="Center"
-                                Padding="12,0,12,0"
-                                FontSize="14"
-                                PasswordChanged="TwoFactorPin_PasswordChanged" />
-                            <TextBlock
-                                Margin="0,3,0,0"
-                                FontSize="10"
-                                Foreground="{StaticResource TextMuted}"
-                                Text="{Binding WizTwoFactorPinHint}"
-                                TextWrapping="Wrap" />
-                        </StackPanel>
+                        <Border
+                            Margin="0,4,0,5"
+                            Padding="14,12"
+                            Background="#11182B"
+                            BorderBrush="#293D6B"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{Binding WizShowTwoFactorPinInput, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock
+                                    Margin="0,0,0,6"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#FFFFFF"
+                                    Text="2FA PIN (4–30 digits/characters)" />
+                                <PasswordBox
+                                    x:Name="InputTwoFactorPin"
+                                    Height="40"
+                                    MaxLength="30"
+                                    VerticalContentAlignment="Center"
+                                    Padding="12,0,12,0"
+                                    FontSize="14"
+                                    Foreground="#FFFFFF"
+                                    Background="#0A0E1A"
+                                    BorderBrush="#3D6EC8"
+                                    BorderThickness="1"
+                                    PasswordChanged="TwoFactorPin_PasswordChanged" />
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="11"
+                                    Foreground="#A0B8E0"
+                                    Text="{Binding WizTwoFactorPinHint}"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
 
                         <Grid Margin="0,20,0,0">
                             <Grid.ColumnDefinitions>
