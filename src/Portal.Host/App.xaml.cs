@@ -57,6 +57,7 @@ public partial class App : Application
         services.AddSingleton<UnlockTestService>();
         services.AddSingleton<DiagnosticReportService>();
         services.AddSingleton<WindowsCredentialValidator>();
+        services.AddSingleton<WindowsPasswordExpiryService>();
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -102,6 +103,8 @@ public partial class App : Application
         }
 
         StartActivationPipeServer();
+
+        _ = Services.GetRequiredService<WindowsPasswordExpiryService>().RefreshAllAccountsAsync();
 
         var mainWindow = Services.GetRequiredService<MainWindow>();
         mainWindow.Show();

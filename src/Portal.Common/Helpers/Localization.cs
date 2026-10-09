@@ -793,7 +793,10 @@ public static class Localization
         ,["Please enter a PIN (4–8 digits) to enable 2FA PIN."] = "Введите PIN-код (4–30 символов) для включения 2FA PIN."
         ,["PIN is currently configured (••••). Enter a new PIN to change it, or leave blank to keep."] = "PIN-код уже настроен (••••). Введите новый PIN для изменения или оставьте пустым."
         ,["Enter 4–30 digits or characters."] = "Введите от 4 до 30 цифр или символов."
-        ,["Enter 4–8 digits or characters."] = "Введите от 4 до 30 цифр или символов."
         ,["2FA PIN"] = "2FA PIN"
+        ,["Password Expired"] = "Срок действия пароля истек"
+        ,["Windows password has expired. Update password in Windows and Portal."] = "Срок действия пароля Windows истек. Обновите пароль в Windows и Portal."
+        ,["Windows password expires in {0} day(s)."] = "Срок действия пароля Windows истекает через {0} дн."
+        ,["Password expires soon"] = "Срок действия пароля скоро истекает"
     };
 }

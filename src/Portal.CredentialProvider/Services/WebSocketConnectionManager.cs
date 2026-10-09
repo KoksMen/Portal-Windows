@@ -1,7 +1,7 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net.WebSockets;
-using System.Text;
 using System.Text.Json;
 using Portal.Common;
 
@@ -9,6 +9,31 @@ namespace Portal.CredentialProvider.Services;
 
 public class WebSocketConnectionManager
 {
+    private readonly struct RentedPayload : IDisposable
+    {
+        public byte[]? Buffer { get; }
+        public int Length { get; }
+        public WebSocketMessageType MessageType { get; }
+
+        public ReadOnlySpan<byte> Span => Buffer != null ? Buffer.AsSpan(0, Length) : ReadOnlySpan<byte>.Empty;
+        public bool IsEmpty => Length == 0;
+
+        public RentedPayload(byte[]? buffer, int length, WebSocketMessageType messageType)
+        {
+            Buffer = buffer;
+            Length = length;
+            MessageType = messageType;
+        }
+
+        public void Dispose()
+        {
+            if (Buffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(Buffer);
+            }
+        }
+    }
+
     private sealed class PendingApprovalContext
     {
         public required string RequestId { get; init; }
@@ -40,9 +65,8 @@ public class WebSocketConnectionManager
                 try
                 {
                     var reqMsg = new WsMessage("unlock_request", clientId, null, string.IsNullOrEmpty(pending.RequestId) ? null : pending.RequestId);
-                    var json = JsonSerializer.Serialize(reqMsg);
-                    var buffer = Encoding.UTF8.GetBytes(json);
-                    await ws.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                    var buffer = JsonSerializer.SerializeToUtf8Bytes(reqMsg);
+                    await ws.SendAsync(buffer.AsMemory(), WebSocketMessageType.Text, true, CancellationToken.None);
                     Logger.Log($"[WebSocketManager] Resent in-flight unlock_request to {clientId} on reconnected socket. requestId='{pending.RequestId}'");
                 }
                 catch (Exception ex)
@@ -212,10 +236,9 @@ public class WebSocketConnectionManager
         try
         {
             var requestMsg = new WsMessage("unlock_request", device.ClientId, null, effectiveRequestId);
-            var json = JsonSerializer.Serialize(requestMsg);
-            var buffer = Encoding.UTF8.GetBytes(json);
+            var buffer = JsonSerializer.SerializeToUtf8Bytes(requestMsg);
 
-            await ws.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, ct);
+            await ws.SendAsync(buffer.AsMemory(), WebSocketMessageType.Text, true, ct);
             Logger.Log($"[WebSocketManager] Sent unlock_request to {device.Name} requestId='{effectiveRequestId ?? "none"}' correlationEnabled={correlationEnabled}");
 
             return await WaitForPendingApprovalAsync(pending.Completion, ct);
@@ -253,8 +276,7 @@ public class WebSocketConnectionManager
     public async Task BroadcastStateUpdate(string state)
     {
         var msg = new { Type = "state_update", State = state };
-        var json = JsonSerializer.Serialize(msg);
-        var buffer = Encoding.UTF8.GetBytes(json);
+        var buffer = JsonSerializer.SerializeToUtf8Bytes(msg);
 
         foreach (var ws in _connectedClients.Values)
         {
@@ -262,7 +284,7 @@ public class WebSocketConnectionManager
             {
                 try
                 {
-                    await ws.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                    await ws.SendAsync(buffer.AsMemory(), WebSocketMessageType.Text, true, CancellationToken.None);
                 }
                 catch { }
             }
@@ -275,16 +297,16 @@ public class WebSocketConnectionManager
         {
             try
             {
-                var (messageType, json) = await ReceiveTextMessageAsync(ws, CancellationToken.None);
-                if (messageType == WebSocketMessageType.Close)
+                using var payload = await ReceivePayloadAsync(ws, CancellationToken.None);
+                if (payload.MessageType == WebSocketMessageType.Close)
                 {
                     await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed", CancellationToken.None);
                     break;
                 }
 
-                if (!string.IsNullOrWhiteSpace(json))
+                if (!payload.IsEmpty)
                 {
-                    var msg = JsonSerializer.Deserialize<WsMessage>(json, JsonOptions);
+                    var msg = JsonSerializer.Deserialize<WsMessage>(payload.Span, JsonOptions);
                     Logger.Log($"[WebSocketManager] Received WS message from {clientId}: type='{msg?.Type ?? "null"}' status='{msg?.Status ?? "null"}' requestId='{msg?.RequestId ?? "null"}'");
 
                     if (msg != null && string.Equals(msg.Type, "unlock_response", StringComparison.OrdinalIgnoreCase))
@@ -345,24 +367,35 @@ public class WebSocketConnectionManager
         // reconnected sockets or user tap on mobile can still complete the unlock.
     }
 
-    private static async Task<(WebSocketMessageType MessageType, string? Text)> ReceiveTextMessageAsync(WebSocket ws, CancellationToken ct)
+    private static async Task<RentedPayload> ReceivePayloadAsync(WebSocket ws, CancellationToken ct)
     {
-        var buffer = new byte[4096];
-        using var ms = new MemoryStream();
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
+        int totalBytes = 0;
 
         while (true)
         {
-            var result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), ct);
-            if (result.MessageType == WebSocketMessageType.Close)
-                return (WebSocketMessageType.Close, null);
+            var memory = new Memory<byte>(buffer, totalBytes, buffer.Length - totalBytes);
+            var result = await ws.ReceiveAsync(memory, ct);
 
-            if (result.Count > 0)
-                ms.Write(buffer, 0, result.Count);
+            if (result.MessageType == WebSocketMessageType.Close)
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+                return new RentedPayload(null, 0, WebSocketMessageType.Close);
+            }
+
+            totalBytes += result.Count;
 
             if (result.EndOfMessage)
             {
-                var payload = Encoding.UTF8.GetString(ms.ToArray());
-                return (result.MessageType, payload);
+                return new RentedPayload(buffer, totalBytes, result.MessageType);
+            }
+
+            if (totalBytes == buffer.Length)
+            {
+                byte[] newBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length * 2);
+                Buffer.BlockCopy(buffer, 0, newBuffer, 0, totalBytes);
+                ArrayPool<byte>.Shared.Return(buffer);
+                buffer = newBuffer;
             }
         }
     }

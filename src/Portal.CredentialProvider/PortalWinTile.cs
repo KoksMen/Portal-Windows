@@ -2,6 +2,7 @@ using Lithnet.CredentialProvider;
 using Microsoft.Win32;
 using Portal.Common;
 using Portal.Common.Helpers;
+using Portal.Common.Models;
 using Portal.CredentialProvider.Base;
 using Portal.CredentialProvider.Services;
 using System.Collections.Generic;
@@ -176,13 +177,24 @@ public class PortalWinTile : PortalWinTileBase
         {
             UpdateStatus(Localization.T("Account Inactive"), Localization.T("Account inactivity period exceeded. Re-enter password in Portal.Host to reactivate."));
         }
-        else if (account != null && account.ResolveEffectiveUnlockMode(Provider.UnlockMode) == UnlockMode.ClientInitiated)
-        {
-            UpdateStatus(Localization.T("Waiting for remote command"), Localization.T("Waiting for unlock command from phone app."));
-        }
         else
         {
-            TryEarlyAutoRequestUnlock();
+            var pwdStatus = account != null ? PasswordStatusStore.GetAccountExpiryStatus(account.Username, account.Domain, account.UserSid) : null;
+            if (pwdStatus != null && pwdStatus.IsExpired)
+            {
+                UpdateStatus(Localization.T("Password Expired"), Localization.T("Windows password has expired. Update password in Windows and Portal."));
+            }
+            else if (account != null && account.ResolveEffectiveUnlockMode(Provider.UnlockMode) == UnlockMode.ClientInitiated)
+            {
+                var subtitle = pwdStatus?.DaysUntilExpiry is <= 7 and > 0
+                    ? string.Format(Localization.T("Windows password expires in {0} day(s)."), pwdStatus.DaysUntilExpiry)
+                    : Localization.T("Waiting for unlock command from phone app.");
+                UpdateStatus(Localization.T("Waiting for remote command"), subtitle);
+            }
+            else
+            {
+                TryEarlyAutoRequestUnlock();
+            }
         }
     }
 

@@ -44,10 +44,8 @@ public static class Logger
                 Directory.CreateDirectory(logsDir);
                 var logPath = Path.Combine(logsDir, _logFileName);
 
-                Serilog.Log.Logger = new LoggerConfiguration()
+                var fileLogger = new LoggerConfiguration()
                     .MinimumLevel.Debug()
-                    .WriteTo.Console(
-                        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
                     .WriteTo.File(
                         logPath,
                         rollingInterval: RollingInterval.Day,
@@ -56,6 +54,15 @@ public static class Logger
                         retainedFileCountLimit: 7,            // Retain up to 7 daily log files
                         outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
                         shared: true)
+                    .CreateLogger();
+
+                var ringBufferSink = new Helpers.ChannelRingBufferSink(fileLogger, boundedCapacity: 10_000);
+
+                Serilog.Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .WriteTo.Console(
+                        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                    .WriteTo.Sink(ringBufferSink)
                     .CreateLogger();
 
                 _isInitialized = true;

@@ -5,6 +5,7 @@ using System.Net.Security;
 using System.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ namespace Portal.CredentialProvider;
 public class TlsUnlockService : IDisposable
 {
     private static readonly TimeSpan NetworkChangeDebounce = TimeSpan.FromSeconds(2.5);
+    private static readonly AsyncLocal<string?> s_currentTlsConnectionIp = new();
 
     private readonly PortalWinConfig _config;
     private readonly UnlockRequestHandler _unlockHandler;
@@ -487,6 +489,40 @@ public class TlsUnlockService : IDisposable
             kestrel.ListenAnyIP(_config.Port, listenOptions =>
             {
                 Logger.Log($"[TlsUnlockService] Configuring HTTPS on port {_config.Port}. Thumbprint: {cert.Thumbprint}");
+
+                // Pre-TLS connection filter (Drop banned or flooded connections BEFORE TLS handshake to protect against TLS DoS)
+                listenOptions.Use(async (connectionContext, next) =>
+                {
+                    var remoteIp = (connectionContext.RemoteEndPoint as IPEndPoint)?.Address?.ToString();
+
+                    if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(remoteIp))
+                    {
+                        if (_rateLimiter.IsIpBanned(remoteIp, out var banRetryAfter))
+                        {
+                            Logger.LogWarning($"[Pre-TLS] Dropped TCP connection from banned IP {remoteIp} ({banRetryAfter}s ban remaining).");
+                            connectionContext.Abort();
+                            return;
+                        }
+
+                        if (!_rateLimiter.TryAcquireIp(remoteIp, out var ipRetryAfter))
+                        {
+                            Logger.LogWarning($"[Pre-TLS] Throttled connection burst from {remoteIp} ({ipRetryAfter}s retry-after).");
+                            connectionContext.Abort();
+                            return;
+                        }
+                    }
+
+                    s_currentTlsConnectionIp.Value = remoteIp;
+                    try
+                    {
+                        await next();
+                    }
+                    finally
+                    {
+                        s_currentTlsConnectionIp.Value = null;
+                    }
+                });
+
                 listenOptions.UseHttps(https =>
                 {
                     https.ServerCertificate = cert;
@@ -596,18 +632,33 @@ public class TlsUnlockService : IDisposable
         {
             if (clientCert == null)
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning("[TlsUnlockService] TLS validation rejected: client certificate is missing.");
                 return false;
             }
 
             if (!IsWithinValidityPeriod(clientCert))
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning($"[TlsUnlockService] TLS validation rejected: certificate is outside validity period. Subject='{clientCert.Subject}'.");
                 return false;
             }
 
             if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateNotAvailable) != 0)
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning($"[TlsUnlockService] TLS validation rejected: remote certificate not available. Errors='{sslPolicyErrors}'.");
                 return false;
             }
@@ -626,6 +677,11 @@ public class TlsUnlockService : IDisposable
             var pinnedDevice = _config.FindDeviceByCertHash(certHash);
             if (pinnedDevice == null)
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning($"[TlsUnlockService] TLS validation rejected: cert hash '{certHash}' is not pinned in config. Available pinned certificates: {BuildAvailableCertificatesLog()}.");
                 return false;
             }
@@ -633,6 +689,12 @@ public class TlsUnlockService : IDisposable
             if (!IsClientCertificateSuitableForAuthentication(clientCert))
             {
                 Logger.LogWarning($"[TlsUnlockService] TLS validation compatibility mode: EKU/usage is non-standard but cert hash is pinned. Allowing. Subject='{clientCert.Subject}', CertHash='{certHash}', Device='{pinnedDevice.Name}', UsersByHash='{BuildUsersByHashLog(certHash)}'.");
+            }
+
+            var successIp = s_currentTlsConnectionIp.Value;
+            if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(successIp))
+            {
+                _rateLimiter.RecordAuthSuccess(successIp);
             }
 
             return true;

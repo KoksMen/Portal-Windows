@@ -361,8 +361,15 @@ public class PortalWinConfig
         try
         {
             Directory.CreateDirectory(ConfigDir);
-            var persistedToLsa = TrySaveDevicesToLsa(Devices);
-            var json = BuildConfigJson(includeDevices: !persistedToLsa);
+            if (Devices.Count > 0)
+            {
+                var persistedToLsa = TrySaveDevicesToLsa(Devices);
+                if (!persistedToLsa)
+                {
+                    Logger.LogWarning("[Config] Warning: Failed to persist paired devices to LSA secret store (insufficient privileges or non-elevated process). Devices are never stored in config.json.");
+                }
+            }
+            var json = BuildConfigJson();
             File.WriteAllText(ConfigPath, json);
 
             try
@@ -629,7 +636,7 @@ public class PortalWinConfig
         }
     }
 
-    private string BuildConfigJson(bool includeDevices)
+    private string BuildConfigJson()
     {
         var node = JsonSerializer.SerializeToNode(this, JsonOptions) as JsonObject ?? new JsonObject();
 
