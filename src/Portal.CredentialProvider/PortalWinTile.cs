@@ -37,6 +37,27 @@ public class PortalWinTile : PortalWinTileBase
     private bool _isRegisteredInTiles;
     private DateTime _requestStartedTimestamp = DateTime.MinValue;
 
+    private static volatile bool _globalIsAwaiting2FaPin;
+    public static bool IsAnyTileAwaitingTwoFactorPin
+    {
+        get
+        {
+            if (_globalIsAwaiting2FaPin) return true;
+            lock (_tilesSync)
+            {
+                return _tiles.Any(t => t._isAwaiting2FaPin);
+            }
+        }
+    }
+
+    public static PortalWinTile? GetTileAwaitingTwoFactorPin()
+    {
+        lock (_tilesSync)
+        {
+            return _tiles.FirstOrDefault(t => t._isAwaiting2FaPin);
+        }
+    }
+
     private volatile bool _isAwaiting2FaPin;
     public bool IsAwaitingTwoFactorPin => _isAwaiting2FaPin;
     private string? _pending2FaUser;
@@ -68,6 +89,14 @@ public class PortalWinTile : PortalWinTileBase
 
     public static void OnTypingKeyDetected()
     {
+        if (IsAnyTileAwaitingTwoFactorPin)
+        {
+            // During 2FA PIN entry on lock screen, keyboard typing is expected.
+            var pinTile = GetTileAwaitingTwoFactorPin();
+            pinTile?.FocusPasswordField();
+            return;
+        }
+
         PortalWinTile? targetTile;
         lock (_tilesSync)
         {
@@ -84,7 +113,7 @@ public class PortalWinTile : PortalWinTileBase
 
     public void EnsureManualTypingMode()
     {
-        if (_isAwaiting2FaPin)
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
         {
             // During 2FA PIN entry on lock screen, keyboard typing is expected.
             FocusPasswordField();
@@ -473,6 +502,11 @@ public class PortalWinTile : PortalWinTileBase
         ClearTwoFactorPinMode("Replacing with new 2FA PIN session");
 
         _isAwaiting2FaPin = true;
+        lock (_tilesSync)
+        {
+            _globalIsAwaiting2FaPin = true;
+            _selectedTile = this;
+        }
         _pending2FaUser = username;
         _pending2FaDomain = domain;
         _pending2FaUserSid = userSid;
@@ -530,6 +564,10 @@ public class PortalWinTile : PortalWinTileBase
     public void ClearTwoFactorPinMode(string reason = "Cleared")
     {
         _isAwaiting2FaPin = false;
+        lock (_tilesSync)
+        {
+            _globalIsAwaiting2FaPin = _tiles.Any(t => t._isAwaiting2FaPin);
+        }
         _pending2FaUser = null;
         _pending2FaDomain = null;
         _pending2FaUserSid = null;
@@ -862,8 +900,15 @@ public class PortalWinTile : PortalWinTileBase
                                 $"{device.Name} approved an unlock request over {GetTransportLabel(device)}.",
                                 deviceName: device.Name,
                                 transport: GetTransportLabel(device));
+
+                            ReleaseActiveRequest(owner, cts);
+                            if (_activeRequestCts == cts)
+                            {
+                                _activeRequestCts = null;
+                            }
+                            try { cts.Cancel(); } catch { }
+
                             HandleApproval(config, device);
-                            cts.Cancel();
                             return;
                         }
                         else if (result == "rejected" || result == "forbidden")
@@ -887,7 +932,7 @@ public class PortalWinTile : PortalWinTileBase
                     ActivityJournal.Record("unlock", "🚫", "Unlock request declined", $"Unlock request was declined by {devName ?? "device"}.", false);
                     UpdateStatus(statusMsg);
                 }
-                else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock && !IsAnyTileAwaitingTwoFactorPin)
                 {
                     var expectedTimeoutMs = effectiveTimeoutSeconds > 0 ? effectiveTimeoutSeconds * 1000L : -1;
                     var isTimeout = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 500);
@@ -937,7 +982,7 @@ public class PortalWinTile : PortalWinTileBase
                     ActivityJournal.Record("unlock", journalIcon, journalTitle, journalDetails, false);
                     UpdateStatus(statusMsg);
                 }
-                else if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                else if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock && !IsAnyTileAwaitingTwoFactorPin)
                 {
                     UpdateStatus("Device unreachable.");
                     ActivityJournal.Record("unlock", "⚠️", "Device unreachable", "Could not establish connection to paired device.", false);
@@ -954,7 +999,7 @@ public class PortalWinTile : PortalWinTileBase
             }
             finally
             {
-                if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock && !IsAnyTileAwaitingTwoFactorPin)
                 {
                     ShowRequestButton();
                 }
@@ -1275,13 +1320,14 @@ public class PortalWinTile : PortalWinTileBase
 
     private void OnCancelUnlockClicked()
     {
-        if (_isAwaiting2FaPin)
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
         {
             Logger.Log("[Tile] 2FA PIN mode cancelled by user.");
-            ClearTwoFactorPinMode("Cancelled by user");
-            UpdateStatus(Localization.T("Cancelled by user."));
-            ShowRequestButton();
-            FocusPasswordField();
+            var tile = _isAwaiting2FaPin ? this : GetTileAwaitingTwoFactorPin() ?? this;
+            tile.ClearTwoFactorPinMode("Cancelled by user");
+            tile.UpdateStatus(Localization.T("Cancelled by user."));
+            tile.ShowRequestButton();
+            tile.FocusPasswordField();
             return;
         }
 
@@ -1304,7 +1350,7 @@ public class PortalWinTile : PortalWinTileBase
     {
         base.OnManualPasswordInputChanged();
 
-        if (_isAwaiting2FaPin)
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
         {
             // User is typing 2FA PIN on keyboard; do not cancel session.
             return;
@@ -1347,7 +1393,7 @@ public class PortalWinTile : PortalWinTileBase
                     ?? System.Environment.MachineName;
                 var submitSid = targetAccount.UserSid ?? User?.Sid;
                 Provider.OnUnlockRequested(submitUser, securePassword, submitDomain, submitSid);
-                if (_isAwaiting2FaPin)
+                if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
                 {
                     return;
                 }
@@ -1365,6 +1411,11 @@ public class PortalWinTile : PortalWinTileBase
                 ?? "unknown";
             Logger.LogWarning($"[Tile] approval_account_match_failed selected='{selected}' device='{targetDevice.Name}' accounts='{targetDevice.Accounts.Count}'");
             UpdateStatus("Approved, but no account matched.");
+        }
+
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+        {
+            return;
         }
 
         ShowRequestButton();
@@ -1437,7 +1488,7 @@ public class PortalWinTile : PortalWinTileBase
         {
             if (t.IsCanceled) return;
 
-            if (_isAwaiting2FaPin || HasActiveUnlockRequest || (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested))
+            if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin || HasActiveUnlockRequest || (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested))
             {
                 return;
             }
@@ -1468,7 +1519,7 @@ public class PortalWinTile : PortalWinTileBase
     {
         CancelScheduledAutoReset();
 
-        if (_isAwaiting2FaPin || HasActiveUnlockRequest)
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin || HasActiveUnlockRequest)
         {
             return;
         }
@@ -1603,6 +1654,13 @@ public class PortalWinTile : PortalWinTileBase
         {
             Logger.LogWarning($"[PortalWinTile] Retry shortcut ({source}) ignored: tile does not allow host-initiated unlock (mode={targetTile.Provider.UnlockMode}).");
             return false;
+        }
+
+        // If 2FA PIN mode is active, clear it so retry restarts a clean remote session
+        if (targetTile._isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+        {
+            var pinTile = targetTile._isAwaiting2FaPin ? targetTile : GetTileAwaitingTwoFactorPin() ?? targetTile;
+            pinTile.ClearTwoFactorPinMode("Retry shortcut pressed");
         }
 
         // If an unlock request is already active, cancel it to allow a clean restart
