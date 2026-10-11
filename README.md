@@ -25,13 +25,13 @@
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows/releases/latest">
-    <img src="https://img.shields.io/static/v1?label=Download&message=Portal-Windows%20(v1.9.1)&color=7c4dff&style=for-the-badge&logo=windows&logoColor=white" alt="Download Portal-Windows" />
+    <img src="assets/badges/badge-download.svg" alt="Download Portal-Windows" />
   </a>
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal">
-    <img src="https://img.shields.io/badge/Google_Play-Portal_(Android)-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Download on Google Play" />
+    <img src="assets/badges/badge-googleplay.svg" alt="Download on Google Play" />
   </a>
   <a href="https://github.com/xXMRK888YTXx/Portal-Android">
-    <img src="https://img.shields.io/static/v1?label=GitHub&message=Portal-Android&color=181717&style=for-the-badge&logo=github&logoColor=white" alt="Portal-Android GitHub" />
+    <img src="assets/badges/badge-github.svg" alt="Portal-Android GitHub" />
   </a>
 </p>
 
