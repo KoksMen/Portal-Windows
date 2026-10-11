@@ -11,11 +11,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Версия-v1.9.1--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.1-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.1--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.1-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
-  <img src="https://img.shields.io/badge/Платформа-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
-  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/Лицензия-GPL--3.0-orange?style=for-the-badge" alt="License GPL-3.0" /></a>
+  <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-GPL--3.0-orange?style=for-the-badge" alt="License GPL-3.0" /></a>
 </p>
 
 <p align="center">
@@ -25,13 +25,13 @@
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows/releases/latest">
-    <img src="https://img.shields.io/badge/📥_Скачать_Portal--Windows_(v1.9.1)-7c4dff?style=for-the-badge&logo=windows" alt="Download Portal-Windows" />
+    <img src="https://img.shields.io/badge/Download-Portal--Windows_(v1.9.1)-7c4dff?style=for-the-badge&logo=windows&logoColor=white" alt="Download Portal-Windows" />
   </a>
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal">
-    <img src="https://img.shields.io/badge/📱_Google_Play_(Android)-34A853?style=for-the-badge&logo=android" alt="Download on Google Play" />
+    <img src="https://img.shields.io/badge/Google_Play-Portal_(Android)-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Download on Google Play" />
   </a>
   <a href="https://github.com/xXMRK888YTXx/Portal-Android">
-    <img src="https://img.shields.io/badge/🤖_Репозиторий_Portal--Android-181717?style=for-the-badge&logo=github" alt="Portal-Android GitHub" />
+    <img src="https://img.shields.io/badge/GitHub-Portal--Android-181717?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Android GitHub" />
   </a>
 </p>
 
