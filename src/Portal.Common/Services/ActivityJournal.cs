@@ -157,4 +157,23 @@ public static class ActivityJournal
             Logger.LogWarning($"[ActivityJournal] Failed to prune expired activity records: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// Clears all entries from the activity journal.
+    /// </summary>
+    public static void Clear()
+    {
+        try
+        {
+            if (File.Exists(JournalPath))
+            {
+                using var stream = new FileStream(JournalPath, FileMode.Create, FileAccess.Write, FileShare.Read);
+                stream.Flush(flushToDisk: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[ActivityJournal] Failed to clear journal: {ex.Message}");
+        }
+    }
 }

@@ -10,6 +10,10 @@ public class PairingContext : IDisposable
     public string PairingCode { get; set; } = string.Empty;
     public string HostIpAddress { get; set; } = string.Empty;
     public TransportType SelectedTransport { get; set; } = TransportType.Network;
+    public UnlockMode? CustomUnlockMode { get; set; }
+    public int? InactivityExpiryDays { get; set; }
+    public bool RequiresTwoFactorPin { get; set; }
+    public string? TwoFactorPin { get; set; }
 
     private SecureString? _targetPassword;
 
@@ -34,6 +38,10 @@ public class PairingContext : IDisposable
     {
         _targetPassword?.Dispose();
         _targetPassword = null;
+        CustomUnlockMode = null;
+        InactivityExpiryDays = null;
+        RequiresTwoFactorPin = false;
+        TwoFactorPin = null;
     }
 
     public void Dispose()

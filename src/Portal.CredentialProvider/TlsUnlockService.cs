@@ -5,11 +5,14 @@ using System.Net.Security;
 using System.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 using Microsoft.Extensions.DependencyInjection;
 using Portal.Common;
+using Portal.Common.Abstractions;
 using Portal.Common.Models;
+using Portal.Common.Services;
 using Portal.CredentialProvider.Services;
 
 namespace Portal.CredentialProvider;
@@ -17,11 +20,13 @@ namespace Portal.CredentialProvider;
 public class TlsUnlockService : IDisposable
 {
     private static readonly TimeSpan NetworkChangeDebounce = TimeSpan.FromSeconds(2.5);
+    private static readonly AsyncLocal<string?> s_currentTlsConnectionIp = new();
 
     private readonly PortalWinConfig _config;
     private readonly UnlockRequestHandler _unlockHandler;
     private readonly WebSocketConnectionManager _wsManager;
     private readonly MdnsAnnouncer _mdns;
+    private readonly INetworkRateLimiter _rateLimiter;
     private readonly object _wsPolicyLock = new();
 
     private Microsoft.AspNetCore.Builder.WebApplication? _app;
@@ -38,13 +43,13 @@ public class TlsUnlockService : IDisposable
     public bool IsRunning { get; private set; }
     public string? CurrentIp => _lastAdvertisedIp ?? ResolveLocalIPv4();
 
-    public event Action<string, SecureString?, string>? UnlockRequested;
+    public event Action<string, SecureString?, string, string?>? UnlockRequested;
     public event Action<string, bool>? NetworkConnectionChanged;
     public event Action? StatusChanged;
 
     public TlsUnlockService(PortalWinConfig config)
         : this(config, new UnlockRequestHandler(config, new AttemptTracker()),
-               new WebSocketConnectionManager(), new MdnsAnnouncer())
+               new WebSocketConnectionManager(), new MdnsAnnouncer(), new NetworkRateLimiter())
     {
     }
 
@@ -52,14 +57,16 @@ public class TlsUnlockService : IDisposable
         PortalWinConfig config,
         UnlockRequestHandler unlockHandler,
         WebSocketConnectionManager wsManager,
-        MdnsAnnouncer mdns)
+        MdnsAnnouncer mdns,
+        INetworkRateLimiter? rateLimiter = null)
     {
         _config = config;
         _unlockHandler = unlockHandler;
         _wsManager = wsManager;
         _mdns = mdns;
+        _rateLimiter = rateLimiter ?? new NetworkRateLimiter();
 
-        _unlockHandler.UnlockRequested += (u, p, d) => UnlockRequested?.Invoke(u, p, d);
+        _unlockHandler.UnlockRequested += (u, p, d, sid) => UnlockRequested?.Invoke(u, p, d, sid);
 
         _wsManager.UnlockApprovedWithoutPending += (clientId, reqId) =>
         {
@@ -75,16 +82,35 @@ public class TlsUnlockService : IDisposable
                 }
 
                 var account = device.Accounts.FirstOrDefault();
-                using var securePassword = account?.GetDecryptedSecurePassword();
-                if (account == null || securePassword == null || securePassword.Length == 0)
+                if (account == null)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: no account configured for device '{device.Name}'.");
+                    return;
+                }
+
+                if (account.IsExpired)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: account '{account.Username}' ({device.Name}) is expired/inactive.");
+                    return;
+                }
+
+                var effectiveMode = account.ResolveEffectiveUnlockMode(config.UnlockMode);
+                if (effectiveMode == UnlockMode.HostInitiated)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: account '{account.Username}' configured for Host-Initiated only.");
+                    return;
+                }
+
+                using var securePassword = account.GetDecryptedSecurePassword();
+                if (securePassword == null || securePassword.Length == 0)
                 {
                     Logger.LogWarning($"[TlsUnlockService] Fallback unlock rejected: no credentials for device '{device.Name}'.");
                     return;
                 }
 
-                Logger.Log($"[TlsUnlockService] Fallback unlock APPROVED for user: {account.Username} from {device.Name}");
+                Logger.Log($"[TlsUnlockService] Fallback unlock APPROVED for user: {account.Username} (SID={account.UserSid ?? "none"}) from {device.Name}");
                 ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
-                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
             }
             catch (Exception ex)
             {
@@ -149,12 +175,37 @@ public class TlsUnlockService : IDisposable
         builder.Services.AddLogging();
         _app = builder.Build();
 
-        // НОВОЕ: Встроенный Middleware для моментальной блокировки неавторизованных сессий по отпечатку
+        // Rate Limiting & Auth-Failure Ban: моментальная защита от флуда и сканеров
         _app.Use(async (context, next) =>
         {
+            var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+
+            if (_config.RateLimitingEnabled)
+            {
+                if (_rateLimiter.IsIpBanned(remoteIp, out var banRetryAfter))
+                {
+                    Logger.LogWarning($"[RateLimiter] Rejected connection from {remoteIp}: IP temporarily banned ({banRetryAfter}s remaining).");
+                    context.Response.Headers.RetryAfter = banRetryAfter.ToString();
+                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    return;
+                }
+
+                if (!_rateLimiter.TryAcquireIp(remoteIp, out var ipRetryAfter))
+                {
+                    Logger.LogWarning($"[RateLimiter] Throttled connection from {remoteIp}: General IP rate limit exceeded ({ipRetryAfter}s retry-after).");
+                    context.Response.Headers.RetryAfter = ipRetryAfter.ToString();
+                    context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    return;
+                }
+            }
+
             var clientCert = context.Connection.ClientCertificate;
             if (clientCert == null)
             {
+                if (_config.RateLimitingEnabled)
+                {
+                    _rateLimiter.RecordAuthFailure(remoteIp);
+                }
                 Logger.LogWarning($"[Middleware] Connection rejected from {context.Connection.RemoteIpAddress}: No certificate.");
                 context.Response.StatusCode = 401;
                 return;
@@ -165,9 +216,18 @@ public class TlsUnlockService : IDisposable
 
             if (device == null)
             {
+                if (_config.RateLimitingEnabled)
+                {
+                    _rateLimiter.RecordAuthFailure(remoteIp);
+                }
                 Logger.LogWarning($"[Middleware] Connection rejected from {context.Connection.RemoteIpAddress}: Unknown cert hash.");
                 context.Response.StatusCode = 403;
                 return;
+            }
+
+            if (_config.RateLimitingEnabled)
+            {
+                _rateLimiter.RecordAuthSuccess(remoteIp);
             }
 
             if (string.Equals(context.Request.Path.Value, "/ws", StringComparison.OrdinalIgnoreCase)
@@ -429,6 +489,40 @@ public class TlsUnlockService : IDisposable
             kestrel.ListenAnyIP(_config.Port, listenOptions =>
             {
                 Logger.Log($"[TlsUnlockService] Configuring HTTPS on port {_config.Port}. Thumbprint: {cert.Thumbprint}");
+
+                // Pre-TLS connection filter (Drop banned or flooded connections BEFORE TLS handshake to protect against TLS DoS)
+                listenOptions.Use(async (connectionContext, next) =>
+                {
+                    var remoteIp = (connectionContext.RemoteEndPoint as IPEndPoint)?.Address?.ToString();
+
+                    if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(remoteIp))
+                    {
+                        if (_rateLimiter.IsIpBanned(remoteIp, out var banRetryAfter))
+                        {
+                            Logger.LogWarning($"[Pre-TLS] Dropped TCP connection from banned IP {remoteIp} ({banRetryAfter}s ban remaining).");
+                            connectionContext.Abort();
+                            return;
+                        }
+
+                        if (!_rateLimiter.TryAcquireIp(remoteIp, out var ipRetryAfter))
+                        {
+                            Logger.LogWarning($"[Pre-TLS] Throttled connection burst from {remoteIp} ({ipRetryAfter}s retry-after).");
+                            connectionContext.Abort();
+                            return;
+                        }
+                    }
+
+                    s_currentTlsConnectionIp.Value = remoteIp;
+                    try
+                    {
+                        await next();
+                    }
+                    finally
+                    {
+                        s_currentTlsConnectionIp.Value = null;
+                    }
+                });
+
                 listenOptions.UseHttps(https =>
                 {
                     https.ServerCertificate = cert;
@@ -452,6 +546,19 @@ public class TlsUnlockService : IDisposable
     {
         app.MapPost("/api/unlock", (UnlockRequest request, HttpContext context) =>
         {
+            if (_config.RateLimitingEnabled)
+            {
+                var clientCert = context.Connection.ClientCertificate;
+                var certHash = clientCert != null ? CertificateService.GetCertHash(clientCert) : null;
+                if (!string.IsNullOrEmpty(certHash) && !_rateLimiter.TryAcquireCertificate(certHash, "unlock", out var retryAfter))
+                {
+                    var shortHash = certHash.Length > 8 ? certHash[..8] : certHash;
+                    Logger.LogWarning($"[RateLimiter] Unlock request throttled for cert '{shortHash}' ({retryAfter}s retry-after).");
+                    context.Response.Headers.RetryAfter = retryAfter.ToString();
+                    return Results.Json(new UnlockResponse(false, "Too many requests"), statusCode: StatusCodes.Status429TooManyRequests);
+                }
+            }
+
             return _unlockHandler.HandleUnlockRequest(request, context);
         });
 
@@ -469,6 +576,19 @@ public class TlsUnlockService : IDisposable
                 {
                     context.Response.StatusCode = 403;
                     return;
+                }
+
+                if (_config.RateLimitingEnabled)
+                {
+                    var clientCert = context.Connection.ClientCertificate;
+                    var certHash = clientCert != null ? CertificateService.GetCertHash(clientCert) : null;
+                    if (!string.IsNullOrEmpty(certHash) && !_rateLimiter.TryAcquireCertificate(certHash, "ws_connect", out var retryAfter))
+                    {
+                        Logger.LogWarning($"[RateLimiter] WS connection throttled for device '{device.Name}' ({retryAfter}s retry-after).");
+                        context.Response.Headers.RetryAfter = retryAfter.ToString();
+                        context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                        return;
+                    }
                 }
 
                 if (_config.StrictSelectedTileWebSocketConnections
@@ -512,18 +632,33 @@ public class TlsUnlockService : IDisposable
         {
             if (clientCert == null)
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning("[TlsUnlockService] TLS validation rejected: client certificate is missing.");
                 return false;
             }
 
             if (!IsWithinValidityPeriod(clientCert))
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning($"[TlsUnlockService] TLS validation rejected: certificate is outside validity period. Subject='{clientCert.Subject}'.");
                 return false;
             }
 
             if ((sslPolicyErrors & SslPolicyErrors.RemoteCertificateNotAvailable) != 0)
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning($"[TlsUnlockService] TLS validation rejected: remote certificate not available. Errors='{sslPolicyErrors}'.");
                 return false;
             }
@@ -542,6 +677,11 @@ public class TlsUnlockService : IDisposable
             var pinnedDevice = _config.FindDeviceByCertHash(certHash);
             if (pinnedDevice == null)
             {
+                var curIp = s_currentTlsConnectionIp.Value;
+                if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(curIp))
+                {
+                    _rateLimiter.RecordAuthFailure(curIp);
+                }
                 Logger.LogWarning($"[TlsUnlockService] TLS validation rejected: cert hash '{certHash}' is not pinned in config. Available pinned certificates: {BuildAvailableCertificatesLog()}.");
                 return false;
             }
@@ -549,6 +689,12 @@ public class TlsUnlockService : IDisposable
             if (!IsClientCertificateSuitableForAuthentication(clientCert))
             {
                 Logger.LogWarning($"[TlsUnlockService] TLS validation compatibility mode: EKU/usage is non-standard but cert hash is pinned. Allowing. Subject='{clientCert.Subject}', CertHash='{certHash}', Device='{pinnedDevice.Name}', UsersByHash='{BuildUsersByHashLog(certHash)}'.");
+            }
+
+            var successIp = s_currentTlsConnectionIp.Value;
+            if (_config.RateLimitingEnabled && !string.IsNullOrEmpty(successIp))
+            {
+                _rateLimiter.RecordAuthSuccess(successIp);
             }
 
             return true;
@@ -782,8 +928,7 @@ public class TlsUnlockService : IDisposable
     {
         try
         {
-            var pfxPath = Path.Combine(PortalWinConfig.ConfigDir, "host_cert.pfx");
-            return CertificateService.LoadCertificate(pfxPath, machineKeySet: true);
+            return CertificateService.LoadCertificate(CertificateService.DefaultCertPath, machineKeySet: true);
         }
         catch (Exception ex)
         {

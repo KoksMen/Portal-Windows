@@ -110,7 +110,8 @@ public static class LocalizationService
         if (!visited.Add(element)) return;
 
         // Language names must always be readable in their native form and must not be translated.
-        if (element is ComboBox { Name: "LanguageSelector" })
+        // Dynamic policy ComboBoxes are populated and translated via ViewModel collections.
+        if (element is ComboBox { Name: "LanguageSelector" or "InputAccountUnlockMode" or "InputInactivityDays" })
             return;
 
         if (element is FrameworkElement styleOwner)

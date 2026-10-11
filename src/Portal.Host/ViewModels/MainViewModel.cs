@@ -146,6 +146,8 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<DeviceModel> Devices { get; } = new();
     public ObservableCollection<ActivityCard> RecentActivity { get; } = new();
+    public ObservableCollection<string> AccountUnlockModeOptions { get; } = new();
+    public ObservableCollection<string> InactivityDaysOptions { get; } = new();
     public ObservableCollection<string> ActivityFilterOptions { get; } = new()
     {
         "All events", "Unlocks", "Pairing", "Network", "System", "Problems"
@@ -587,6 +589,54 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private string _wizCredsNextText = "Next →";
     [ObservableProperty] private LocalAccountOption? _selectedLocalAccount;
+    [ObservableProperty] private int _wizAccountUnlockModeIndex = 0;
+    [ObservableProperty] private int _wizInactivityDaysIndex = 0;
+    [ObservableProperty] private bool _wizRequiresTwoFactorPin = false;
+    [ObservableProperty] private string _wizTwoFactorPin = string.Empty;
+    [ObservableProperty] private string _wizTwoFactorPinHint = string.Empty;
+
+    public bool WizShowTwoFactorPinInput => WizRequiresTwoFactorPin;
+
+    partial void OnWizRequiresTwoFactorPinChanged(bool value)
+    {
+        OnPropertyChanged(nameof(WizShowTwoFactorPinInput));
+    }
+
+    private static int InactivityDaysToIndex(int? days) => days switch
+    {
+        7 => 1,
+        14 => 2,
+        30 => 3,
+        60 => 4,
+        90 => 5,
+        _ => 0
+    };
+
+    private static int? IndexToInactivityDays(int index) => index switch
+    {
+        1 => 7,
+        2 => 14,
+        3 => 30,
+        4 => 60,
+        5 => 90,
+        _ => null
+    };
+
+    private static int UnlockModeToIndex(UnlockMode? mode) => mode switch
+    {
+        UnlockMode.Both => 1,
+        UnlockMode.ClientInitiated => 2,
+        UnlockMode.HostInitiated => 3,
+        _ => 0
+    };
+
+    private static UnlockMode? IndexToUnlockMode(int index) => index switch
+    {
+        1 => UnlockMode.Both,
+        2 => UnlockMode.ClientInitiated,
+        3 => UnlockMode.HostInitiated,
+        _ => null
+    };
 
     // Transport inputs
     [ObservableProperty] private bool _wizIsNetworkTransport = true;
@@ -717,6 +767,7 @@ public partial class MainViewModel : ObservableObject
         LoadConfigToUi();
         SelectedLanguageCode = string.Equals(_config.UiLanguage, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "ru";
         UpdateActivityLanguageOptions();
+        RebuildAccountPolicyOptions();
         RefreshActivityJournal();
         UpdateCurrentVersionText = BuildCurrentVersionText();
         _ = LoadAboutAvatarsAsync();
@@ -1368,6 +1419,22 @@ public partial class MainViewModel : ObservableObject
         };
     }
 
+    [RelayCommand]
+    private async Task ClearActivityJournalAsync()
+    {
+        var isRussian = SelectedLanguageCode != "en";
+        var confirmed = await _dialogService.ShowNotificationAsync(
+            isRussian ? "Очистить журнал" : "Clear Activity Journal",
+            isRussian ? "Вы уверены, что хотите удалить все записи журнала активности?" : "Are you sure you want to clear all activity history?",
+            isQuestion: true);
+
+        if (confirmed)
+        {
+            ActivityJournal.Clear();
+            RefreshActivityJournal();
+        }
+    }
+
     partial void OnSelectedActivityFilterChanged(string value) => RefreshActivityJournal();
     partial void OnSelectedActivitySortChanged(string value) => RefreshActivityJournal();
     partial void OnSelectedLanguageCodeChanged(string value)
@@ -1464,6 +1531,40 @@ public partial class MainViewModel : ObservableObject
 
         // Activity section (filter/sort options, summary and cards are language-dependent).
         UpdateActivityLanguageOptions();
+        RebuildAccountPolicyOptions();
+    }
+
+    public void RebuildAccountPolicyOptions()
+    {
+        var modes = new[]
+        {
+            Services.LocalizationService.T("Inherit from global settings"),
+            Services.LocalizationService.T("Both PC and phone"),
+            Services.LocalizationService.T("Client-Initiated only (Phone unlocks PC)"),
+            Services.LocalizationService.T("Host-Initiated only (PC requests phone)")
+        };
+
+        var days = new[]
+        {
+            Services.LocalizationService.T("Disabled (No expiry)"),
+            Services.LocalizationService.T("7 days"),
+            Services.LocalizationService.T("14 days"),
+            Services.LocalizationService.T("30 days"),
+            Services.LocalizationService.T("60 days"),
+            Services.LocalizationService.T("90 days")
+        };
+
+        var prevModeIndex = WizAccountUnlockModeIndex;
+        var prevDaysIndex = WizInactivityDaysIndex;
+
+        AccountUnlockModeOptions.Clear();
+        foreach (var mode in modes) AccountUnlockModeOptions.Add(mode);
+
+        InactivityDaysOptions.Clear();
+        foreach (var day in days) InactivityDaysOptions.Add(day);
+
+        WizAccountUnlockModeIndex = prevModeIndex >= 0 && prevModeIndex < modes.Length ? prevModeIndex : 0;
+        WizInactivityDaysIndex = prevDaysIndex >= 0 && prevDaysIndex < days.Length ? prevDaysIndex : 0;
     }
 
     private void UpdateActivityLanguageOptions()
@@ -2060,12 +2161,22 @@ public partial class MainViewModel : ObservableObject
         WizDeviceName = device.Name;
         WizInputPass = ""; // don't show existing password securely
         WizShowDeviceNameEdit = true;
+        WizAccountUnlockModeIndex = UnlockModeToIndex(account.CustomUnlockMode);
+        WizInactivityDaysIndex = InactivityDaysToIndex(account.InactivityExpiryDays);
+        WizRequiresTwoFactorPin = account.RequiresTwoFactorPin;
+        WizTwoFactorPin = string.Empty;
+        WizTwoFactorPinHint = account.RequiresTwoFactorPin && !string.IsNullOrEmpty(account.TwoFactorPinHash)
+            ? Services.LocalizationService.T("PIN is currently configured (••••). Enter a new PIN to change it, or leave blank to keep.")
+            : Services.LocalizationService.T("Enter 4–30 digits or characters.");
         WizCredsNextText = Services.LocalizationService.T("Save Changes");
 
         ShowDashboard = true; // This hides Settings Panel
         ShowWizard = true;
         SetShowStep("StepCreds");
     }
+
+    [RelayCommand]
+    private void ReactivateAccount(string clientId) => EditDeviceAccount(clientId);
 
     [RelayCommand]
     private void ToggleWizPasswordReveal(object? parameter)
@@ -2095,6 +2206,8 @@ public partial class MainViewModel : ObservableObject
         IsWizPasswordRevealed = false;
         WizPasswordRevealedText = string.Empty;
         WizPasswordRevealGlyph = "\uE7B3";
+        WizRequiresTwoFactorPin = false;
+        WizTwoFactorPin = string.Empty;
         ShowWizard = false;
         ShowDashboard = false; // Return to Settings
     }
@@ -3179,6 +3292,11 @@ public partial class MainViewModel : ObservableObject
         IsWizPasswordRevealed = false;
         WizPasswordRevealedText = string.Empty;
         WizPasswordRevealGlyph = "\uE7B3";
+        WizAccountUnlockModeIndex = 0;
+        WizInactivityDaysIndex = 0;
+        WizRequiresTwoFactorPin = false;
+        WizTwoFactorPin = string.Empty;
+        WizTwoFactorPinHint = Services.LocalizationService.T("Enter 4–30 digits or characters.");
 
         return sessionId;
     }
@@ -3903,13 +4021,39 @@ public partial class MainViewModel : ObservableObject
                     account.Username = SelectedLocalAccount.Username;
                     account.Domain = SelectedLocalAccount.Domain;
                     account.UserSid = IdentityHelper.TryResolveUserSid(SelectedLocalAccount.Username, SelectedLocalAccount.Domain);
+                    account.CustomUnlockMode = IndexToUnlockMode(WizAccountUnlockModeIndex);
+                    account.InactivityExpiryDays = IndexToInactivityDays(WizInactivityDaysIndex);
+
+                    if (WizRequiresTwoFactorPin)
+                    {
+                        if (!string.IsNullOrWhiteSpace(WizTwoFactorPin))
+                        {
+                            account.SetTwoFactorPin(WizTwoFactorPin);
+                        }
+                        else if (!account.RequiresTwoFactorPin || string.IsNullOrEmpty(account.TwoFactorPinHash))
+                        {
+                            await _dialogService.ShowNotificationAsync(
+                                Services.LocalizationService.T("Error"),
+                                Services.LocalizationService.T("Please enter a PIN (4–30 characters) to enable 2FA PIN."));
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        account.RemoveTwoFactorPin();
+                    }
+
+                    account.LastUnlockedAtUtc = DateTime.UtcNow;
                     account.SetPassword(submittedPassword);
+                    device.NotifyAccountPolicyChanged();
                     _config.Save();
                     RefreshDevicesList();
                     await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Success"), Services.LocalizationService.T("Account updated successfully."));
                 }
 
                 _editingClientId = null;
+                WizRequiresTwoFactorPin = false;
+                WizTwoFactorPin = string.Empty;
                 ShowWizard = false;
                 ShowDashboard = false; // Show settings panel again
                 if (passwordParams is System.Windows.Controls.PasswordBox passBox) passBox.Password = "";
@@ -3950,6 +4094,19 @@ public partial class MainViewModel : ObservableObject
                 }
 
                 _pairingContext.SetTargetPassword(submittedPassword);
+            }
+
+            _pairingContext.CustomUnlockMode = IndexToUnlockMode(WizAccountUnlockModeIndex);
+            _pairingContext.InactivityExpiryDays = IndexToInactivityDays(WizInactivityDaysIndex);
+            if (WizRequiresTwoFactorPin && !string.IsNullOrWhiteSpace(WizTwoFactorPin))
+            {
+                _pairingContext.RequiresTwoFactorPin = true;
+                _pairingContext.TwoFactorPin = WizTwoFactorPin;
+            }
+            else
+            {
+                _pairingContext.RequiresTwoFactorPin = false;
+                _pairingContext.TwoFactorPin = null;
             }
 
             _credsSignal?.TrySetResult(true);

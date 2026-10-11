@@ -144,23 +144,61 @@ public class PortalWinProvider : PortalWinProviderBase
         return tile;
     }
 
-    protected internal override void OnUnlockRequested(string username, SecureString? password, string domain)
+    protected internal override void OnUnlockRequested(string username, SecureString? password, string domain, string? userSid = null)
     {
-        Logger.Log($"[PortalWinProvider] OnUnlockRequested for user: '{username}', domain: '{domain}'");
+        Logger.Log($"[PortalWinProvider] OnUnlockRequested for user: '{username}', domain: '{domain}', sid: '{userSid ?? "none"}'");
         CredentialProviderBootstrapper.TlsService?.DisconnectAllWebSocketClients("Unlock approved");
-        UnlockState.SetPending(username, password, domain);
         PortalWinTile.CancelGlobalActiveRequest();
 
         try
         {
-            var targetTile = FindMatchingTile<PortalWinTile>(username, domain);
+            var config = PortalWinConfig.Load();
+            var targetTile = FindMatchingTile<PortalWinTile>(username, domain, userSid);
+
+            Portal.Common.Models.DeviceAccount? targetAccount = null;
             if (targetTile != null)
             {
-                Logger.Log("[PortalWinProvider] Triggering auto-logon on target tile.");
-                targetTile.UpdateStatus(BuildStatusHeadlineForState("Remote unlock approved"), BuildStatusDetailsForState("Preparing Windows sign-in..."));
-                this.SetDefaultTile(targetTile, autoLogon: true);
-                Logger.Log("[PortalWinProvider] Cursor recovery scheduled after unlock approval.");
-                CursorRecoveryService.TriggerAfterUnlock("Unlock approved");
+                targetAccount = targetTile.ResolveCurrentTileAccount(config);
+            }
+
+            if (targetAccount == null)
+            {
+                foreach (var device in config.Devices)
+                {
+                    var acc = CredentialProviderTilePolicy.ResolveApprovalAccount(device, null, username, null, userSid);
+                    if (acc != null)
+                    {
+                        targetAccount = acc;
+                        break;
+                    }
+                }
+            }
+
+            if (targetTile != null)
+            {
+                if (targetAccount != null && targetAccount.RequiresTwoFactorPin && !string.IsNullOrEmpty(targetAccount.TwoFactorPinHash))
+                {
+                    // Scenario A: 2FA PIN required on lock screen
+                    Logger.Log($"[PortalWinProvider] Account '{username}' requires 2FA PIN on lock screen. Switching tile to AwaitingTwoFactorPin mode.");
+                    CancelPendingAutoLogon();
+                    targetTile.EnterTwoFactorPinMode(username, password, domain, userSid, targetAccount);
+                    this.SetDefaultTile(targetTile, autoLogon: false);
+                    Logger.Log("[PortalWinProvider] Cursor recovery scheduled for 2FA PIN mode.");
+                    CursorRecoveryService.TriggerAfterUnlock("2FA PIN mode");
+                }
+                else
+                {
+                    // Standard unlock flow (auto-logon)
+                    Logger.Log("[PortalWinProvider] Triggering auto-logon on target tile.");
+                    UnlockState.SetPending(username, password, domain);
+                    targetTile.UpdateStatus(BuildStatusHeadlineForState("Remote unlock approved"), BuildStatusDetailsForState("Preparing Windows sign-in..."));
+                    this.SetDefaultTile(targetTile, autoLogon: true);
+                    Logger.Log("[PortalWinProvider] Cursor recovery scheduled after unlock approval.");
+                    CursorRecoveryService.TriggerAfterUnlock("Unlock approved");
+
+                    // Record unlock activity timestamp for inactivity timer
+                    config.RecordAccountUnlockActivity(username, domain, userSid);
+                }
             }
             else
             {
@@ -169,7 +207,7 @@ public class PortalWinProvider : PortalWinProviderBase
         }
         catch (Exception ex)
         {
-            Logger.LogError("[PortalWinProvider] Critical Failed to trigger auto-logon", ex);
+            Logger.LogError("[PortalWinProvider] Critical Failed to handle unlock request", ex);
         }
     }
 
@@ -220,6 +258,49 @@ public class PortalWinProvider : PortalWinProviderBase
         return BuildStatusHeadline(NormalizeHeadline(rawStatus));
     }
 
+    private const double MaxTileLineWidth = 360.0;
+
+    internal static string ExtractFirstLine(string text, double maxLineWidth = MaxTileLineWidth)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        // 1. Cut at explicit newline if present
+        int nl = text.IndexOfAny(new[] { '\r', '\n' });
+        string singleLine = nl >= 0 ? text.Substring(0, nl).Trim() : text.Trim();
+
+        // 2. If single line fits within maxLineWidth without wrapping, return directly
+        if (EstimateVisualWidth(singleLine) <= maxLineWidth)
+        {
+            return singleLine;
+        }
+
+        // 3. Simulate word-wrap: take only words that fit on the first line.
+        // As requested: "и если она переходит на вторую то те символы не считай"
+        var words = singleLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length <= 1)
+        {
+            return singleLine;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var word in words)
+        {
+            string candidate = sb.Length == 0 ? word : $"{sb} {word}";
+            if (EstimateVisualWidth(candidate) <= maxLineWidth)
+            {
+                if (sb.Length > 0) sb.Append(' ');
+                sb.Append(word);
+            }
+            else
+            {
+                // Word exceeds max line width and wraps onto line 2 - stop here!
+                break;
+            }
+        }
+
+        return sb.Length > 0 ? sb.ToString() : words[0];
+    }
+
     private static (char filled, char empty, char blink, double blockWidth) GetProgressBarChars(TileProgressBarStyle style)
     {
         return style switch
@@ -232,7 +313,8 @@ public class PortalWinProvider : PortalWinProviderBase
 
     private static string BuildDynamicProgressBar(string headline, string innerTag, TileProgressBarStyle style)
     {
-        double targetWidth = EstimateVisualWidth(headline);
+        string firstLine = ExtractFirstLine(headline, MaxTileLineWidth);
+        double targetWidth = Math.Min(EstimateVisualWidth(firstLine), MaxTileLineWidth);
         var (filledChar, emptyChar, blinkChar, blockWidth) = GetProgressBarChars(style);
 
         if (innerTag.StartsWith("countdown,", StringComparison.OrdinalIgnoreCase))
@@ -247,18 +329,21 @@ public class PortalWinProvider : PortalWinProviderBase
                 double fixedWidth = EstimateVisualWidth($"[  {timeText}  ]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
+                int maxNAllowed = Math.Max(2, (int)Math.Floor((MaxTileLineWidth - fixedWidth) / (2.0 * blockWidth)));
+                int nBase = Math.Clamp((int)Math.Round(availableWidth / (2.0 * blockWidth)), 2, maxNAllowed);
 
                 int bestN = nBase;
                 int bestSpacing = 2;
                 double minDiff = double.MaxValue;
 
-                for (int candN = Math.Max(3, nBase - 1); candN <= nBase + 1; candN++)
+                for (int candN = Math.Max(2, nBase - 1); candN <= Math.Min(maxNAllowed, nBase + 1); candN++)
                 {
                     for (int sp = 1; sp <= 3; sp++)
                     {
                         string spStr = new string('\u00A0', sp);
                         double candWidth = EstimateVisualWidth($"[{new string(filledChar, candN)}{spStr}{timeText}{spStr}{new string(filledChar, candN)}]");
+                        if (candWidth > MaxTileLineWidth) continue;
+
                         double diff = Math.Abs(candWidth - targetWidth);
                         if (diff < minDiff)
                         {
@@ -312,18 +397,21 @@ public class PortalWinProvider : PortalWinProviderBase
                 double fixedWidth = EstimateVisualWidth($"[\u00A0\u00A0{elapsedText}\u00A0\u00A0]");
                 double availableWidth = Math.Max(0, targetWidth - fixedWidth);
 
-                int nBase = Math.Max(3, (int)Math.Round(availableWidth / (2.0 * blockWidth)));
+                int maxNAllowed = Math.Max(2, (int)Math.Floor((MaxTileLineWidth - fixedWidth) / (2.0 * blockWidth)));
+                int nBase = Math.Clamp((int)Math.Round(availableWidth / (2.0 * blockWidth)), 2, maxNAllowed);
 
                 int bestN = nBase;
                 int bestSpacing = 2;
                 double minDiff = double.MaxValue;
 
-                for (int candN = Math.Max(3, nBase - 1); candN <= nBase + 1; candN++)
+                for (int candN = Math.Max(2, nBase - 1); candN <= Math.Min(maxNAllowed, nBase + 1); candN++)
                 {
                     for (int sp = 1; sp <= 3; sp++)
                     {
                         string spStr = new string('\u00A0', sp);
                         double candWidth = EstimateVisualWidth($"[{new string(emptyChar, candN)}{spStr}{elapsedText}{spStr}{new string(emptyChar, candN)}]");
+                        if (candWidth > MaxTileLineWidth) continue;
+
                         double diff = Math.Abs(candWidth - targetWidth);
                         if (diff < minDiff)
                         {
@@ -538,6 +626,21 @@ public class PortalWinProvider : PortalWinProviderBase
                        || text.Contains("canceled")
                        || text.Contains("отменен")
                        || text.Contains("отменён") => "Request cancelled",
+            var text when text.Contains("incorrect 2fa pin")
+                       || text.Contains("неверный 2fa pin")
+                       || text.Contains("attempts remaining")
+                       || text.Contains("осталось попыток") => value,
+            var text when text.Contains("too many")
+                       || text.Contains("lockout")
+                       || text.Contains("слишком много") => "Too many incorrect PIN attempts",
+            var text when text.Contains("enter 2fa pin")
+                       || text.Contains("введите 2fa pin")
+                       || text.Contains("enter pin")
+                       || text.Contains("введите pin")
+                       || text.Contains("2fa pin")
+                       || text.Contains("2fa-pin")
+                       || text.Contains("pin-код")
+                       || text.Contains("pin код") => "Enter 2FA PIN",
             var text when text.Contains("awaiting approval")
                        || text.Contains("approved")
                        || text.Contains("подтверждения")

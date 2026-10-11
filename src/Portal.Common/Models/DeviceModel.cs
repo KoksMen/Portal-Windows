@@ -163,6 +163,30 @@ public abstract class DeviceModel : INotifyPropertyChanged
     [JsonIgnore]
     public string SecretIntegrityWarning => Helpers.Localization.T("Stored credentials cannot be decrypted. Re-enter password via Edit.");
 
+    [JsonIgnore]
+    public bool HasInactivityIssue => Accounts.Exists(a => a.IsExpired);
+
+    [JsonIgnore]
+    public string InactivityBadgeText => Helpers.Localization.T("Expired");
+
+    [JsonIgnore]
+    public string InactivityWarning => Helpers.Localization.T("Account inactivity period exceeded. Click Edit to re-activate.");
+
+    [JsonIgnore]
+    public bool HasTwoFactorPin => Accounts.Exists(a => a.RequiresTwoFactorPin);
+
+    [JsonIgnore]
+    public string TwoFactorPinBadgeText => Helpers.Localization.T("2FA PIN");
+
+    public void NotifyAccountPolicyChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasInactivityIssue)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InactivityBadgeText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InactivityWarning)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasTwoFactorPin)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TwoFactorPinBadgeText)));
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public string IdsSafe() => $"{Name} ({ClientId})";

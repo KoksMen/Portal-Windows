@@ -12,7 +12,7 @@ public class PortalWinConfig
 {
     private const string DevicesSecretName = "L$Portal-Windows.Devices";
 
-    public static string ConfigDir => PortalStoragePaths.RootDirectory;
+    public static string ConfigDir => PortalStoragePaths.ConfigDirectory;
 
     private static string ConfigPath => Path.Combine(ConfigDir, "config.json");
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -132,6 +132,13 @@ public class PortalWinConfig
     public bool DisableKestrelClientCertificateValidation { get; set; } = false;
 
     /// <summary>
+    /// Enables dual-layer rate limiting (by IP and client certificate) to prevent network flooding and DoS.
+    /// Default: true.
+    /// </summary>
+    [JsonPropertyName("rateLimitingEnabled")]
+    public bool RateLimitingEnabled { get; set; } = true;
+
+    /// <summary>
     /// Hidden feature-flag for experimental Host functionality.
     /// false (default): hide experimental UI sections such as FAQ and Updates.
     /// true: expose experimental UI sections and flows.
@@ -213,6 +220,15 @@ public class PortalWinConfig
     {
         try
         {
+            if (!File.Exists(ConfigPath))
+            {
+                var legacyPath = Path.Combine(PortalStoragePaths.RootDirectory, "config.json");
+                if (File.Exists(legacyPath))
+                {
+                    try { File.Copy(legacyPath, ConfigPath, overwrite: false); } catch { }
+                }
+            }
+
             if (File.Exists(ConfigPath))
             {
                 var json = File.ReadAllText(ConfigPath);
@@ -345,8 +361,15 @@ public class PortalWinConfig
         try
         {
             Directory.CreateDirectory(ConfigDir);
-            var persistedToLsa = TrySaveDevicesToLsa(Devices);
-            var json = BuildConfigJson(includeDevices: !persistedToLsa);
+            if (Devices.Count > 0)
+            {
+                var persistedToLsa = TrySaveDevicesToLsa(Devices);
+                if (!persistedToLsa)
+                {
+                    Logger.LogWarning("[Config] Warning: Failed to persist paired devices to LSA secret store (insufficient privileges or non-elevated process). Devices are never stored in config.json.");
+                }
+            }
+            var json = BuildConfigJson();
             File.WriteAllText(ConfigPath, json);
 
             try
@@ -411,10 +434,9 @@ public class PortalWinConfig
     /// </summary>
     public List<DeviceModel> FindAllDevicesForUser(string username, string? qualifiedName = null, string? userSid = null)
     {
-        var targetCanonical = IdentityHelper.ToCanonical(qualifiedName) ?? IdentityHelper.ToCanonical(username);
-        var targetShort = IdentityHelper.GetShortUsername(qualifiedName) ?? IdentityHelper.GetShortUsername(username);
-
+        var targetDomain = IdentityHelper.GetDomainFromIdentity(qualifiedName);
         var result = new List<DeviceModel>();
+
         foreach (var device in Devices)
         {
             if (!device.IsEnabled)
@@ -424,21 +446,7 @@ public class PortalWinConfig
 
             foreach (var account in device.Accounts)
             {
-                if (!string.IsNullOrWhiteSpace(userSid) && IdentityHelper.MatchesSid(account.UserSid, userSid))
-                {
-                    result.Add(device);
-                    break; // don't add same device twice
-                }
-
-                var accountCanonical = IdentityHelper.ToCanonical(account.Username, account.Domain);
-                if (IdentityHelper.EqualsIgnoreCase(targetCanonical, accountCanonical))
-                {
-                    result.Add(device);
-                    break; // don't add same device twice
-                }
-
-                var accountShort = IdentityHelper.GetShortUsername(account.Username);
-                if (IdentityHelper.EqualsIgnoreCase(targetShort, accountShort))
+                if (IdentityHelper.MatchesAccount(userSid, username, targetDomain, account))
                 {
                     result.Add(device);
                     break; // don't add same device twice
@@ -446,6 +454,41 @@ public class PortalWinConfig
             }
         }
         return result;
+    }
+
+    /// <summary>
+    /// Updates the last unlock timestamp for matching accounts and persists changes to LSA Secrets.
+    /// </summary>
+    public bool RecordAccountUnlockActivity(string username, string? domain = null, string? userSid = null)
+    {
+        bool changed = false;
+        foreach (var device in Devices)
+        {
+            foreach (var account in device.Accounts)
+            {
+                if (IdentityHelper.MatchesAccount(userSid, username, domain, account))
+                {
+                    account.RecordSuccessfulUnlock();
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            try
+            {
+                TrySaveDevicesToLsa(Devices);
+                Logger.Log($"[PortalWinConfig] Recorded unlock activity timestamp for user '{username}' (SID={userSid ?? "none"}).");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinConfig] Failed to persist unlock activity: {ex.Message}");
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -593,7 +636,7 @@ public class PortalWinConfig
         }
     }
 
-    private string BuildConfigJson(bool includeDevices)
+    private string BuildConfigJson()
     {
         var node = JsonSerializer.SerializeToNode(this, JsonOptions) as JsonObject ?? new JsonObject();
 

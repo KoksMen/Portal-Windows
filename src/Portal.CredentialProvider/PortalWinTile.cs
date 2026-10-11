@@ -2,6 +2,7 @@ using Lithnet.CredentialProvider;
 using Microsoft.Win32;
 using Portal.Common;
 using Portal.Common.Helpers;
+using Portal.Common.Models;
 using Portal.CredentialProvider.Base;
 using Portal.CredentialProvider.Services;
 using System.Collections.Generic;
@@ -36,6 +37,38 @@ public class PortalWinTile : PortalWinTileBase
     private bool _isRegisteredInTiles;
     private DateTime _requestStartedTimestamp = DateTime.MinValue;
 
+    private static volatile bool _globalIsAwaiting2FaPin;
+    public static bool IsAnyTileAwaitingTwoFactorPin
+    {
+        get
+        {
+            if (_globalIsAwaiting2FaPin) return true;
+            lock (_tilesSync)
+            {
+                return _tiles.Any(t => t._isAwaiting2FaPin);
+            }
+        }
+    }
+
+    public static PortalWinTile? GetTileAwaitingTwoFactorPin()
+    {
+        lock (_tilesSync)
+        {
+            return _tiles.FirstOrDefault(t => t._isAwaiting2FaPin);
+        }
+    }
+
+    private volatile bool _isAwaiting2FaPin;
+    public bool IsAwaitingTwoFactorPin => _isAwaiting2FaPin;
+    private string? _pending2FaUser;
+    private string? _pending2FaDomain;
+    private string? _pending2FaUserSid;
+    private System.Security.SecureString? _pending2FaPassword;
+    private Portal.Common.Models.DeviceAccount? _pending2FaAccount;
+    private int _pinFailedAttempts;
+    private CancellationTokenSource? _twoFactorTimeoutCts;
+    private CancellationTokenSource? _autoResetCts;
+
     public void FocusPasswordField()
     {
         if (_passwordControl != null)
@@ -56,6 +89,14 @@ public class PortalWinTile : PortalWinTileBase
 
     public static void OnTypingKeyDetected()
     {
+        if (IsAnyTileAwaitingTwoFactorPin)
+        {
+            // During 2FA PIN entry on lock screen, keyboard typing is expected.
+            var pinTile = GetTileAwaitingTwoFactorPin();
+            pinTile?.FocusPasswordField();
+            return;
+        }
+
         PortalWinTile? targetTile;
         lock (_tilesSync)
         {
@@ -72,6 +113,13 @@ public class PortalWinTile : PortalWinTileBase
 
     public void EnsureManualTypingMode()
     {
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+        {
+            // During 2FA PIN entry on lock screen, keyboard typing is expected.
+            FocusPasswordField();
+            return;
+        }
+
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
         {
             _cancellationReason = "manual_typing";
@@ -86,7 +134,52 @@ public class PortalWinTile : PortalWinTileBase
     }
 
     private PortalWinProvider Provider => (PortalWinProvider)_providerBase;
-    public bool AllowsHostInitiated => Provider.UnlockMode == UnlockMode.HostInitiated || Provider.UnlockMode == UnlockMode.Both;
+
+    public Portal.Common.Models.DeviceAccount? ResolveCurrentTileAccount(PortalWinConfig config)
+    {
+        var devices = FindAllDevicesForCurrentUser(config);
+        foreach (var device in devices)
+        {
+            var acc = CredentialProviderTilePolicy.ResolveApprovalAccount(
+                device,
+                User?.QualifiedUserName,
+                User?.UserName,
+                _usernameControl?.Text,
+                User?.Sid);
+            if (acc != null)
+                return acc;
+        }
+        return null;
+    }
+
+    public bool IsAccountExpired
+    {
+        get
+        {
+            var config = PortalWinConfig.Load();
+            var account = ResolveCurrentTileAccount(config);
+            return account != null && account.IsExpired;
+        }
+    }
+
+    public bool AllowsHostInitiated
+    {
+        get
+        {
+            var config = PortalWinConfig.Load();
+            var account = ResolveCurrentTileAccount(config);
+            if (account != null)
+            {
+                if (account.IsExpired)
+                    return false;
+
+                var mode = account.ResolveEffectiveUnlockMode(Provider.UnlockMode);
+                return mode == UnlockMode.HostInitiated || mode == UnlockMode.Both;
+            }
+
+            return Provider.UnlockMode == UnlockMode.HostInitiated || Provider.UnlockMode == UnlockMode.Both;
+        }
+    }
 
     public PortalWinTile(PortalWinProviderBase provider) : base(provider) { }
     public PortalWinTile(PortalWinProviderBase provider, CredentialProviderUser user) : base(provider, user) { }
@@ -104,9 +197,34 @@ public class PortalWinTile : PortalWinTileBase
         if (_cancelButton != null)
             _cancelButton.OnClick = OnCancelUnlockClicked;
 
-        ShowRequestButton();
+        ShowRequestButton(isInitial: true);
         FocusPasswordField();
-        TryEarlyAutoRequestUnlock();
+
+        var config = PortalWinConfig.Load();
+        var account = ResolveCurrentTileAccount(config);
+        if (account != null && account.IsExpired)
+        {
+            UpdateStatus(Localization.T("Account Inactive"), Localization.T("Account inactivity period exceeded. Re-enter password in Portal.Host to reactivate."));
+        }
+        else
+        {
+            var pwdStatus = account != null ? PasswordStatusStore.GetAccountExpiryStatus(account.Username, account.Domain, account.UserSid) : null;
+            if (pwdStatus != null && pwdStatus.IsExpired)
+            {
+                UpdateStatus(Localization.T("Password Expired"), Localization.T("Windows password has expired. Update password in Windows and Portal."));
+            }
+            else if (account != null && account.ResolveEffectiveUnlockMode(Provider.UnlockMode) == UnlockMode.ClientInitiated)
+            {
+                var subtitle = pwdStatus?.DaysUntilExpiry is <= 7 and > 0
+                    ? string.Format(Localization.T("Windows password expires in {0} day(s)."), pwdStatus.DaysUntilExpiry)
+                    : Localization.T("Waiting for unlock command from phone app.");
+                UpdateStatus(Localization.T("Waiting for remote command"), subtitle);
+            }
+            else
+            {
+                TryEarlyAutoRequestUnlock();
+            }
+        }
     }
 
     protected override void OnSelected()
@@ -373,6 +491,242 @@ public class PortalWinTile : PortalWinTileBase
         return userDevices;
     }
 
+    public void EnterTwoFactorPinMode(
+        string username,
+        System.Security.SecureString? password,
+        string domain,
+        string? userSid,
+        Portal.Common.Models.DeviceAccount account)
+    {
+        CancelScheduledAutoReset();
+        ClearTwoFactorPinMode("Replacing with new 2FA PIN session");
+
+        _isAwaiting2FaPin = true;
+        lock (_tilesSync)
+        {
+            _globalIsAwaiting2FaPin = true;
+            _selectedTile = this;
+        }
+        _pending2FaUser = username;
+        _pending2FaDomain = domain;
+        _pending2FaUserSid = userSid;
+        _pending2FaAccount = account;
+        _pinFailedAttempts = 0;
+
+        if (password != null && password.Length > 0)
+        {
+            _pending2FaPassword = password.Copy();
+            _pending2FaPassword.MakeReadOnly();
+        }
+
+        // Clear any characters in the password box so tile is clean and focused for PIN
+        if (_passwordControl != null)
+        {
+            try
+            {
+                _passwordControl.Password = new System.Security.SecureString();
+                _passwordControl.InteractiveState = FieldInteractiveState.Focused;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Failed to reset password field for 2FA PIN: {ex.Message}");
+            }
+        }
+
+        _lastStatusRaw = "Enter 2FA PIN";
+        UpdateStatus("Enter 2FA PIN");
+        ShowCancelButton();
+        FocusPasswordField();
+
+        ActivityJournal.Record(
+            "pin_prompt",
+            "🔐",
+            "2FA PIN requested",
+            $"Phone approved unlock for {username}. Awaiting 2FA PIN on Windows lock screen.",
+            true);
+
+        // 60-second timeout to avoid leaving pending credentials in memory
+        var timeoutCts = new CancellationTokenSource();
+        _twoFactorTimeoutCts = timeoutCts;
+        Task.Delay(TimeSpan.FromSeconds(60), timeoutCts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled) return;
+            if (_isAwaiting2FaPin)
+            {
+                Logger.Log("[PortalWinTile] 2FA PIN timeout expired (60s). Aborting session.");
+                ClearTwoFactorPinMode("Timeout expired");
+                UpdateStatus(Localization.T("PIN timed out. Please retry."), Localization.T("Unlock session expired."));
+                ShowRequestButton();
+            }
+        }, TaskScheduler.Default);
+    }
+
+    public void ClearTwoFactorPinMode(string reason = "Cleared")
+    {
+        _isAwaiting2FaPin = false;
+        lock (_tilesSync)
+        {
+            _globalIsAwaiting2FaPin = _tiles.Any(t => t._isAwaiting2FaPin);
+        }
+        _pending2FaUser = null;
+        _pending2FaDomain = null;
+        _pending2FaUserSid = null;
+        _pending2FaAccount = null;
+        _pinFailedAttempts = 0;
+
+        if (_twoFactorTimeoutCts != null)
+        {
+            try { _twoFactorTimeoutCts.Cancel(); } catch { }
+            _twoFactorTimeoutCts.Dispose();
+            _twoFactorTimeoutCts = null;
+        }
+
+        if (_pending2FaPassword != null)
+        {
+            _pending2FaPassword.Dispose();
+            _pending2FaPassword = null;
+        }
+
+        Logger.Log($"[PortalWinTile] 2FA PIN mode cleared (reason: {reason}).");
+    }
+
+    protected override CredentialResponseBase GetCredentials()
+    {
+        if (_isAwaiting2FaPin)
+        {
+            return HandleTwoFactorPinSubmission();
+        }
+
+        return base.GetCredentials();
+    }
+
+    private CredentialResponseBase HandleTwoFactorPinSubmission()
+    {
+        if (!_isAwaiting2FaPin || _pending2FaAccount == null)
+        {
+            return GetFallbackCredentials();
+        }
+
+        string? enteredPin = GetPlaintextPassword(_passwordControl?.Password);
+
+        if (string.IsNullOrWhiteSpace(enteredPin))
+        {
+            _lastStatusRaw = "Enter 2FA PIN";
+            UpdateStatus("Enter 2FA PIN");
+            FocusPasswordField();
+            return new CredentialResponseInsecure
+            {
+                IsSuccess = false,
+                StatusText = Localization.T("PIN cannot be empty. Please enter your PIN."),
+                StatusIcon = StatusIcon.Warning
+            };
+        }
+
+        bool isPinValid = _pending2FaAccount.VerifyTwoFactorPin(enteredPin);
+
+        if (isPinValid)
+        {
+            Logger.Log($"[PortalWinTile] 2FA PIN verified successfully for user '{_pending2FaUser}'.");
+            string userToSubmit = !string.IsNullOrEmpty(_pending2FaUser)
+                ? _pending2FaUser
+                : (User != null ? User.UserName : "");
+            string domainToSubmit = _pending2FaDomain ?? System.Environment.MachineName;
+            string passToSubmit = GetPlaintextPassword(_pending2FaPassword) ?? "";
+
+            ActivityJournal.Record(
+                "pin_success",
+                "✅",
+                "2FA PIN verified",
+                $"PIN successfully verified for {userToSubmit}. Proceeding with Windows sign-in.",
+                true);
+
+            // Record successful unlock for inactivity timer
+            try
+            {
+                var config = PortalWinConfig.Load();
+                config.RecordAccountUnlockActivity(userToSubmit, domainToSubmit, _pending2FaUserSid ?? _pending2FaAccount.UserSid);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Failed to record unlock activity: {ex.Message}");
+            }
+
+            CredentialProviderBootstrapper.TlsService?.DisconnectAllWebSocketClients("Unlock serialization (2FA PIN verified)");
+            ClearTwoFactorPinMode("PIN verified successfully");
+
+            return new CredentialResponseInsecure
+            {
+                IsSuccess = true,
+                Username = userToSubmit,
+                Domain = domainToSubmit,
+                Password = passToSubmit
+            };
+        }
+        else
+        {
+            _pinFailedAttempts++;
+            Logger.LogWarning($"[PortalWinTile] Invalid 2FA PIN entered for user '{_pending2FaUser}' (attempt {_pinFailedAttempts}/3).");
+
+            if (_passwordControl != null)
+            {
+                try
+                {
+                    _passwordControl.Password = new System.Security.SecureString();
+                    _passwordControl.InteractiveState = FieldInteractiveState.Focused;
+                }
+                catch { }
+            }
+
+            if (_pinFailedAttempts >= 3)
+            {
+                ActivityJournal.Record(
+                    "pin_lockout",
+                    "🚫",
+                    "2FA PIN lockout",
+                    $"Maximum PIN attempts (3) exceeded for {_pending2FaUser}. Unlock session cancelled.",
+                    false);
+
+                ClearTwoFactorPinMode("Max attempts exceeded");
+                _lastStatusRaw = "Too many incorrect PIN attempts";
+                UpdateStatus(
+                    Localization.T("Too many incorrect PIN attempts. Unlock canceled."),
+                    Localization.T("Unlock session canceled."));
+                ShowRequestButton();
+
+                return new CredentialResponseInsecure
+                {
+                    IsSuccess = false,
+                    StatusText = Localization.T("Too many incorrect PIN attempts. Unlock canceled."),
+                    StatusIcon = StatusIcon.Error
+                };
+            }
+            else
+            {
+                int remaining = 3 - _pinFailedAttempts;
+                ActivityJournal.Record(
+                    "pin_invalid",
+                    "⚠️",
+                    "Incorrect 2FA PIN",
+                    $"Failed PIN attempt {_pinFailedAttempts}/3 for {_pending2FaUser}. {remaining} remaining.",
+                    false);
+
+                string errHeadline = Localization.TF("Incorrect 2FA PIN. Attempts remaining: {0}", remaining);
+                _lastStatusRaw = errHeadline;
+                UpdateStatus(
+                    errHeadline,
+                    Localization.T("Please try again."));
+                FocusPasswordField();
+
+                return new CredentialResponseInsecure
+                {
+                    IsSuccess = false,
+                    StatusText = Localization.TF("Incorrect 2FA PIN ({0} attempts left)", remaining),
+                    StatusIcon = StatusIcon.Warning
+                };
+            }
+        }
+    }
+
     protected override CredentialResponseBase GetFallbackCredentials()
     {
         if (_isEmergencyRollbackActive)
@@ -420,7 +774,7 @@ public class PortalWinTile : PortalWinTileBase
             return new System.Collections.Generic.List<Portal.Common.Models.DeviceModel>();
         }
 
-        return config.FindAllDevicesForUser(tileUsername ?? "", tileQualifiedName);
+        return config.FindAllDevicesForUser(tileUsername ?? "", tileQualifiedName, User?.Sid);
     }
 
     private void ApplyHostInitiatedTlsPolicy(PortalWinConfig config, string source)
@@ -455,7 +809,9 @@ public class PortalWinTile : PortalWinTileBase
 
     private void StartUnlockRequest(bool forceTakeover, string source)
     {
+        CancelScheduledAutoReset();
         _isEmergencyRollbackActive = false;
+        ClearTwoFactorPinMode("Starting new unlock request");
         if (!AllowsHostInitiated) return;
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested) return;
@@ -535,6 +891,7 @@ public class PortalWinTile : PortalWinTileBase
                         if (result == "ok")
                         {
                             approvalCompleted = true;
+                            statusAggregator.Dispose();
                             Logger.Log($"[Tile] unlock_request_approved elapsedMs={requestTimer.ElapsedMilliseconds} requestId='{correlationRequestId}'");
                             ActivityJournal.Record(
                                 "unlock",
@@ -543,8 +900,15 @@ public class PortalWinTile : PortalWinTileBase
                                 $"{device.Name} approved an unlock request over {GetTransportLabel(device)}.",
                                 deviceName: device.Name,
                                 transport: GetTransportLabel(device));
+
+                            ReleaseActiveRequest(owner, cts);
+                            if (_activeRequestCts == cts)
+                            {
+                                _activeRequestCts = null;
+                            }
+                            try { cts.Cancel(); } catch { }
+
                             HandleApproval(config, device);
-                            cts.Cancel();
                             return;
                         }
                         else if (result == "rejected" || result == "forbidden")
@@ -568,7 +932,7 @@ public class PortalWinTile : PortalWinTileBase
                     ActivityJournal.Record("unlock", "🚫", "Unlock request declined", $"Unlock request was declined by {devName ?? "device"}.", false);
                     UpdateStatus(statusMsg);
                 }
-                else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                else if (cts.IsCancellationRequested && !approvalCompleted && !Provider.UnlockState.HasPendingUnlock && !IsAnyTileAwaitingTwoFactorPin)
                 {
                     var expectedTimeoutMs = effectiveTimeoutSeconds > 0 ? effectiveTimeoutSeconds * 1000L : -1;
                     var isTimeout = (expectedTimeoutMs > 0 && requestTimer.ElapsedMilliseconds >= expectedTimeoutMs - 500);
@@ -618,7 +982,7 @@ public class PortalWinTile : PortalWinTileBase
                     ActivityJournal.Record("unlock", journalIcon, journalTitle, journalDetails, false);
                     UpdateStatus(statusMsg);
                 }
-                else if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                else if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock && !IsAnyTileAwaitingTwoFactorPin)
                 {
                     UpdateStatus("Device unreachable.");
                     ActivityJournal.Record("unlock", "⚠️", "Device unreachable", "Could not establish connection to paired device.", false);
@@ -635,7 +999,7 @@ public class PortalWinTile : PortalWinTileBase
             }
             finally
             {
-                if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock)
+                if (!approvalCompleted && !Provider.UnlockState.HasPendingUnlock && !IsAnyTileAwaitingTwoFactorPin)
                 {
                     ShowRequestButton();
                 }
@@ -956,6 +1320,17 @@ public class PortalWinTile : PortalWinTileBase
 
     private void OnCancelUnlockClicked()
     {
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+        {
+            Logger.Log("[Tile] 2FA PIN mode cancelled by user.");
+            var tile = _isAwaiting2FaPin ? this : GetTileAwaitingTwoFactorPin() ?? this;
+            tile.ClearTwoFactorPinMode("Cancelled by user");
+            tile.UpdateStatus(Localization.T("Cancelled by user."));
+            tile.ShowRequestButton();
+            tile.FocusPasswordField();
+            return;
+        }
+
         double elapsedFromStartMs = (DateTime.UtcNow - _requestStartedTimestamp).TotalMilliseconds;
         if (elapsedFromStartMs < 500)
         {
@@ -974,6 +1349,12 @@ public class PortalWinTile : PortalWinTileBase
     protected override void OnManualPasswordInputChanged()
     {
         base.OnManualPasswordInputChanged();
+
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+        {
+            // User is typing 2FA PIN on keyboard; do not cancel session.
+            return;
+        }
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested)
         {
@@ -996,7 +1377,6 @@ public class PortalWinTile : PortalWinTileBase
 
     private void HandleApproval(PortalWinConfig config, Portal.Common.Models.DeviceModel targetDevice)
     {
-        UpdateStatus("Approved! Loading credentials...");
         var targetAccount = CredentialProviderTilePolicy.ResolveApprovalAccount(
             targetDevice,
             User?.QualifiedUserName,
@@ -1011,7 +1391,12 @@ public class PortalWinTile : PortalWinTileBase
                 var submitUser = IdentityHelper.GetShortUsername(targetAccount.Username) ?? targetAccount.Username;
                 var submitDomain = IdentityHelper.GetDomainFromIdentity(targetAccount.Username, targetAccount.Domain)
                     ?? System.Environment.MachineName;
-                Provider.OnUnlockRequested(submitUser, securePassword, submitDomain);
+                var submitSid = targetAccount.UserSid ?? User?.Sid;
+                Provider.OnUnlockRequested(submitUser, securePassword, submitDomain, submitSid);
+                if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+                {
+                    return;
+                }
             }
             else
             {
@@ -1028,6 +1413,11 @@ public class PortalWinTile : PortalWinTileBase
             UpdateStatus("Approved, but no account matched.");
         }
 
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+        {
+            return;
+        }
+
         ShowRequestButton();
     }
 
@@ -1041,11 +1431,11 @@ public class PortalWinTile : PortalWinTileBase
         };
     }
 
-    private void ShowRequestButton()
+    private void ShowRequestButton(bool isInitial = false)
     {
         if (_requestButton != null)
         {
-            _requestButton.Label = Localization.T("Retry");
+            _requestButton.Label = isInitial ? Localization.T("Request Remote Unlock") : Localization.T("Retry");
             _requestButton.OnClick = OnRequestUnlockClicked;
             _requestButton.AsPushButton();
             _requestButton.State = AllowsHostInitiated
@@ -1054,10 +1444,17 @@ public class PortalWinTile : PortalWinTileBase
         }
         if (_cancelButton != null) _cancelButton.State = FieldState.Hidden;
         FocusPasswordField();
+
+        if (!isInitial)
+        {
+            ScheduleAutoResetToReadyState(6);
+        }
     }
 
     private void ShowCancelButton()
     {
+        CancelScheduledAutoReset();
+
         if (_requestButton != null)
         {
             _requestButton.Label = Localization.T("Cancel Request");
@@ -1077,6 +1474,82 @@ public class PortalWinTile : PortalWinTileBase
                 : FieldState.DisplayInSelectedTile;
         }
         if (_cancelButton != null && _requestButton != null) _cancelButton.State = FieldState.Hidden;
+        FocusPasswordField();
+    }
+
+    public void ScheduleAutoResetToReadyState(int delaySeconds = 6)
+    {
+        CancelScheduledAutoReset();
+
+        var cts = new CancellationTokenSource();
+        _autoResetCts = cts;
+
+        Task.Delay(TimeSpan.FromSeconds(delaySeconds), cts.Token).ContinueWith(t =>
+        {
+            if (t.IsCanceled) return;
+
+            if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin || HasActiveUnlockRequest || (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested))
+            {
+                return;
+            }
+
+            try
+            {
+                ResetToReadyState();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Auto-reset to ready error: {ex.Message}");
+            }
+        }, TaskScheduler.Default);
+    }
+
+    private void CancelScheduledAutoReset()
+    {
+        try
+        {
+            _autoResetCts?.Cancel();
+            _autoResetCts?.Dispose();
+            _autoResetCts = null;
+        }
+        catch { }
+    }
+
+    public void ResetToReadyState()
+    {
+        CancelScheduledAutoReset();
+
+        if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin || HasActiveUnlockRequest)
+        {
+            return;
+        }
+
+        var config = PortalWinConfig.Load();
+        var account = ResolveCurrentTileAccount(config);
+        if (account != null && account.IsExpired)
+        {
+            UpdateStatus(Localization.T("Account Inactive"), Localization.T("Account inactivity period exceeded. Re-enter password in Portal.Host to reactivate."));
+        }
+        else if (account != null && account.ResolveEffectiveUnlockMode(Provider.UnlockMode) == UnlockMode.ClientInitiated)
+        {
+            UpdateStatus(Localization.T("Waiting for remote command"), Localization.T("Waiting for unlock command from phone app."));
+        }
+        else
+        {
+            UpdateStatus(Localization.T("Waiting for remote command"), Localization.T("Waiting for remote unlock command"));
+        }
+
+        if (_requestButton != null)
+        {
+            _requestButton.Label = Localization.T("Request Remote Unlock");
+            _requestButton.OnClick = OnRequestUnlockClicked;
+            _requestButton.AsPushButton();
+            _requestButton.State = AllowsHostInitiated
+                ? (Provider.UsageScenario == UsageScenario.CredUI ? FieldState.DisplayInBoth : FieldState.DisplayInSelectedTile)
+                : FieldState.Hidden;
+        }
+        if (_cancelButton != null) _cancelButton.State = FieldState.Hidden;
+
         FocusPasswordField();
     }
 
@@ -1181,6 +1654,13 @@ public class PortalWinTile : PortalWinTileBase
         {
             Logger.LogWarning($"[PortalWinTile] Retry shortcut ({source}) ignored: tile does not allow host-initiated unlock (mode={targetTile.Provider.UnlockMode}).");
             return false;
+        }
+
+        // If 2FA PIN mode is active, clear it so retry restarts a clean remote session
+        if (targetTile._isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
+        {
+            var pinTile = targetTile._isAwaiting2FaPin ? targetTile : GetTileAwaitingTwoFactorPin() ?? targetTile;
+            pinTile.ClearTwoFactorPinMode("Retry shortcut pressed");
         }
 
         // If an unlock request is already active, cancel it to allow a clean restart

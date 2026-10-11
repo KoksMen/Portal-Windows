@@ -45,6 +45,7 @@ public static class CredentialProviderTilePolicy
         string? typedUserName,
         string? selectedUserSid = null)
     {
+        // 1. Strict SID matching
         if (!string.IsNullOrWhiteSpace(selectedUserSid))
         {
             var sidMatch = targetDevice.Accounts.FirstOrDefault(a =>
@@ -55,37 +56,26 @@ public static class CredentialProviderTilePolicy
             }
         }
 
-        var canonicalUser = IdentityHelper.ToCanonical(selectedQualifiedUser)
-            ?? IdentityHelper.ToCanonical(typedUserName)
-            ?? IdentityHelper.ToCanonical(selectedUserName);
-        var shortUser = IdentityHelper.GetShortUsername(selectedQualifiedUser)
-            ?? IdentityHelper.GetShortUsername(typedUserName)
-            ?? IdentityHelper.GetShortUsername(selectedUserName);
+        // 2. Strict identity matching (canonical Domain\User or UPN)
+        var targetUser = selectedQualifiedUser ?? typedUserName ?? selectedUserName;
+        var targetDomain = IdentityHelper.GetDomainFromIdentity(targetUser);
 
-        if (!string.IsNullOrWhiteSpace(canonicalUser))
+        if (!string.IsNullOrWhiteSpace(targetUser) || !string.IsNullOrWhiteSpace(selectedUserSid))
         {
-            var canonicalMatch = targetDevice.Accounts.FirstOrDefault(a =>
-                IdentityHelper.EqualsIgnoreCase(
-                    IdentityHelper.ToCanonical(a.Username, a.Domain),
-                    canonicalUser));
+            var accountMatch = targetDevice.Accounts.FirstOrDefault(a =>
+                IdentityHelper.MatchesAccount(selectedUserSid, targetUser, targetDomain, a));
 
-            if (canonicalMatch != null)
+            if (accountMatch != null)
             {
-                return canonicalMatch;
+                return accountMatch;
             }
+
+            // A specific user was requested, but did not match any configured account on this device.
+            // Do NOT fall back to an arbitrary account.
+            return null;
         }
 
-        if (!string.IsNullOrWhiteSpace(shortUser))
-        {
-            var shortMatch = targetDevice.Accounts.FirstOrDefault(a =>
-                IdentityHelper.EqualsIgnoreCase(IdentityHelper.GetShortUsername(a.Username), shortUser));
-
-            if (shortMatch != null)
-            {
-                return shortMatch;
-            }
-        }
-
+        // 3. Fallback only if no specific user was selected (e.g. blank CredUI tile)
         return targetDevice.Accounts.Count == 1
             ? targetDevice.Accounts[0]
             : null;

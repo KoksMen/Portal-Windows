@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -223,6 +224,9 @@ static void ValidateStagingIntegrity(string sourceRoot)
     Logger.Log($"[Updater] Staging payload integrity verified successfully for {hostExecutable} ({fileInfo.Length} bytes).");
 }
 
+[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+static extern bool MoveFileEx(string lpExistingFileName, string? lpNewFileName, int dwFlags);
+
 static void ReplaceDirectoryContents(string sourceDirectory, string destinationDirectory)
 {
     if (!Directory.Exists(sourceDirectory))
@@ -235,25 +239,38 @@ static void ReplaceDirectoryContents(string sourceDirectory, string destinationD
         Directory.CreateDirectory(destinationDirectory);
     }
 
-    ClearDirectoryContents(destinationDirectory);
-    CopyDirectoryContents(sourceDirectory, destinationDirectory);
+    // Cleanup previous leftover pending-delete files
+    CleanupPendingDeletes(destinationDirectory);
+
+    // Copy new files over, with robust locked-file handling
+    CopyDirectoryContentsResilient(sourceDirectory, destinationDirectory);
+
+    // Clean up obsolete files that no longer exist in source
+    PruneObsoleteFiles(sourceDirectory, destinationDirectory);
 }
 
-static void ClearDirectoryContents(string directoryPath)
+static void CleanupPendingDeletes(string directoryPath)
 {
-    foreach (var file in Directory.GetFiles(directoryPath, "*", SearchOption.TopDirectoryOnly))
+    try
     {
-        File.SetAttributes(file, FileAttributes.Normal);
-        File.Delete(file);
+        foreach (var file in Directory.GetFiles(directoryPath, "*.pending-delete-*.tmp", SearchOption.AllDirectories))
+        {
+            try
+            {
+                File.SetAttributes(file, FileAttributes.Normal);
+                File.Delete(file);
+                Logger.Log($"[Updater] Cleaned up legacy pending-delete file: {Path.GetFileName(file)}");
+            }
+            catch
+            {
+                // File still locked until reboot
+            }
+        }
     }
-
-    foreach (var directory in Directory.GetDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly))
-    {
-        Directory.Delete(directory, recursive: true);
-    }
+    catch { }
 }
 
-static void CopyDirectoryContents(string sourceDirectory, string destinationDirectory)
+static void CopyDirectoryContentsResilient(string sourceDirectory, string destinationDirectory)
 {
     Directory.CreateDirectory(destinationDirectory);
 
@@ -268,7 +285,106 @@ static void CopyDirectoryContents(string sourceDirectory, string destinationDire
         var relativePath = Path.GetRelativePath(sourceDirectory, file);
         var destinationPath = Path.Combine(destinationDirectory, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-        File.Copy(file, destinationPath, overwrite: true);
+
+        ReplaceFileSafely(file, destinationPath);
+    }
+}
+
+static void ReplaceFileSafely(string sourceFile, string destinationFile)
+{
+    if (!File.Exists(destinationFile))
+    {
+        File.Copy(sourceFile, destinationFile, overwrite: true);
+        return;
+    }
+
+    // Try normal copy with short retry backoff
+    for (int attempt = 1; attempt <= 3; attempt++)
+    {
+        try
+        {
+            File.SetAttributes(destinationFile, FileAttributes.Normal);
+            File.Copy(sourceFile, destinationFile, overwrite: true);
+            return;
+        }
+        catch (IOException) when (attempt < 3)
+        {
+            Thread.Sleep(300);
+        }
+    }
+
+    // If still locked (e.g. DLL locked by LogonUI / lsass / Host),
+    // rename the locked file out of the way! Windows allows renaming running/locked files.
+    var pendingDeletePath = destinationFile + $".pending-delete-{Guid.NewGuid():N}.tmp";
+    try
+    {
+        Logger.LogWarning($"[Updater] File '{Path.GetFileName(destinationFile)}' is locked. Attempting in-place rename to pending-delete...");
+        File.Move(destinationFile, pendingDeletePath);
+
+        // Copy new file into the destination path
+        File.Copy(sourceFile, destinationFile, overwrite: true);
+        Logger.Log($"[Updater] Successfully replaced locked file: {Path.GetFileName(destinationFile)}");
+
+        // Schedule delayed deletion of the old locked file on next reboot
+        if (OperatingSystem.IsWindows())
+        {
+            const int MoveFileDelayUntilReboot = 0x00000004;
+            MoveFileEx(pendingDeletePath, null, MoveFileDelayUntilReboot);
+        }
+
+        // Also try immediate delete in case lock was transient
+        try { File.Delete(pendingDeletePath); } catch { }
+    }
+    catch (Exception ex)
+    {
+        Logger.LogError($"[Updater] Failed resilient replacement for '{destinationFile}': {ex.Message}", ex);
+        throw;
+    }
+}
+
+static void PruneObsoleteFiles(string sourceDirectory, string destinationDirectory)
+{
+    try
+    {
+        foreach (var destFile in Directory.GetFiles(destinationDirectory, "*", SearchOption.AllDirectories))
+        {
+            var relativePath = Path.GetRelativePath(destinationDirectory, destFile);
+            var sourceMatchingFile = Path.Combine(sourceDirectory, relativePath);
+
+            if (destFile.Contains(".pending-delete-") || destFile.EndsWith(".log", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!File.Exists(sourceMatchingFile))
+            {
+                try
+                {
+                    File.SetAttributes(destFile, FileAttributes.Normal);
+                    File.Delete(destFile);
+                    Logger.Log($"[Updater] Pruned obsolete file: {relativePath}");
+                }
+                catch (IOException)
+                {
+                    // Locked obsolete file: rename and mark for reboot deletion
+                    try
+                    {
+                        var pending = destFile + $".pending-delete-{Guid.NewGuid():N}.tmp";
+                        File.Move(destFile, pending);
+                        if (OperatingSystem.IsWindows())
+                        {
+                            const int MoveFileDelayUntilReboot = 0x00000004;
+                            MoveFileEx(pending, null, MoveFileDelayUntilReboot);
+                        }
+                    }
+                    catch { }
+                }
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Logger.LogWarning($"[Updater] Non-fatal error during obsolete file pruning: {ex.Message}");
     }
 }
 

@@ -1,7 +1,7 @@
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.IO;
-using System.Net;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -12,6 +12,7 @@ namespace Portal.Common;
 
 /// <summary>
 /// Bluetooth RFCOMM protocol: length-prefixed JSON messages over a Stream.
+/// Optimized with ArrayPool and ReadOnlySpan for zero-allocation parsing.
 /// Designed to be transport-agnostic — works with any Stream (RFCOMM, SslStream, etc.)
 /// </summary>
 public static class BtProtocol
@@ -32,16 +33,16 @@ public static class BtProtocol
 
     public static async Task SendMessageAsync(Stream stream, object message, CancellationToken ct = default)
     {
-        var json = JsonSerializer.Serialize(message, message.GetType(), JsonOptions);
-        var payload = Encoding.UTF8.GetBytes(json);
-        var lengthBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(payload.Length));
+        var payload = JsonSerializer.SerializeToUtf8Bytes(message, message.GetType(), JsonOptions);
+        byte[] lengthBytes = new byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(lengthBytes, payload.Length);
 
         var lck = _writeLocks.GetValue(stream, _ => new SemaphoreSlim(1, 1));
         await lck.WaitAsync(ct);
         try
         {
-            await stream.WriteAsync(lengthBytes, 0, 4, ct);
-            await stream.WriteAsync(payload, 0, payload.Length, ct);
+            await stream.WriteAsync(lengthBytes.AsMemory(0, 4), ct);
+            await stream.WriteAsync(payload.AsMemory(), ct);
             await stream.FlushAsync(ct);
         }
         finally
@@ -52,57 +53,68 @@ public static class BtProtocol
 
     public static async Task<T?> ReceiveMessageAsync<T>(Stream stream, CancellationToken ct = default)
     {
-        var lengthBytes = new byte[4];
-        await ReadExactAsync(stream, lengthBytes, 4, ct);
-        var length = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(lengthBytes, 0));
+        byte[] lengthBytes = new byte[4];
+        await ReadExactAsync(stream, lengthBytes.AsMemory(0, 4), ct);
+        var length = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
 
         if (length <= 0 || length > 1024 * 64)
             throw new InvalidDataException($"Invalid message length: {length}");
 
-        var payload = new byte[length];
-        await ReadExactAsync(stream, payload, length, ct);
-        var json = Encoding.UTF8.GetString(payload);
-
-        return JsonSerializer.Deserialize<T>(json, JsonOptions);
+        byte[] rented = ArrayPool<byte>.Shared.Rent(length);
+        try
+        {
+            await ReadExactAsync(stream, rented.AsMemory(0, length), ct);
+            return JsonSerializer.Deserialize<T>(rented.AsSpan(0, length), JsonOptions);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(rented);
+        }
     }
 
     public static async Task<BtMessage?> ReceiveRawMessageAsync(Stream stream, CancellationToken ct = default)
     {
-        var lengthBytes = new byte[4];
-        await ReadExactAsync(stream, lengthBytes, 4, ct);
-        var length = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(lengthBytes, 0));
+        byte[] lengthBytes = new byte[4];
+        await ReadExactAsync(stream, lengthBytes.AsMemory(0, 4), ct);
+        var length = BinaryPrimitives.ReadInt32BigEndian(lengthBytes);
 
         if (length <= 0 || length > 1024 * 64)
             throw new InvalidDataException($"Invalid message length: {length}");
 
-        var payload = new byte[length];
-        await ReadExactAsync(stream, payload, length, ct);
-        var json = Encoding.UTF8.GetString(payload);
-
-        var raw = JsonSerializer.Deserialize<BtMessage>(json, JsonOptions);
-        if (raw == null) return null;
-
-        return raw.Type switch
+        byte[] rented = ArrayPool<byte>.Shared.Rent(length);
+        try
         {
-            "pair_request" => JsonSerializer.Deserialize<BtPairRequest>(json, JsonOptions),
-            "pair_response" => JsonSerializer.Deserialize<BtPairResponse>(json, JsonOptions),
-            "register" => JsonSerializer.Deserialize<BtRegisterMessage>(json, JsonOptions),
-            "unlock_request" => JsonSerializer.Deserialize<BtUnlockRequest>(json, JsonOptions),
-            "unlock_response" => JsonSerializer.Deserialize<BtUnlockResponse>(json, JsonOptions),
-            "host_unlock_request" => JsonSerializer.Deserialize<BtHostUnlockRequest>(json, JsonOptions),
-            "host_unlock_response" => JsonSerializer.Deserialize<BtHostUnlockResponse>(json, JsonOptions),
-            _ => raw
-        };
+            await ReadExactAsync(stream, rented.AsMemory(0, length), ct);
+            ReadOnlySpan<byte> span = rented.AsSpan(0, length);
+
+            var raw = JsonSerializer.Deserialize<BtMessage>(span, JsonOptions);
+            if (raw == null) return null;
+
+            return raw.Type switch
+            {
+                "pair_request" => JsonSerializer.Deserialize<BtPairRequest>(span, JsonOptions),
+                "pair_response" => JsonSerializer.Deserialize<BtPairResponse>(span, JsonOptions),
+                "register" => JsonSerializer.Deserialize<BtRegisterMessage>(span, JsonOptions),
+                "unlock_request" => JsonSerializer.Deserialize<BtUnlockRequest>(span, JsonOptions),
+                "unlock_response" => JsonSerializer.Deserialize<BtUnlockResponse>(span, JsonOptions),
+                "host_unlock_request" => JsonSerializer.Deserialize<BtHostUnlockRequest>(span, JsonOptions),
+                "host_unlock_response" => JsonSerializer.Deserialize<BtHostUnlockResponse>(span, JsonOptions),
+                _ => raw
+            };
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(rented);
+        }
     }
 
-    private static async Task ReadExactAsync(Stream stream, byte[] buffer, int count, CancellationToken ct)
+    private static async Task ReadExactAsync(Stream stream, Memory<byte> buffer, CancellationToken ct)
     {
-        int offset = 0;
-        while (offset < count)
+        while (buffer.Length > 0)
         {
-            int read = await stream.ReadAsync(buffer, offset, count - offset, ct);
+            int read = await stream.ReadAsync(buffer, ct);
             if (read == 0) throw new IOException("Connection closed during read.");
-            offset += read;
+            buffer = buffer.Slice(read);
         }
     }
 }

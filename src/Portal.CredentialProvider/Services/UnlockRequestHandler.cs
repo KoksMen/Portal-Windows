@@ -9,7 +9,7 @@ public class UnlockRequestHandler
     private readonly PortalWinConfig _config;
     private readonly AttemptTracker _attemptTracker;
 
-    public event Action<string, SecureString?, string>? UnlockRequested;
+    public event Action<string, SecureString?, string, string?>? UnlockRequested;
 
     public UnlockRequestHandler(PortalWinConfig config, AttemptTracker attemptTracker)
     {
@@ -55,18 +55,41 @@ public class UnlockRequestHandler
         }
 
         var account = device.Accounts.FirstOrDefault();
-        using var securePassword = account?.GetDecryptedSecurePassword();
-        if (account == null || securePassword == null || securePassword.Length == 0)
+        if (account == null)
         {
             Logger.LogWarning($"[UnlockHandler] No credentials for device: {device.Name}");
             _attemptTracker.RecordFailure(clientIp);
             return Results.Json(new UnlockResponse(false, "No credentials"), statusCode: 400);
         }
 
+        if (account.IsExpired)
+        {
+            Logger.LogWarning($"[UnlockHandler] Rejected unlock request: account '{account.Username}' ({device.Name}) is expired/inactive.");
+            _attemptTracker.RecordFailure(clientIp);
+            ActivityJournal.Record("unlock", "⏳", "Account inactive", $"{account.Username} has exceeded inactivity period. Reactivate in Portal.Host.", false, device.Name);
+            return Results.Json(new UnlockResponse(false, "Account inactive. Reactivate in Portal.Host"), statusCode: 403);
+        }
+
+        var effectiveMode = account.ResolveEffectiveUnlockMode(_config.UnlockMode);
+        if (effectiveMode == UnlockMode.HostInitiated)
+        {
+            Logger.LogWarning($"[UnlockHandler] Client-initiated unlock rejected: account '{account.Username}' is configured for Host-Initiated only.");
+            _attemptTracker.RecordFailure(clientIp);
+            return Results.Json(new UnlockResponse(false, "Client-initiated unlock disabled for this account"), statusCode: 403);
+        }
+
+        using var securePassword = account.GetDecryptedSecurePassword();
+        if (securePassword == null || securePassword.Length == 0)
+        {
+            Logger.LogWarning($"[UnlockHandler] Decrypted password empty for device: {device.Name}");
+            _attemptTracker.RecordFailure(clientIp);
+            return Results.Json(new UnlockResponse(false, "No credentials"), statusCode: 400);
+        }
+
         _attemptTracker.RecordSuccess(clientIp);
-        Logger.Log($"[UnlockHandler] Unlock APPROVED for user: {account.Username} from {device.Name}");
+        Logger.Log($"[UnlockHandler] Unlock APPROVED for user: {account.Username} (SID={account.UserSid ?? "none"}) from {device.Name}");
         ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
-        UnlockRequested?.Invoke(account.Username, securePassword, account.Domain);
+        UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
 
         return Results.Ok(new UnlockResponse(true, null));
     }

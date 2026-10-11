@@ -267,7 +267,9 @@ public static class EmergencyCancelService
 
                     // 3. Any typing key (letters, digits, space, etc.) without Ctrl or Alt:
                     // Only poll full typing set when a remote unlock request is actually active!
-                    if (hasActiveUnlock && !isCtrlDown && !isAltDown && IsAnyTypingKeyPressed())
+                    // Do not treat keyboard typing as cancellation if 2FA PIN entry is currently active!
+                    bool isAwaiting2Fa = PortalWinTile.IsAnyTileAwaitingTwoFactorPin;
+                    if (hasActiveUnlock && !isAwaiting2Fa && !isCtrlDown && !isAltDown && IsAnyTypingKeyPressed())
                     {
                         PortalWinTile.OnTypingKeyDetected();
                     }

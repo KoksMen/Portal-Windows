@@ -81,9 +81,9 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
     /// Internal event handler used by the Bootstrapper for event wiring/unwiring.
     /// Delegates to the abstract OnUnlockRequested.
     /// </summary>
-    internal void OnUnlockRequestedInternal(string username, SecureString? password, string domain)
+    internal void OnUnlockRequestedInternal(string username, SecureString? password, string domain, string? userSid)
     {
-        OnUnlockRequested(username, password, domain);
+        OnUnlockRequested(username, password, domain, userSid);
     }
 
     internal void OnNetworkConnectionChangedInternal(string clientId, bool connected)
@@ -101,15 +101,28 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
         OnTransportStatusChanged();
     }
 
-    protected internal abstract void OnUnlockRequested(string username, SecureString? password, string domain);
+    protected internal abstract void OnUnlockRequested(string username, SecureString? password, string domain, string? userSid = null);
     protected internal virtual void OnTransportStatusChanged() { }
 
-    protected T? FindMatchingTile<T>(string username, string? domain = null) where T : CredentialTile2
+    protected T? FindMatchingTile<T>(string username, string? domain = null, string? userSid = null) where T : CredentialTile2
     {
         if (this.Tiles == null)
         {
             Logger.LogWarning($"[{GetType().Name}] No tiles collection available!");
             return null;
+        }
+
+        // 1. Strict SID match (highest reliability)
+        if (!string.IsNullOrWhiteSpace(userSid))
+        {
+            foreach (var tile in this.Tiles.OfType<T>())
+            {
+                if (tile.User != null && IdentityHelper.MatchesSid(tile.User.Sid, userSid))
+                {
+                    Logger.Log($"[{GetType().Name}] Matched user tile by SID '{userSid}'.");
+                    return tile;
+                }
+            }
         }
 
         var targetCanonical = IdentityHelper.ToCanonical(username, domain);
@@ -131,10 +144,15 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
                     return tile;
                 }
 
-                if (IdentityHelper.EqualsIgnoreCase(tileShort, targetShort))
+                var tileDomain = IdentityHelper.GetDomainFromIdentity(qualified);
+                if (string.IsNullOrWhiteSpace(domain) || string.IsNullOrWhiteSpace(tileDomain)
+                    || string.Equals(domain, tileDomain, StringComparison.OrdinalIgnoreCase))
                 {
-                    Logger.Log($"[{GetType().Name}] Matched user tile (short fallback) '{tileUser}' for '{username}'.");
-                    return tile;
+                    if (IdentityHelper.EqualsIgnoreCase(tileShort, targetShort))
+                    {
+                        Logger.Log($"[{GetType().Name}] Matched user tile (short fallback) '{tileUser}' for '{username}'.");
+                        return tile;
+                    }
                 }
             }
         }

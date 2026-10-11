@@ -327,38 +327,112 @@ public sealed class DiagnosticReportService
         HashSet<string> visitedFiles,
         CancellationToken cancellationToken)
     {
+        const long MaxTotalLogsBytes = 25 * 1024 * 1024; // 25 MB cap for diagnostic package
+        const int MaxRotatedSegmentsPerPrefix = 3;       // Active + up to 2 rotated backups per category
+
         try
         {
-            var files = Directory.GetFiles(sourceDir, "*.*", SearchOption.TopDirectoryOnly)
-                .Where(f => f.EndsWith(".log", StringComparison.OrdinalIgnoreCase) ||
-                            f.EndsWith(".jsonl", StringComparison.OrdinalIgnoreCase) ||
-                            f.EndsWith(".txt", StringComparison.OrdinalIgnoreCase));
+            var dirInfo = new DirectoryInfo(sourceDir);
+            if (!dirInfo.Exists) return;
 
-            foreach (var filePath in files)
+            var allFiles = dirInfo.GetFiles("*.*", SearchOption.TopDirectoryOnly)
+                .Where(fi => fi.Extension.Equals(".log", StringComparison.OrdinalIgnoreCase) ||
+                             fi.Extension.Equals(".jsonl", StringComparison.OrdinalIgnoreCase) ||
+                             fi.Extension.Equals(".txt", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(fi => fi.LastWriteTimeUtc)
+                .ToList();
+
+            var manifestLines = new List<string>
+            {
+                $"=== Diagnostic Log Archive Manifest ({DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC) ===",
+                $"Source Directory: {sourceDir}",
+                $"Size Cap: {MaxTotalLogsBytes / (1024 * 1024)} MB | Max segments per category: {MaxRotatedSegmentsPerPrefix}",
+                string.Empty,
+                "Included Files:"
+            };
+            var omittedLines = new List<string>();
+
+            // Group by prefix (e.g. "host", "provider", "updater", "activity", "portal")
+            var prefixCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            long totalBytesCollected = 0;
+
+            foreach (var fileInfo in allFiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var fullPath = Path.GetFullPath(filePath);
+                var fullPath = fileInfo.FullName;
                 if (!visitedFiles.Add(fullPath))
                 {
                     continue;
                 }
 
-                var fileName = Path.GetFileName(filePath);
-                var entryName = $"{zipSubdir}/{fileName}";
+                // Determine category prefix: "host", "provider", "updater", etc.
+                var baseName = fileInfo.Name;
+                var dashIdx = baseName.IndexOfAny(new[] { '-', '_' });
+                var dotIdx = baseName.IndexOf('.');
+                var prefixEnd = dashIdx > 0 ? dashIdx : (dotIdx > 0 ? dotIdx : baseName.Length);
+                var prefix = baseName.Substring(0, prefixEnd).ToLowerInvariant();
+
+                prefixCounts.TryGetValue(prefix, out var currentCount);
+                if (currentCount >= MaxRotatedSegmentsPerPrefix)
+                {
+                    omittedLines.Add($" - {fileInfo.Name} ({fileInfo.Length / 1024:N0} KB, {fileInfo.LastWriteTimeUtc:yyyy-MM-dd HH:mm}) [Omitted: exceeded {MaxRotatedSegmentsPerPrefix} segments for '{prefix}']");
+                    continue;
+                }
+
+                if (totalBytesCollected + fileInfo.Length > MaxTotalLogsBytes && currentCount > 0)
+                {
+                    omittedLines.Add($" - {fileInfo.Name} ({fileInfo.Length / 1024:N0} KB) [Omitted: total log cap {MaxTotalLogsBytes / (1024 * 1024)} MB reached]");
+                    continue;
+                }
+
+                prefixCounts[prefix] = currentCount + 1;
+                var entryName = $"{zipSubdir}/{fileInfo.Name}";
 
                 try
                 {
-                    // Open with FileShare.ReadWrite | FileShare.Delete to avoid locking conflicts with active loggers
-                    using var sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    using var sourceStream = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                     var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
                     using var entryStream = entry.Open();
+
+                    // If a single log file exceeds 15 MB, copy the last 15 MB to keep the most recent entries
+                    const long maxSingleFileBytes = 15 * 1024 * 1024;
+                    if (sourceStream.Length > maxSingleFileBytes)
+                    {
+                        sourceStream.Seek(-maxSingleFileBytes, SeekOrigin.End);
+                        // Skip partial first line
+                        using var reader = new StreamReader(sourceStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
+                        _ = await reader.ReadLineAsync(cancellationToken);
+                    }
+
                     await sourceStream.CopyToAsync(entryStream, cancellationToken);
+                    totalBytesCollected += fileInfo.Length;
+                    manifestLines.Add($" + {fileInfo.Name} ({fileInfo.Length / 1024:N0} KB, {fileInfo.LastWriteTimeUtc:yyyy-MM-dd HH:mm})");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogWarning($"[DiagnosticReport] Failed to archive log file '{filePath}': {ex.Message}");
+                    Logger.LogWarning($"[DiagnosticReport] Failed to archive log file '{fileInfo.FullName}': {ex.Message}");
+                    manifestLines.Add($" ! {fileInfo.Name} (Error: {ex.Message})");
                 }
+            }
+
+            if (omittedLines.Count > 0)
+            {
+                manifestLines.Add(string.Empty);
+                manifestLines.Add("Omitted Rotated/Pruned Files (due to Log Rotation Cap):");
+                manifestLines.AddRange(omittedLines);
+            }
+
+            // Write manifest entry
+            try
+            {
+                var manifestEntry = archive.CreateEntry($"{zipSubdir}/logs_manifest.txt", CompressionLevel.Optimal);
+                using var writer = new StreamWriter(manifestEntry.Open(), Encoding.UTF8);
+                await writer.WriteAsync(string.Join(Environment.NewLine, manifestLines));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[DiagnosticReport] Failed to create logs_manifest.txt: {ex.Message}");
             }
         }
         catch (Exception ex)
