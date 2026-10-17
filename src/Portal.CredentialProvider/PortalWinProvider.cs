@@ -178,13 +178,37 @@ public class PortalWinProvider : PortalWinProviderBase
             {
                 if (targetAccount != null && targetAccount.RequiresTwoFactorPin && !string.IsNullOrEmpty(targetAccount.TwoFactorPinHash))
                 {
-                    // Scenario A: 2FA PIN required on lock screen
-                    Logger.Log($"[PortalWinProvider] Account '{username}' requires 2FA PIN on lock screen. Switching tile to AwaitingTwoFactorPin mode.");
-                    CancelPendingAutoLogon();
-                    targetTile.EnterTwoFactorPinMode(username, password, domain, userSid, targetAccount);
-                    this.SetDefaultTile(targetTile, autoLogon: false);
-                    Logger.Log("[PortalWinProvider] Cursor recovery scheduled for 2FA PIN mode.");
-                    CursorRecoveryService.TriggerAfterUnlock("2FA PIN mode");
+                    if (targetAccount.IsTwoFactorGracePeriodActive(config.TwoFactorGracePeriodMinutes, out double remainingMinutes))
+                    {
+                        Logger.Log($"[PortalWinProvider] 2FA PIN grace period is active for account '{username}' ({remainingMinutes:F1}m remaining). Skipping 2FA PIN prompt.");
+                        ActivityJournal.Record(
+                            "2fa_grace_bypass",
+                            "🛡️",
+                            "2FA PIN session active",
+                            $"2FA PIN prompt bypassed for {username} (grace period valid, {remainingMinutes:F1}m remaining).",
+                            true);
+
+                        // Standard unlock flow (auto-logon)
+                        Logger.Log("[PortalWinProvider] Triggering auto-logon on target tile (2FA grace period active).");
+                        UnlockState.SetPending(username, password, domain);
+                        targetTile.UpdateStatus(BuildStatusHeadlineForState("Remote unlock approved"), BuildStatusDetailsForState("Preparing Windows sign-in..."));
+                        this.SetDefaultTile(targetTile, autoLogon: true);
+                        Logger.Log("[PortalWinProvider] Cursor recovery scheduled after unlock approval.");
+                        CursorRecoveryService.TriggerAfterUnlock("Unlock approved");
+
+                        // Record unlock activity timestamp for inactivity timer
+                        config.RecordAccountUnlockActivity(username, domain, userSid);
+                    }
+                    else
+                    {
+                        // Scenario A: 2FA PIN required on lock screen
+                        Logger.Log($"[PortalWinProvider] Account '{username}' requires 2FA PIN on lock screen. Switching tile to AwaitingTwoFactorPin mode.");
+                        CancelPendingAutoLogon();
+                        targetTile.EnterTwoFactorPinMode(username, password, domain, userSid, targetAccount);
+                        this.SetDefaultTile(targetTile, autoLogon: false);
+                        Logger.Log("[PortalWinProvider] Cursor recovery scheduled for 2FA PIN mode.");
+                        CursorRecoveryService.TriggerAfterUnlock("2FA PIN mode");
+                    }
                 }
                 else
                 {

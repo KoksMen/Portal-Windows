@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">✨ Portal-Windows ✨</h1>
-<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.1) 🪄</h3>
+<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.2) 🪄</h3>
 
 <p align="center">
   <b>Бесшовная, безопасная и мгновенная разблокировка Windows с помощью вашего смартфона или умных часов</b><br>
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.1--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.1-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.2--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.2-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
@@ -71,11 +71,17 @@
 
 ## 🌟 Возможности и функционал системы
 
-### 🔐 1. Двухфакторная аутентификация по PIN-коду (2FA PIN)
+### 🔐 1. Двухфакторная аутентификация по PIN-коду (2FA PIN) и сессионный льготный период
 - **Сценарий двухфакторного входа:** Подтверждение биометрией на доверенном смартфоне $\rightarrow$ ввод персонального PIN-кода на физической клавиатуре компьютера $\rightarrow$ вход в Windows.
 - **Криптографическая защита:** Хеширование **PBKDF2-SHA256** (100 000 итераций) с индивидуальной 16-байтовой криптографической солью (`RNGCryptoServiceProvider`) для каждой учетной записи.
 - **Аппаратная защита от подбора (Brute-Force Guard):** Жесткий лимит на **3 неверные попытки ввода PIN**. При превышении лимита сессия немедленно аннулируется, сокеты закрываются, а на экране блокировки выводится защитное сообщение.
-- **Настройка в Host:** Интерактивный статус-бейдж `[2FA PIN]` на карточке устройства и модальный диалог управления PIN-кодом с маскировкой ввода и валидацией длины (от 4 до 30 знаков).
+- **Временное отключение 2FA PIN (Session Grace Period):** Настраиваемый интервал сессии (1м, 2м, 5м, 10м, 15м, 30м, 1ч, 2ч или произвольное число минут). Если компьютер блокируется и разблокируется в пределах этого окна, повторный ввод PIN не требуется — вход происходит мгновенно по биометрии.
+- **Абсолютная безопасность сессии:**
+  - Привязка к аппаратному монотонному аптайму (`Environment.TickCount64`) — исключена уязвимость с переводом системных часов Windows.
+  - Мгновенное аннулирование сессии при перезагрузке ОС или выключении питания.
+  - Немедленный сброс и очистка сессии при любой ошибке аутентификации.
+  - Строгая изоляция сессий между разными учетными записями и устройствами.
+- **Настройка в Host:** Интерактивный статус-бейдж `[2FA PIN]` на карточке устройства, гибкие пресеты интервалов и модальный диалог управления PIN-кодом с маскировкой ввода и валидацией длины (от 4 до 30 знаков).
 
 ### ⏳ 2. Живой динамический прогресс-бар и стили экрана входа
 - **Интерактивный таймер на плитке пользователя:** Прямо под аватаром отображается стильная шкала тайм-аута и таймер обратного отсчёта.
@@ -189,53 +195,53 @@
 
 1. **Установите мобильное приложение:**
    - Скачайте клиент из [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) или установите APK из [репозитория Android](https://github.com/xXMRK888YTXx/Portal-Android/releases).
-2. **Скачайте Portal-Windows:**
-   - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.9.1-win-x64.zip`.
-3. **Распакуйте и запустите:**
-   - Распакуйте архив в постоянный каталог (например, `C:\Program Files\Portal` или в каталог профиля пользователя).
-   - Запустите файл `Portal.Host.exe` от имени администратора.
-4. **Активируйте службу:**
-   - В открывшемся главном окне нажмите большую кнопку **«СТАРТ»**.
-   - Приложение автоматически настроит правила брандмауэра и зарегистрирует COM-библиотеку провайдера.
-5. **Подключите смартфон:**
-   - Перейдите на вкладку **Устройства** и нажмите **«+ Добавить устройство»**.
-   - На экране появится защищённый одноразовый QR-код.
-   - Откройте приложение Portal на смартфоне, нажмите **«Сканировать QR-код»** и наведите камеру на монитор.
-   - Задайте имя компьютеру — сопряжение завершено! 🎉
-6. **(Опционально) Настройте 2FA PIN:**
-   - В меню карточки устройства нажмите **«Настроить 2FA PIN»** и задайте PIN-код для двухфакторной аутентификации.
-7. **Попробуйте в действии:**
-   - Заблокируйте Windows комбинацией клавиш <kbd>Win</kbd> + <kbd>L</kbd>.
-   - Вы увидите плитку Portal с живым прогресс-баром ожидания.
-   - Подтвердите вход на смартфоне (и введите 2FA PIN при необходимости) — компьютер мгновенно разблокирован! 🪄✨
-
----
-
-## 💻 Сборка из исходников
-
-Для самостоятельной сборки решения:
-- **Visual Studio 2022** (версия 17.12+) / **JetBrains Rider** / **.NET 10 SDK**.
-- Рабочая нагрузка **.NET Desktop Development** (WPF).
-- PowerShell 7+ или Windows PowerShell 5.1.
-
-### Шаги сборки:
-
-```powershell
-# 1. Клонирование репозитория
-git clone https://github.com/KoksMen/Portal-Windows.git
-cd Portal-Windows
-
-# 2. Восстановление зависимостей
-dotnet restore Portal-Windows.slnx
-
-# 3. Сборка решения в конфигурации Release
-dotnet build Portal-Windows.slnx -c Release
-
-# 4. Сборка чистого релизного пакета с подписью
-powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-```
-
-Готовые файлы дистрибутива будут собраны в каталоге `dist/`, а готовый архив — в корне репозитория (`PortalWin-1.9.1-win-x64.zip`).
+198: 2. **Скачайте Portal-Windows:**
+199:    - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.9.2-win-x64.zip`.
+200: 3. **Распакуйте и запустите:**
+201:    - Распакуйте архив в постоянный каталог (например, `C:\Program Files\Portal` или в каталог профиля пользователя).
+202:    - Запустите файл `Portal.Host.exe` от имени администратора.
+203: 4. **Активируйте службу:**
+204:    - В открывшемся главном окне нажмите большую кнопку **«СТАРТ»**.
+205:    - Приложение автоматически настроит правила брандмауэра и зарегистрирует COM-библиотеку провайдера.
+206: 5. **Подключите смартфон:**
+207:    - Перейдите на вкладку **Устройства** и нажмите **«+ Добавить устройство»**.
+208:    - На экране появится защищённый одноразовый QR-код.
+209:    - Откройте приложение Portal на смартфоне, нажмите **«Сканировать QR-код»** и наведите камеру на монитор.
+210:    - Задайте имя компьютеру — сопряжение завершено! 🎉
+211: 6. **(Опционально) Настройте 2FA PIN:**
+212:    - В меню карточки устройства нажмите **«Настроить 2FA PIN»** и задайте PIN-код для двухфакторной аутентификации.
+213: 7. **Попробуйте в действии:**
+214:    - Заблокируйте Windows комбинацией клавиш <kbd>Win</kbd> + <kbd>L</kbd>.
+215:    - Вы увидите плитку Portal с живым прогресс-баром ожидания.
+216:    - Подтвердите вход на смартфоне (и введите 2FA PIN при необходимости) — компьютер мгновенно разблокирован! 🪄✨
+217: 
+218: ---
+219: 
+220: ## 💻 Сборка из исходников
+221: 
+222: Для самостоятельной сборки решения:
+223: - **Visual Studio 2022** (версия 17.12+) / **JetBrains Rider** / **.NET 10 SDK**.
+224: - Рабочая нагрузка **.NET Desktop Development** (WPF).
+225: - PowerShell 7+ или Windows PowerShell 5.1.
+226: 
+227: ### Шаги сборки:
+228: 
+229: ```powershell
+230: # 1. Клонирование репозитория
+231: git clone https://github.com/KoksMen/Portal-Windows.git
+232: cd Portal-Windows
+233: 
+234: # 2. Восстановление зависимостей
+235: dotnet restore Portal-Windows.slnx
+236: 
+237: # 3. Сборка решения в конфигурации Release
+238: dotnet build Portal-Windows.slnx -c Release
+239: 
+240: # 4. Сборка чистого релизного пакета с подписью
+241: powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
+242: ```
+243: 
+244: Готовые файлы дистрибутива будут собраны в каталоге `dist/`, а готовый архив — в корне репозитория (`PortalWin-1.9.2-win-x64.zip`).
 
 ---
 
@@ -277,11 +283,17 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 ## 🌟 Key Features & Capabilities
 
-### 🔐 1. Two-Factor PIN Authentication (2FA PIN)
+### 🔐 1. Two-Factor PIN Authentication (2FA PIN) & Session Grace Period
 - **Two-Factor Authentication Flow:** Biometric approval on trusted phone $\rightarrow$ custom PIN input on Windows keyboard $\rightarrow$ Windows logon completed.
 - **Cryptographic Security:** High-grade **PBKDF2-SHA256** hashing (100,000 iterations) with a unique 16-byte random salt per account (`RNGCryptoServiceProvider`).
 - **Brute-Force Guard:** Strict lockout after **3 consecutive failed PIN attempts**. Upon lockout, the session is cleared, sockets close, and a security warning appears on the lock screen.
-- **Host Settings Integration:** Dedicated `[2FA PIN]` status badge on device cards and a setup dialog with input masking and length validation (4 to 30 characters).
+- **2FA Session Grace Period:** Configurable session window (1m, 2m, 5m, 10m, 15m, 30m, 1h, 2h, or arbitrary custom minutes). If Windows is locked and unlocked within this grace period, subsequent unlocks bypass the 2FA PIN prompt and complete instantly via biometrics.
+- **Tamper-Proof Session Security:**
+  - Based on hardware monotonic system uptime (`Environment.TickCount64`) — immune to Windows system clock tampering.
+  - Instant session invalidation upon system reboot or shutdown.
+  - Immediate purge on failed PIN attempt or invalid authentication.
+  - Strict account isolation per device and Security Identifier (SID).
+- **Host Settings Integration:** Dedicated `[2FA PIN]` status badge on device cards, flexible grace presets, and a setup dialog with input masking and length validation (4 to 30 characters).
 
 ### ⏳ 2. Live Lock Screen Progress Bar & Visual Styles
 - **Real-Time LogonUI Progress Bar:** Sleek timeout progress bar and countdown timer embedded directly into the Windows user tile.
@@ -393,52 +405,52 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 1. **Install the Mobile Companion App:**
    - Get the app on [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) or download the APK from the [Android Repository](https://github.com/xXMRK888YTXx/Portal-Android/releases).
-2. **Download Portal-Windows:**
-   - Grab the latest `PortalWin-1.9.1-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
-3. **Extract & Launch:**
-   - Extract to a permanent folder (e.g. `C:\Program Files\Portal`).
-   - Run `Portal.Host.exe` as Administrator.
-4. **Start the Service:**
-   - Click the prominent **«START»** button on the dashboard to register the Credential Provider with Windows.
-5. **Pair Your Device:**
-   - Go to the **Devices** tab and click **«+ Add Device»**.
-   - A secure single-use QR code will be generated on your screen.
-   - Open Portal on your smartphone, tap **«Scan QR Code»**, and scan your monitor.
-   - Name your PC — pairing is complete! 🎉
-6. **(Optional) Enable 2FA PIN:**
-   - On the device card, select **«Configure 2FA PIN»** and set a security PIN for two-factor authentication.
-7. **Experience the Magic:**
-   - Lock Windows (<kbd>Win</kbd> + <kbd>L</kbd>).
-   - See the live progress bar waiting for confirmation.
-   - Tap your phone's fingerprint sensor (and enter your 2FA PIN if configured) — Windows unlocks instantly! 🪄✨
-
----
-
-## 💻 Building from Source
-
-To build the project from source, you will need:
-- **Visual Studio 2022** (v17.12+) or **JetBrains Rider**, or **.NET 10 SDK**.
-- **.NET Desktop Development** workload (WPF).
-- PowerShell 7+ or Windows PowerShell 5.1.
-
-### Build Steps:
-
-```powershell
-# 1. Clone repository
-git clone https://github.com/KoksMen/Portal-Windows.git
-cd Portal-Windows
-
-# 2. Restore dependencies
-dotnet restore Portal-Windows.slnx
-
-# 3. Build Release
-dotnet build Portal-Windows.slnx -c Release
-
-# 4. Package clean release with signing
-powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-```
-
-The published binaries and Credential Provider COM registration components will be assembled in the `dist/` directory, and the release archive will be located in the repository root (`PortalWin-1.9.1-win-x64.zip`).
+408: 2. **Download Portal-Windows:**
+409:    - Grab the latest `PortalWin-1.9.2-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
+410: 3. **Extract & Launch:**
+411:    - Extract to a permanent folder (e.g. `C:\Program Files\Portal`).
+412:    - Run `Portal.Host.exe` as Administrator.
+413: 4. **Start the Service:**
+414:    - Click the prominent **«START»** button on the dashboard to register the Credential Provider with Windows.
+415: 5. **Pair Your Device:**
+416:    - Go to the **Devices** tab and click **«+ Add Device»**.
+417:    - A secure single-use QR code will be generated on your screen.
+418:    - Open Portal on your smartphone, tap **«Scan QR Code»**, and scan your monitor.
+419:    - Name your PC — pairing is complete! 🎉
+420: 6. **(Optional) Enable 2FA PIN:**
+421:    - On the device card, select **«Configure 2FA PIN»** and set a security PIN for two-factor authentication.
+422: 7. **Experience the Magic:**
+423:    - Lock Windows (<kbd>Win</kbd> + <kbd>L</kbd>).
+424:    - See the live progress bar waiting for confirmation.
+425:    - Tap your phone's fingerprint sensor (and enter your 2FA PIN if configured) — Windows unlocks instantly! 🪄✨
+426: 
+427: ---
+428: 
+429: ## 💻 Building from Source
+430: 
+431: To build the project from source, you will need:
+432: - **Visual Studio 2022** (v17.12+) or **JetBrains Rider**, or **.NET 10 SDK**.
+433: - **.NET Desktop Development** workload (WPF).
+434: - PowerShell 7+ or Windows PowerShell 5.1.
+435: 
+436: ### Build Steps:
+437: 
+438: ```powershell
+439: # 1. Clone repository
+440: git clone https://github.com/KoksMen/Portal-Windows.git
+441: cd Portal-Windows
+442: 
+443: # 2. Restore dependencies
+444: dotnet restore Portal-Windows.slnx
+445: 
+446: # 3. Build Release
+447: dotnet build Portal-Windows.slnx -c Release
+448: 
+449: # 4. Package clean release with signing
+450: powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
+451: ```
+452: 
+453: The published binaries and Credential Provider COM registration components will be assembled in the `dist/` directory, and the release archive will be located in the repository root (`PortalWin-1.9.2-win-x64.zip`).
 
 ---
 

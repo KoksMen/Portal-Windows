@@ -3,6 +3,7 @@ using System.Security;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Serialization;
+using Portal.Common.Helpers;
 
 namespace Portal.Common.Models;
 
@@ -57,12 +58,40 @@ public class DeviceAccount
     [JsonPropertyName("twoFactorPinHash")]
     public string? TwoFactorPinHash { get; set; }
 
+    /// <summary>
+    /// Optional custom 2FA grace period in minutes override for this account.
+    /// If null, inherits host global TwoFactorGracePeriodMinutes from PortalWinConfig.
+    /// 0 = always require 2FA PIN (no grace period).
+    /// </summary>
+    [JsonPropertyName("twoFactorGracePeriodMinutes")]
+    public int? TwoFactorGracePeriodMinutes { get; set; }
+
+    /// <summary>
+    /// UTC timestamp of the last successful 2FA PIN verification on the lock screen.
+    /// </summary>
+    [JsonPropertyName("lastTwoFactorVerifiedAtUtc")]
+    public DateTime? LastTwoFactorVerifiedAtUtc { get; set; }
+
+    /// <summary>
+    /// Monotonic tick count at the time of 2FA verification to guard against clock rollback attacks.
+    /// </summary>
+    [JsonPropertyName("lastTwoFactorVerifiedTickCount")]
+    public long? LastTwoFactorVerifiedTickCount { get; set; }
+
+    /// <summary>
+    /// System boot timestamp at 2FA verification to prevent replay across reboots.
+    /// </summary>
+    [JsonPropertyName("lastTwoFactorVerifiedBootTimeUtc")]
+    public DateTime? LastTwoFactorVerifiedBootTimeUtc { get; set; }
+
     private const int PinSaltByteCount = 16;
     private const int PinHashByteCount = 32;
     private const int PinPbkdf2Iterations = 100_000;
 
     public void SetTwoFactorPin(string pin)
     {
+        InvalidateTwoFactorGracePeriod();
+
         if (string.IsNullOrWhiteSpace(pin))
         {
             RemoveTwoFactorPin();
@@ -150,6 +179,88 @@ public class DeviceAccount
         RequiresTwoFactorPin = false;
         TwoFactorPinSalt = null;
         TwoFactorPinHash = null;
+        InvalidateTwoFactorGracePeriod();
+    }
+
+    public int ResolveEffectiveTwoFactorGracePeriodMinutes(int globalGracePeriodMinutes)
+        => TwoFactorGracePeriodMinutes ?? globalGracePeriodMinutes;
+
+    public bool IsTwoFactorGracePeriodActive(int globalGracePeriodMinutes, out double remainingMinutes)
+    {
+        remainingMinutes = 0;
+
+        if (!RequiresTwoFactorPin || string.IsNullOrEmpty(TwoFactorPinHash))
+        {
+            return false;
+        }
+
+        int effectiveGraceMinutes = ResolveEffectiveTwoFactorGracePeriodMinutes(globalGracePeriodMinutes);
+        if (effectiveGraceMinutes <= 0)
+        {
+            return false;
+        }
+
+        if (!LastTwoFactorVerifiedAtUtc.HasValue)
+        {
+            return false;
+        }
+
+        // 1. Anti-Reboot Verification: system boot time must match within tolerance (10 seconds)
+        if (LastTwoFactorVerifiedBootTimeUtc.HasValue)
+        {
+            var currentBootTime = IdentityHelper.GetSystemBootTimeUtc();
+            if (Math.Abs((currentBootTime - LastTwoFactorVerifiedBootTimeUtc.Value).TotalSeconds) > 10)
+            {
+                Logger.LogWarning($"[DeviceAccount] 2FA grace period invalidated for {Username}: System was rebooted.");
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        // 2. Monotonic TickCount Verification: protects against clock rollback tampering
+        if (LastTwoFactorVerifiedTickCount.HasValue)
+        {
+            long currentTicks = Environment.TickCount64;
+            long elapsedTicksMs = currentTicks - LastTwoFactorVerifiedTickCount.Value;
+            if (elapsedTicksMs < 0 || elapsedTicksMs > (long)effectiveGraceMinutes * 60 * 1000)
+            {
+                return false;
+            }
+        }
+
+        // 3. Wall-Clock UTC Verification
+        var nowUtc = DateTime.UtcNow;
+        var wallElapsed = nowUtc - LastTwoFactorVerifiedAtUtc.Value;
+        if (wallElapsed < TimeSpan.Zero)
+        {
+            Logger.LogWarning($"[DeviceAccount] 2FA grace period invalidated for {Username}: Clock rollback detected.");
+            return false;
+        }
+
+        if (wallElapsed > TimeSpan.FromMinutes(effectiveGraceMinutes))
+        {
+            return false;
+        }
+
+        remainingMinutes = Math.Max(0, (TimeSpan.FromMinutes(effectiveGraceMinutes) - wallElapsed).TotalMinutes);
+        return true;
+    }
+
+    public void RecordTwoFactorSuccess()
+    {
+        LastTwoFactorVerifiedAtUtc = DateTime.UtcNow;
+        LastTwoFactorVerifiedTickCount = Environment.TickCount64;
+        LastTwoFactorVerifiedBootTimeUtc = IdentityHelper.GetSystemBootTimeUtc();
+    }
+
+    public void InvalidateTwoFactorGracePeriod()
+    {
+        LastTwoFactorVerifiedAtUtc = null;
+        LastTwoFactorVerifiedTickCount = null;
+        LastTwoFactorVerifiedBootTimeUtc = null;
     }
 
     [JsonIgnore]

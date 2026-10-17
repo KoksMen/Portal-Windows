@@ -177,7 +177,8 @@
                                 x:Name="PART_Popup"
                                 AllowsTransparency="True"
                                 IsOpen="{TemplateBinding IsDropDownOpen}"
-                                Placement="Bottom">
+                                Placement="Bottom"
+                                StaysOpen="False">
                                 <Border
                                     Margin="0,4,0,0"
                                     Padding="8"
@@ -186,7 +187,7 @@
                                     BorderThickness="1"
                                     CornerRadius="8"
                                     MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
-                                    <ScrollViewer MaxHeight="220">
+                                    <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" CanContentScroll="False">
                                         <ItemsPresenter />
                                     </ScrollViewer>
                                 </Border>
@@ -2992,6 +2993,130 @@
                                 </StackPanel>
                             </Border>
 
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="12"
+                                Background="#101728"
+                                BorderBrush="#2c3f66"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                                <StackPanel>
+                                    <TextBlock
+                                        Margin="0,0,0,6"
+                                        FontSize="12"
+                                        FontWeight="Bold"
+                                        Foreground="#dfe8ff"
+                                        Text="2FA PIN Session Grace Period" />
+                                    <TextBox
+                                        MaxLength="6"
+                                        Width="140"
+                                        HorizontalAlignment="Center"
+                                        TextAlignment="Center"
+                                        Text="{Binding SettingsTwoFactorGracePeriodMinutes, UpdateSourceTrigger=PropertyChanged}" />
+                                    <WrapPanel
+                                        Margin="0,8,0,2"
+                                        HorizontalAlignment="Center">
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="0m"
+                                            ToolTip="Always require PIN (0)"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="0"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="1m"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="1"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="2m"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="2"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="5m"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="5"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="10m"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="10"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="15m"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="15"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="30m"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="30"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="1h"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="60"
+                                            Style="{StaticResource SecondaryButton}" />
+                                        <Button
+                                            Margin="2"
+                                            Padding="8,3"
+                                            FontSize="11"
+                                            Background="#1b253b"
+                                            BorderBrush="#385287"
+                                            Content="2h"
+                                            Command="{Binding SetTwoFactorGracePresetCommand}"
+                                            CommandParameter="120"
+                                            Style="{StaticResource SecondaryButton}" />
+                                    </WrapPanel>
+                                    <TextBlock
+                                        Margin="0,6,0,0"
+                                        FontSize="11"
+                                        Foreground="#8fa2cf"
+                                        Text="Global grace period (in minutes) after successful 2FA PIN entry. Within this window, subsequent unlocks bypass 2FA PIN. 0 = always require PIN. System reboot or failed attempts immediately invalidate session."
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
                         </StackPanel>
                     </Expander>
 
@@ -3801,6 +3926,44 @@
                                     FontSize="11"
                                     Foreground="#A0B8E0"
                                     Text="{Binding WizTwoFactorPinHint}"
+                                    TextWrapping="Wrap" />
+
+                                <TextBlock
+                                    Margin="0,12,0,5"
+                                    FontSize="11"
+                                    Foreground="{StaticResource TextMuted}"
+                                    Text="2FA PIN Grace Period" />
+                                <ComboBox
+                                    x:Name="InputTwoFactorGrace"
+                                    ItemsSource="{Binding TwoFactorGracePeriodOptions}"
+                                    SelectedIndex="{Binding WizTwoFactorGracePeriodIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    SelectionChanged="TwoFactorGrace_SelectionChanged"
+                                    Style="{StaticResource PortalComboBox}" />
+                                <Grid
+                                    Margin="0,8,0,0"
+                                    Visibility="{Binding WizShowTwoFactorGraceCustomInput, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox
+                                        Height="38"
+                                        MaxLength="5"
+                                        Padding="10,0"
+                                        VerticalContentAlignment="Center"
+                                        Text="{Binding WizTwoFactorGraceCustomMinutes, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        Margin="10,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Foreground="#A0B8E0"
+                                        Text="minutes" />
+                                </Grid>
+                                <TextBlock
+                                    Margin="0,6,0,0"
+                                    FontSize="11"
+                                    Foreground="#8fa2cf"
+                                    Text="Temporarily bypass 2FA PIN if unlocked within this duration. Reboot or incorrect PIN cancels the session."
                                     TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>

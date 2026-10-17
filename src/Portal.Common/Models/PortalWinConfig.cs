@@ -85,6 +85,14 @@ public class PortalWinConfig
     public bool ShowLockScreenProgress { get; set; } = true;
 
     /// <summary>
+    /// Duration in minutes for which 2FA PIN is remembered/bypassed after successful verification.
+    /// 0 = disabled (2FA PIN is required on every unlock).
+    /// Default: 0 minutes (disabled).
+    /// </summary>
+    [JsonPropertyName("twoFactorGracePeriodMinutes")]
+    public int TwoFactorGracePeriodMinutes { get; set; } = 0;
+
+    /// <summary>
     /// Enables emergency rollback/cancellation of in-flight unlock requests using a hotkey.
     /// Default: true.
     /// </summary>
@@ -485,6 +493,76 @@ public class PortalWinConfig
             catch (Exception ex)
             {
                 Logger.LogWarning($"[PortalWinConfig] Failed to persist unlock activity: {ex.Message}");
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Records a successful 2FA PIN verification for matching accounts and persists to LSA Secrets.
+    /// </summary>
+    public bool RecordTwoFactorSuccessActivity(string username, string? domain = null, string? userSid = null)
+    {
+        bool changed = false;
+        foreach (var device in Devices)
+        {
+            foreach (var account in device.Accounts)
+            {
+                if (IdentityHelper.MatchesAccount(userSid, username, domain, account))
+                {
+                    account.RecordTwoFactorSuccess();
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            try
+            {
+                TrySaveDevicesToLsa(Devices);
+                Logger.Log($"[PortalWinConfig] Recorded 2FA success timestamp for user '{username}' (SID={userSid ?? "none"}).");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinConfig] Failed to persist 2FA success activity: {ex.Message}");
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Invalidates any active 2FA grace period for matching accounts and persists to LSA Secrets.
+    /// </summary>
+    public bool InvalidateTwoFactorGracePeriodActivity(string username, string? domain = null, string? userSid = null)
+    {
+        bool changed = false;
+        foreach (var device in Devices)
+        {
+            foreach (var account in device.Accounts)
+            {
+                if (IdentityHelper.MatchesAccount(userSid, username, domain, account))
+                {
+                    account.InvalidateTwoFactorGracePeriod();
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            try
+            {
+                TrySaveDevicesToLsa(Devices);
+                Logger.Log($"[PortalWinConfig] Invalidated 2FA grace period for user '{username}' (SID={userSid ?? "none"}).");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinConfig] Failed to persist 2FA grace period invalidation: {ex.Message}");
             }
         }
 

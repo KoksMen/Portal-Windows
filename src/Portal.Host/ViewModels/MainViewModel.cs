@@ -148,6 +148,7 @@ public partial class MainViewModel : ObservableObject
     public ObservableCollection<ActivityCard> RecentActivity { get; } = new();
     public ObservableCollection<string> AccountUnlockModeOptions { get; } = new();
     public ObservableCollection<string> InactivityDaysOptions { get; } = new();
+    public ObservableCollection<string> TwoFactorGracePeriodOptions { get; } = new();
     public ObservableCollection<string> ActivityFilterOptions { get; } = new()
     {
         "All events", "Unlocks", "Pairing", "Network", "System", "Problems"
@@ -372,6 +373,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _settingsPort = "29170";
     [ObservableProperty] private string _settingsDllPath = "";
     [ObservableProperty] private string _settingsHostRequestTimeoutMinutes = "2";
+    [ObservableProperty] private string _settingsTwoFactorGracePeriodMinutes = "0";
     [ObservableProperty] private bool _isLockScreenProgressEnabled = true;
     [ObservableProperty] private bool _isVpnCompatibilityModeEnabled = true;
     [ObservableProperty] private string _restoreBackupFileText = Services.LocalizationService.T("No backup file selected");
@@ -594,13 +596,52 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _wizRequiresTwoFactorPin = false;
     [ObservableProperty] private string _wizTwoFactorPin = string.Empty;
     [ObservableProperty] private string _wizTwoFactorPinHint = string.Empty;
+    [ObservableProperty] private int _wizTwoFactorGracePeriodIndex = 0;
+    [ObservableProperty] private string _wizTwoFactorGraceCustomMinutes = "5";
 
     public bool WizShowTwoFactorPinInput => WizRequiresTwoFactorPin;
+    public bool WizShowTwoFactorGraceCustomInput => WizTwoFactorGracePeriodIndex == 10;
 
     partial void OnWizRequiresTwoFactorPinChanged(bool value)
     {
         OnPropertyChanged(nameof(WizShowTwoFactorPinInput));
     }
+
+    partial void OnWizTwoFactorGracePeriodIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(WizShowTwoFactorGraceCustomInput));
+    }
+
+    private static int GracePeriodToIndex(int? minutes) => minutes switch
+    {
+        null => 0,
+        0 => 1,
+        1 => 2,
+        2 => 3,
+        5 => 4,
+        10 => 5,
+        15 => 6,
+        30 => 7,
+        60 => 8,
+        120 => 9,
+        _ => 10 // Custom (minutes)
+    };
+
+    private static int? IndexToGracePeriod(int index, string? customMinutesStr = null) => index switch
+    {
+        0 => null,
+        1 => 0,
+        2 => 1,
+        3 => 2,
+        4 => 5,
+        5 => 10,
+        6 => 15,
+        7 => 30,
+        8 => 60,
+        9 => 120,
+        10 => int.TryParse(customMinutesStr, out var m) && m > 0 ? Math.Clamp(m, 1, 1440) : 5,
+        _ => null
+    };
 
     private static int InactivityDaysToIndex(int? days) => days switch
     {
@@ -820,6 +861,7 @@ public partial class MainViewModel : ObservableObject
         SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutSeconds.HasValue && _config.HostRequestTimeoutSeconds.Value > 0
             ? FormatTimeoutSeconds(_config.HostRequestTimeoutSeconds.Value)
             : (_config.HostRequestTimeoutMinutes > 0 ? $"{_config.HostRequestTimeoutMinutes}m" : "0");
+        SettingsTwoFactorGracePeriodMinutes = _config.TwoFactorGracePeriodMinutes.ToString();
         IsLockScreenProgressEnabled = _config.ShowLockScreenProgress;
         IsVpnCompatibilityModeEnabled = _config.VpnCompatibilityModeEnabled;
         AreExperimentalFeaturesEnabled = _config.ExperimentalFeaturesEnabled;
@@ -990,6 +1032,12 @@ public partial class MainViewModel : ObservableObject
     private void SetTimeoutPreset(string preset)
     {
         SettingsHostRequestTimeoutMinutes = preset;
+    }
+
+    [RelayCommand]
+    private void SetTwoFactorGracePreset(string preset)
+    {
+        SettingsTwoFactorGracePeriodMinutes = preset;
     }
 
     private async Task ShowBusyResultAsync(string title, string message, string buttonText = "OK")
@@ -1556,6 +1604,7 @@ public partial class MainViewModel : ObservableObject
 
         var prevModeIndex = WizAccountUnlockModeIndex;
         var prevDaysIndex = WizInactivityDaysIndex;
+        var prevGraceIndex = WizTwoFactorGracePeriodIndex;
 
         AccountUnlockModeOptions.Clear();
         foreach (var mode in modes) AccountUnlockModeOptions.Add(mode);
@@ -1563,8 +1612,26 @@ public partial class MainViewModel : ObservableObject
         InactivityDaysOptions.Clear();
         foreach (var day in days) InactivityDaysOptions.Add(day);
 
+        var gracePeriods = new[]
+        {
+            Services.LocalizationService.T("Use global setting"),
+            Services.LocalizationService.T("Always require (0m)"),
+            Services.LocalizationService.T("1 minute"),
+            Services.LocalizationService.T("2 minutes"),
+            Services.LocalizationService.T("5 minutes"),
+            Services.LocalizationService.T("10 minutes"),
+            Services.LocalizationService.T("15 minutes"),
+            Services.LocalizationService.T("30 minutes"),
+            Services.LocalizationService.T("1 hour"),
+            Services.LocalizationService.T("2 hours"),
+            Services.LocalizationService.T("Custom (minutes)...")
+        };
+        TwoFactorGracePeriodOptions.Clear();
+        foreach (var gp in gracePeriods) TwoFactorGracePeriodOptions.Add(gp);
+
         WizAccountUnlockModeIndex = prevModeIndex >= 0 && prevModeIndex < modes.Length ? prevModeIndex : 0;
         WizInactivityDaysIndex = prevDaysIndex >= 0 && prevDaysIndex < days.Length ? prevDaysIndex : 0;
+        WizTwoFactorGracePeriodIndex = prevGraceIndex >= 0 && prevGraceIndex < gracePeriods.Length ? prevGraceIndex : 0;
     }
 
     private void UpdateActivityLanguageOptions()
@@ -2164,6 +2231,15 @@ public partial class MainViewModel : ObservableObject
         WizAccountUnlockModeIndex = UnlockModeToIndex(account.CustomUnlockMode);
         WizInactivityDaysIndex = InactivityDaysToIndex(account.InactivityExpiryDays);
         WizRequiresTwoFactorPin = account.RequiresTwoFactorPin;
+        WizTwoFactorGracePeriodIndex = GracePeriodToIndex(account.TwoFactorGracePeriodMinutes);
+        if (account.TwoFactorGracePeriodMinutes.HasValue && GracePeriodToIndex(account.TwoFactorGracePeriodMinutes) == 10)
+        {
+            WizTwoFactorGraceCustomMinutes = account.TwoFactorGracePeriodMinutes.Value.ToString();
+        }
+        else
+        {
+            WizTwoFactorGraceCustomMinutes = "5";
+        }
         WizTwoFactorPin = string.Empty;
         WizTwoFactorPinHint = account.RequiresTwoFactorPin && !string.IsNullOrEmpty(account.TwoFactorPinHash)
             ? Services.LocalizationService.T("PIN is currently configured (••••). Enter a new PIN to change it, or leave blank to keep.")
@@ -2208,6 +2284,8 @@ public partial class MainViewModel : ObservableObject
         WizPasswordRevealGlyph = "\uE7B3";
         WizRequiresTwoFactorPin = false;
         WizTwoFactorPin = string.Empty;
+        WizTwoFactorGracePeriodIndex = 0;
+        WizTwoFactorGraceCustomMinutes = "5";
         ShowWizard = false;
         ShowDashboard = false; // Return to Settings
     }
@@ -2244,11 +2322,13 @@ public partial class MainViewModel : ObservableObject
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
+                        int twoFactorGraceMinutes = int.TryParse(SettingsTwoFactorGracePeriodMinutes, out var parsedGrace) ? Math.Max(0, parsedGrace) : 0;
                         _config.Port = port;
                         _config.UnlockMode = mode;
                         _config.HostRequestTrigger = trigger;
                         _config.HostRequestTimeoutSeconds = hostRequestTimeoutSeconds;
                         _config.HostRequestTimeoutMinutes = hostRequestTimeoutMinutes;
+                        _config.TwoFactorGracePeriodMinutes = twoFactorGraceMinutes;
                         _config.ShowLockScreenProgress = IsLockScreenProgressEnabled;
                         _config.VpnCompatibilityModeEnabled = IsVpnCompatibilityModeEnabled;
                         _config.EnforceUniqueAccountPerTransport = IsDuplicateAccountProtectionEnabled;
@@ -2272,6 +2352,7 @@ public partial class MainViewModel : ObservableObject
             {
                 SettingsPort = _config.Port.ToString();
                 SettingsHostRequestTimeoutMinutes = _config.HostRequestTimeoutMinutes.ToString();
+                SettingsTwoFactorGracePeriodMinutes = _config.TwoFactorGracePeriodMinutes.ToString();
                 await ShowBusyResultAsync(Services.LocalizationService.T("Configuration saved"), Services.LocalizationService.T("Host configuration was saved. Firewall rules were not changed automatically."));
             }
             else if (outcome == BusyOperationOutcome.Cancelled)
@@ -3296,6 +3377,8 @@ public partial class MainViewModel : ObservableObject
         WizInactivityDaysIndex = 0;
         WizRequiresTwoFactorPin = false;
         WizTwoFactorPin = string.Empty;
+        WizTwoFactorGracePeriodIndex = 0;
+        WizTwoFactorGraceCustomMinutes = "5";
         WizTwoFactorPinHint = Services.LocalizationService.T("Enter 4–30 digits or characters.");
 
         return sessionId;
@@ -4037,10 +4120,13 @@ public partial class MainViewModel : ObservableObject
                                 Services.LocalizationService.T("Please enter a PIN (4–30 characters) to enable 2FA PIN."));
                             return;
                         }
+
+                        account.TwoFactorGracePeriodMinutes = IndexToGracePeriod(WizTwoFactorGracePeriodIndex, WizTwoFactorGraceCustomMinutes);
                     }
                     else
                     {
                         account.RemoveTwoFactorPin();
+                        account.TwoFactorGracePeriodMinutes = null;
                     }
 
                     account.LastUnlockedAtUtc = DateTime.UtcNow;
@@ -4054,6 +4140,8 @@ public partial class MainViewModel : ObservableObject
                 _editingClientId = null;
                 WizRequiresTwoFactorPin = false;
                 WizTwoFactorPin = string.Empty;
+                WizTwoFactorGracePeriodIndex = 0;
+                WizTwoFactorGraceCustomMinutes = "5";
                 ShowWizard = false;
                 ShowDashboard = false; // Show settings panel again
                 if (passwordParams is System.Windows.Controls.PasswordBox passBox) passBox.Password = "";
@@ -4102,11 +4190,13 @@ public partial class MainViewModel : ObservableObject
             {
                 _pairingContext.RequiresTwoFactorPin = true;
                 _pairingContext.TwoFactorPin = WizTwoFactorPin;
+                _pairingContext.TwoFactorGracePeriodMinutes = IndexToGracePeriod(WizTwoFactorGracePeriodIndex, WizTwoFactorGraceCustomMinutes);
             }
             else
             {
                 _pairingContext.RequiresTwoFactorPin = false;
                 _pairingContext.TwoFactorPin = null;
+                _pairingContext.TwoFactorGracePeriodMinutes = null;
             }
 
             _credsSignal?.TrySetResult(true);

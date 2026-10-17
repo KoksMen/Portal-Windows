@@ -14,6 +14,7 @@ public class PairingContext : IDisposable
     public int? InactivityExpiryDays { get; set; }
     public bool RequiresTwoFactorPin { get; set; }
     public string? TwoFactorPin { get; set; }
+    public int? TwoFactorGracePeriodMinutes { get; set; }
 
     private SecureString? _targetPassword;
 
@@ -42,6 +43,7 @@ public class PairingContext : IDisposable
         InactivityExpiryDays = null;
         RequiresTwoFactorPin = false;
         TwoFactorPin = null;
+        TwoFactorGracePeriodMinutes = null;
     }
 
     public void Dispose()

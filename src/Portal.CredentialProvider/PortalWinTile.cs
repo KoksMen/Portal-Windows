@@ -640,11 +640,12 @@ public class PortalWinTile : PortalWinTileBase
                 $"PIN successfully verified for {userToSubmit}. Proceeding with Windows sign-in.",
                 true);
 
-            // Record successful unlock for inactivity timer
+            // Record successful unlock for inactivity timer and 2FA grace period
             try
             {
                 var config = PortalWinConfig.Load();
-                config.RecordAccountUnlockActivity(userToSubmit, domainToSubmit, _pending2FaUserSid ?? _pending2FaAccount.UserSid);
+                config.RecordTwoFactorSuccessActivity(userToSubmit, domainToSubmit, _pending2FaUserSid ?? _pending2FaAccount?.UserSid);
+                config.RecordAccountUnlockActivity(userToSubmit, domainToSubmit, _pending2FaUserSid ?? _pending2FaAccount?.UserSid);
             }
             catch (Exception ex)
             {
@@ -666,6 +667,21 @@ public class PortalWinTile : PortalWinTileBase
         {
             _pinFailedAttempts++;
             Logger.LogWarning($"[PortalWinTile] Invalid 2FA PIN entered for user '{_pending2FaUser}' (attempt {_pinFailedAttempts}/3).");
+
+            // Invalidate any active 2FA grace period immediately on failed PIN entry
+            try
+            {
+                var targetUser = _pending2FaUser ?? _pending2FaAccount?.Username;
+                if (!string.IsNullOrEmpty(targetUser))
+                {
+                    var config = PortalWinConfig.Load();
+                    config.InvalidateTwoFactorGracePeriodActivity(targetUser, _pending2FaDomain, _pending2FaUserSid ?? _pending2FaAccount?.UserSid);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[PortalWinTile] Failed to invalidate 2FA grace period: {ex.Message}");
+            }
 
             if (_passwordControl != null)
             {

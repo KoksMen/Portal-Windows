@@ -552,6 +552,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TwoFactorGrace_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (sender is ComboBox cb && cb.SelectedIndex >= 0)
+        {
+            vm.WizTwoFactorGracePeriodIndex = cb.SelectedIndex;
+        }
+    }
+
     private async void BtnCopyIp_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainViewModel vm || sender is not Button btn) return;

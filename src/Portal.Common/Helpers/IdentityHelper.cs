@@ -222,4 +222,13 @@ public static class IdentityHelper
             && !string.IsNullOrWhiteSpace(sidB)
             && string.Equals(sidA.Trim(), sidB.Trim(), StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// Calculates the approximate UTC timestamp when the current Windows OS session booted,
+    /// based on the monotonic system tick count. Used for anti-reboot 2FA session validation.
+    /// </summary>
+    public static DateTime GetSystemBootTimeUtc()
+    {
+        return DateTime.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64);
+    }
 }

@@ -291,6 +291,7 @@ public class BluetoothPairingService : IDisposable
                 if (_pairingContext.RequiresTwoFactorPin && !string.IsNullOrWhiteSpace(_pairingContext.TwoFactorPin))
                 {
                     newAccount.SetTwoFactorPin(_pairingContext.TwoFactorPin);
+                    newAccount.TwoFactorGracePeriodMinutes = _pairingContext.TwoFactorGracePeriodMinutes;
                 }
                 device.Accounts.Add(newAccount);
             }

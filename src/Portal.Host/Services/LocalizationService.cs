@@ -111,7 +111,8 @@ public static class LocalizationService
 
         // Language names must always be readable in their native form and must not be translated.
         // Dynamic policy ComboBoxes are populated and translated via ViewModel collections.
-        if (element is ComboBox { Name: "LanguageSelector" or "InputAccountUnlockMode" or "InputInactivityDays" })
+        if (element is ComboBox { Name: "LanguageSelector" or "InputAccountUnlockMode" or "InputInactivityDays" or "InputTwoFactorGrace" }
+            || (element is ComboBox dynamicCb && BindingOperations.IsDataBound(dynamicCb, ItemsControl.ItemsSourceProperty)))
             return;
 
         if (element is FrameworkElement styleOwner)
