@@ -2550,6 +2550,7 @@ public partial class MainViewModel : ObservableObject
 
                     if (deleteOutcome == BusyOperationOutcome.Completed)
                     {
+                        RefreshDevicesList();
                         await ShowBusyResultAsync(
                             Services.LocalizationService.T("Clients deleted"),
                             Services.LocalizationService.T("All invalid trusted clients were removed. Re-pair devices to continue using unlock."));
@@ -2690,6 +2691,7 @@ public partial class MainViewModel : ObservableObject
         await RefreshStatusAsync();
         if (outcome == BusyOperationOutcome.Completed)
         {
+            RefreshDevicesList();
             await ShowBusyResultAsync(Services.LocalizationService.T("Reset complete"), Services.LocalizationService.T("Portal was reset successfully."));
         }
         else if (outcome == BusyOperationOutcome.Cancelled)

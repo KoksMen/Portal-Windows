@@ -34,7 +34,7 @@ public static class PortalVersionInfo
         }
 
         var v = asm.GetName().Version;
-        var fallbackVer = v != null ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.9.1";
+        var fallbackVer = v != null ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.9.4";
         return (fallbackVer, fallbackVer, string.Empty);
     });
 

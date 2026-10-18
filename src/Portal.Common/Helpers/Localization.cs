@@ -830,5 +830,13 @@ public static class Localization
         ,["30m"] = "30м"
         ,["1h"] = "1ч"
         ,["2h"] = "2ч"
+        ,["Waiting for device response over Wi-Fi or Bluetooth..."] = "Ожидание ответа устройства по Wi-Fi или Bluetooth..."
+        ,["Waiting for device response over Bluetooth..."] = "Ожидание ответа устройства по Bluetooth..."
+        ,["Waiting for device response over Wi-Fi..."] = "Ожидание ответа устройства по Wi-Fi..."
+        ,["Bluetooth device connected, awaiting confirmation..."] = "Устройство Bluetooth подключено, ожидание подтверждения..."
+        ,["Failed to start Bluetooth service: {0}. Ensure Bluetooth is turned on."] = "Не удалось запустить службу Bluetooth: {0}. Убедитесь, что Bluetooth включен."
+        ,["Client-initiated unlock is disabled for this account (configured for Host-Initiated only)."] = "Разблокировка со стороны клиента отключена для этой учетной записи (настроена только со стороны ПК)."
+        ,["Bluetooth (Client-Initiated)"] = "Bluetooth (со стороны клиента)"
+        ,["Bluetooth (Host-Initiated)"] = "Bluetooth (со стороны ПК)"
     };
 }

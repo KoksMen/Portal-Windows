@@ -1,7 +1,7 @@
 param(
     [string]$PublishDir = "publish",
     [string]$DistDir = "dist",
-    [string]$Version = "1.9.3"
+    [string]$Version = "1.9.4"
 )
 
 $ErrorActionPreference = "Stop"
