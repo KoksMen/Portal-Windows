@@ -307,9 +307,12 @@ static void ReplaceFileSafely(string sourceFile, string destinationFile)
             File.Copy(sourceFile, destinationFile, overwrite: true);
             return;
         }
-        catch (IOException) when (attempt < 3)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Thread.Sleep(300);
+            if (attempt < 3)
+            {
+                Thread.Sleep(300);
+            }
         }
     }
 
@@ -319,6 +322,7 @@ static void ReplaceFileSafely(string sourceFile, string destinationFile)
     try
     {
         Logger.LogWarning($"[Updater] File '{Path.GetFileName(destinationFile)}' is locked. Attempting in-place rename to pending-delete...");
+        try { File.SetAttributes(destinationFile, FileAttributes.Normal); } catch { }
         File.Move(destinationFile, pendingDeletePath);
 
         // Copy new file into the destination path
@@ -364,12 +368,13 @@ static void PruneObsoleteFiles(string sourceDirectory, string destinationDirecto
                     File.Delete(destFile);
                     Logger.Log($"[Updater] Pruned obsolete file: {relativePath}");
                 }
-                catch (IOException)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
                     // Locked obsolete file: rename and mark for reboot deletion
                     try
                     {
                         var pending = destFile + $".pending-delete-{Guid.NewGuid():N}.tmp";
+                        try { File.SetAttributes(destFile, FileAttributes.Normal); } catch { }
                         File.Move(destFile, pending);
                         if (OperatingSystem.IsWindows())
                         {

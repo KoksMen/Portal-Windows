@@ -66,7 +66,7 @@ public class BluetoothUnlockService : IDisposable
     {
         lock (_btPolicyLock)
         {
-            if (_allowedBtClientIds.Count == 0) return true;
+            if (_btPolicyOwner == null) return true;
             return _allowedBtClientIds.Contains(clientId);
         }
     }

@@ -343,12 +343,33 @@ public class PortalWinTile : PortalWinTileBase
         if (User == null) return false;
         if (FindAllDevicesForCurrentUser(config).Count == 0) return false;
 
-        // Primary signal from framework; fallback to registry for environments where selection is delayed.
-        return this.IsDefaultTile || IsLikelyLastLoggedOnUser(User);
+        // 1. Primary signal from framework or provider: default tile assigned by Windows
+        if (this.IsDefaultTile)
+        {
+            return true;
+        }
+
+        // If another tile is already marked as default, this non-default tile must not early-start
+        lock (_tilesSync)
+        {
+            if (_tiles.Any(t => t.IsDefaultTile))
+            {
+                return false;
+            }
+        }
+
+        // 2. Fallback to registry only if no tile was explicitly marked as default
+        return IsLikelySelectedOrLastUser(User);
     }
 
-    private static bool IsLikelyLastLoggedOnUser(CredentialProviderUser user)
+    private static bool IsLikelySelectedOrLastUser(CredentialProviderUser user)
     {
+        var selectedSid = ReadSelectedUserSid();
+        if (!string.IsNullOrWhiteSpace(selectedSid) && !string.IsNullOrWhiteSpace(user.Sid))
+        {
+            return string.Equals(user.Sid, selectedSid, StringComparison.OrdinalIgnoreCase);
+        }
+
         var registrySid = ReadLastLoggedOnUserSid();
         if (!string.IsNullOrWhiteSpace(registrySid) && !string.IsNullOrWhiteSpace(user.Sid))
         {
@@ -375,6 +396,23 @@ public class PortalWinTile : PortalWinTileBase
         }
 
         return false;
+    }
+
+    private static string? ReadSelectedUserSid()
+    {
+        const string keyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI";
+
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(keyPath);
+            var value = key?.GetValue("SelectedUserSID") as string;
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[PortalWinTile] Failed to read SelectedUserSID from registry: {ex.Message}");
+            return null;
+        }
     }
 
     private static string? ReadLastLoggedOnUserSid()

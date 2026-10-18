@@ -701,10 +701,19 @@ public class PortalWinProvider : PortalWinProviderBase
         _preferredDefaultCanonicalUser = null;
         _preferredDefaultShortUser = null;
 
+        // 1. SelectedUserSID is set dynamically by Windows LogonUI to the active/selected user tile
+        _preferredDefaultSid = ReadSelectedUserSid();
+        if (!string.IsNullOrWhiteSpace(_preferredDefaultSid))
+        {
+            Logger.Log($"[PortalWinProvider] Preferred default SID from registry (SelectedUserSID): '{_preferredDefaultSid}'.");
+            return;
+        }
+
+        // 2. Fallback to LastLoggedOnUserSID
         _preferredDefaultSid = ReadLastLoggedOnUserSid();
         if (!string.IsNullOrWhiteSpace(_preferredDefaultSid))
         {
-            Logger.Log($"[PortalWinProvider] Preferred default SID from registry: '{_preferredDefaultSid}'.");
+            Logger.Log($"[PortalWinProvider] Preferred default SID from registry (LastLoggedOnUserSID): '{_preferredDefaultSid}'.");
         }
 
         foreach (var candidate in ReadLastLoggedOnUserCandidates())
@@ -718,6 +727,22 @@ public class PortalWinProvider : PortalWinProviderBase
                 Logger.Log($"[PortalWinProvider] Preferred default user from registry: '{candidate}' -> canonical='{canonical ?? "null"}', short='{shortUser ?? "null"}'.");
                 return;
             }
+        }
+    }
+
+    private static string? ReadSelectedUserSid()
+    {
+        const string keyPath = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI";
+
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(keyPath);
+            var value = key?.GetValue("SelectedUserSID") as string;
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+        catch
+        {
+            return null;
         }
     }
 
