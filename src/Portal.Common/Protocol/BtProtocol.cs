@@ -99,6 +99,7 @@ public static class BtProtocol
                 "unlock_response" => JsonSerializer.Deserialize<BtUnlockResponse>(span, JsonOptions),
                 "host_unlock_request" => JsonSerializer.Deserialize<BtHostUnlockRequest>(span, JsonOptions),
                 "host_unlock_response" => JsonSerializer.Deserialize<BtHostUnlockResponse>(span, JsonOptions),
+                "host_unlock_cancel" => JsonSerializer.Deserialize<BtHostUnlockCancel>(span, JsonOptions),
                 _ => raw
             };
         }

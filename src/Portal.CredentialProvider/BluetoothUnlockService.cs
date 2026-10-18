@@ -29,6 +29,9 @@ public class BluetoothUnlockService : IDisposable
     private readonly ConcurrentDictionary<string, (Stream stream, StreamSocket socket)> _persistentConnections = new();
     private readonly ConcurrentDictionary<string, PendingApprovalContext> _pendingApprovals = new();
     private readonly AttemptTracker _attemptTracker = new();
+    private readonly object _btPolicyLock = new();
+    private string? _btPolicyOwner;
+    private HashSet<string> _allowedBtClientIds = new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsRunning { get; private set; }
     public string? StartupError { get; private set; }
@@ -36,6 +39,64 @@ public class BluetoothUnlockService : IDisposable
     public event Action<string, SecureString?, string, string?>? UnlockRequested;
     public event Action<string, bool>? BtConnectionChanged;
     public event Action? StatusChanged;
+
+    public void SetHostInitiatedBluetoothPolicy(string ownerKey, IEnumerable<string> allowedClientIds)
+    {
+        var normalizedOwner = string.IsNullOrWhiteSpace(ownerKey) ? "unknown" : ownerKey.Trim();
+        var normalizedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var clientId in allowedClientIds)
+        {
+            if (!string.IsNullOrWhiteSpace(clientId))
+            {
+                normalizedIds.Add(clientId.Trim());
+            }
+        }
+
+        lock (_btPolicyLock)
+        {
+            _btPolicyOwner = normalizedOwner;
+            _allowedBtClientIds = normalizedIds;
+        }
+
+        Logger.Log($"[BtUnlock] Bluetooth tile policy updated for '{normalizedOwner}'. Allowed clientIds: {normalizedIds.Count}.");
+    }
+
+    public bool IsClientAllowedByTilePolicy(string clientId)
+    {
+        lock (_btPolicyLock)
+        {
+            if (_allowedBtClientIds.Count == 0) return true;
+            return _allowedBtClientIds.Contains(clientId);
+        }
+    }
+
+    public async Task CancelHostUnlockRequestAsync(string clientId, string? requestId, CancellationToken ct = default)
+    {
+        if (_pendingApprovals.TryRemove(clientId, out var pending))
+        {
+            pending.Completion.TrySetResult(null);
+            Logger.Log($"[BtUnlock] Cancelled pending approval for client: {clientId} requestId='{pending.RequestId}'");
+        }
+
+        if (_persistentConnections.TryGetValue(clientId, out var conn))
+        {
+            try
+            {
+                var cancelMsg = new BtHostUnlockCancel
+                {
+                    ClientId = clientId,
+                    RequestId = requestId ?? pending?.RequestId
+                };
+                await BtProtocol.SendMessageAsync(conn.stream, cancelMsg, ct);
+                Logger.Log($"[BtUnlock] Sent host_unlock_cancel to client: {clientId} requestId='{cancelMsg.RequestId ?? "none"}'");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning($"[BtUnlock] Failed to send host_unlock_cancel to {clientId}: {ex.Message}");
+            }
+        }
+    }
 
     public async Task StartAsync(CancellationToken ct = default)
     {
@@ -163,6 +224,12 @@ public class BluetoothUnlockService : IDisposable
             return null;
         }
 
+        if (!IsClientAllowedByTilePolicy(clientId))
+        {
+            Logger.LogWarning($"[BtUnlock] Host-initiated unlock request blocked for {clientId}: Not allowed by current tile policy for '{_btPolicyOwner}'.");
+            return null;
+        }
+
         if (!_persistentConnections.TryGetValue(clientId, out var conn))
         {
             Logger.LogWarning($"[BtUnlock] No persistent BT connection for client: {clientId}");
@@ -193,7 +260,27 @@ public class BluetoothUnlockService : IDisposable
             await BtProtocol.SendMessageAsync(conn.stream, request, ct);
             Logger.Log($"[BtUnlock] Sent host-initiated unlock request to client: {clientId} requestId='{effectiveRequestId ?? "none"}' correlationEnabled={correlationEnabled}");
 
-            using (ct.Register(() => pending.Completion.TrySetResult(null)))
+            using (ct.Register(() =>
+            {
+                pending.Completion.TrySetResult(null);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var cancelMsg = new BtHostUnlockCancel
+                        {
+                            ClientId = clientId,
+                            RequestId = effectiveRequestId
+                        };
+                        await BtProtocol.SendMessageAsync(conn.stream, cancelMsg, CancellationToken.None);
+                        Logger.Log($"[BtUnlock] Sent host_unlock_cancel on ct cancellation to client: {clientId} requestId='{effectiveRequestId ?? "none"}'");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogWarning($"[BtUnlock] Failed to send cancel on abort to {clientId}: {ex.Message}");
+                    }
+                });
+            }))
             {
                 var responseStatus = await pending.Completion.Task;
                 if (responseStatus == "ok")
@@ -481,26 +568,7 @@ public class BluetoothUnlockService : IDisposable
     {
         if (!_pendingApprovals.TryGetValue(clientId, out var pending))
         {
-            if (string.Equals(response.Status, "ok", StringComparison.OrdinalIgnoreCase))
-            {
-                Logger.Log($"[BtUnlock] Fallback accepting 'ok' host_unlock_response from {clientId} without registered pending context.");
-                var config = PortalWinConfig.Load();
-                var device = config.FindDeviceByClientId(clientId);
-                if (device != null && device.IsEnabled)
-                {
-                    var account = device.Accounts.FirstOrDefault();
-                    if (account != null && !account.IsExpired)
-                    {
-                        using var securePassword = account.GetDecryptedSecurePassword();
-                        if (securePassword != null && securePassword.Length > 0)
-                        {
-                            Logger.Log($"[BtUnlock] Fallback unlock APPROVED for user: {account.Username} (SID={account.UserSid ?? "none"}) from {device.Name}");
-                            ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Bluetooth.", deviceName: device.Name, transport: "Bluetooth");
-                            UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
-                        }
-                    }
-                }
-            }
+            Logger.LogWarning($"[BtUnlock] Received host_unlock_response for {clientId} but no pending approval was registered (status='{response.Status}', requestId='{response.RequestId}'). Ignored.");
             return;
         }
 
@@ -535,7 +603,7 @@ public class BluetoothUnlockService : IDisposable
         Logger.LogWarning($"[BtUnlock] Accepted legacy host_unlock_response without requestId for {clientId}. expectedRequestId='{pending.RequestId}', ageMs={ageMs:0}.");
     }
 
-    private static Portal.Common.Models.BluetoothDeviceModel ResolveDeviceForUnlockRequest(
+    private Portal.Common.Models.BluetoothDeviceModel ResolveDeviceForUnlockRequest(
         IReadOnlyList<Portal.Common.Models.BluetoothDeviceModel> candidates,
         string? requestedClientId)
     {
@@ -549,6 +617,19 @@ public class BluetoothUnlockService : IDisposable
             }
         }
 
+        lock (_btPolicyLock)
+        {
+            if (_allowedBtClientIds.Count > 0)
+            {
+                var policyMatch = candidates.FirstOrDefault(d => _allowedBtClientIds.Contains(d.ClientId));
+                if (policyMatch != null)
+                {
+                    Logger.Log($"[BtUnlock] Resolved client-initiated unlock candidate '{policyMatch.Name}' ({policyMatch.ClientId}) via active tile policy for '{_btPolicyOwner}'.");
+                    return policyMatch;
+                }
+            }
+        }
+
         return candidates[0];
     }
 
@@ -556,9 +637,47 @@ public class BluetoothUnlockService : IDisposable
         IReadOnlyList<string> aliasClientIds,
         BtHostUnlockResponse response)
     {
-        foreach (var clientId in aliasClientIds)
+        // 1. If response has RequestId, match specifically to the pending approval with that RequestId
+        if (!string.IsNullOrWhiteSpace(response.RequestId))
         {
-            TryAcceptHostUnlockResponse(clientId, response);
+            foreach (var clientId in aliasClientIds)
+            {
+                if (_pendingApprovals.TryGetValue(clientId, out var pending) &&
+                    string.Equals(pending.RequestId, response.RequestId, StringComparison.OrdinalIgnoreCase))
+                {
+                    TryAcceptHostUnlockResponse(clientId, response);
+                    return;
+                }
+            }
+
+            Logger.LogWarning($"[BtUnlock] No pending approval matched requestId='{response.RequestId}' across aliases: {string.Join(", ", aliasClientIds)}. Ignored.");
+            return;
         }
+
+        // 2. Legacy response without RequestId: find which alias has an active pending approval
+        var pendingCandidates = aliasClientIds
+            .Where(cid => _pendingApprovals.ContainsKey(cid))
+            .ToList();
+
+        if (pendingCandidates.Count == 1)
+        {
+            TryAcceptHostUnlockResponse(pendingCandidates[0], response);
+            return;
+        }
+
+        if (pendingCandidates.Count > 1)
+        {
+            var policyMatch = pendingCandidates.FirstOrDefault(cid => IsClientAllowedByTilePolicy(cid));
+            if (policyMatch != null)
+            {
+                TryAcceptHostUnlockResponse(policyMatch, response);
+                return;
+            }
+
+            Logger.LogWarning($"[BtUnlock] Ambiguous legacy host_unlock_response without requestId matches multiple pending approvals ({string.Join(", ", pendingCandidates)}). Ignored to prevent cross-account login.");
+            return;
+        }
+
+        Logger.LogWarning($"[BtUnlock] Received legacy host_unlock_response without requestId for aliases: {string.Join(", ", aliasClientIds)}, but no pending approvals found. Ignored.");
     }
 }

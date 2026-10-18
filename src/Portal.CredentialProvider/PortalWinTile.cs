@@ -796,26 +796,41 @@ public class PortalWinTile : PortalWinTileBase
     private void ApplyHostInitiatedTlsPolicy(PortalWinConfig config, string source)
     {
         var tlsService = CredentialProviderBootstrapper.TlsService;
-        if (tlsService == null)
-        {
-            return;
-        }
+        var btService = CredentialProviderBootstrapper.BtService;
+        var owner = GetTileOwnerKey();
 
         if (!AllowsHostInitiated)
         {
-            tlsService.SetHostInitiatedWebSocketPolicy(GetTileOwnerKey(), Array.Empty<string>());
+            tlsService?.SetHostInitiatedWebSocketPolicy(owner, Array.Empty<string>());
+            btService?.SetHostInitiatedBluetoothPolicy(owner, Array.Empty<string>());
             return;
         }
 
-        var owner = GetTileOwnerKey();
-        var allowedCertHashes = FindHostInitiatedDevices(config)
-            .Select(device => device.CertHash)
-            .Where(hash => !string.IsNullOrWhiteSpace(hash))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var hostInitiatedDevices = FindHostInitiatedDevices(config);
 
-        tlsService.SetHostInitiatedWebSocketPolicy(owner, allowedCertHashes);
-        Logger.Log($"[PortalWinTile] Applied WS TLS policy for owner '{owner}' from source '{source}'. Allowed hashes: {allowedCertHashes.Count}.");
+        if (tlsService != null)
+        {
+            var allowedCertHashes = hostInitiatedDevices
+                .Select(device => device.CertHash)
+                .Where(hash => !string.IsNullOrWhiteSpace(hash))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            tlsService.SetHostInitiatedWebSocketPolicy(owner, allowedCertHashes);
+            Logger.Log($"[PortalWinTile] Applied WS TLS policy for owner '{owner}' from source '{source}'. Allowed hashes: {allowedCertHashes.Count}.");
+        }
+
+        if (btService != null)
+        {
+            var allowedClientIds = hostInitiatedDevices
+                .Select(device => device.ClientId)
+                .Where(cid => !string.IsNullOrWhiteSpace(cid))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            btService.SetHostInitiatedBluetoothPolicy(owner, allowedClientIds);
+            Logger.Log($"[PortalWinTile] Applied Bluetooth tile policy for owner '{owner}' from source '{source}'. Allowed clientIds: {allowedClientIds.Count}.");
+        }
     }
 
     private void OnRequestUnlockClicked()
@@ -1311,6 +1326,12 @@ public class PortalWinTile : PortalWinTileBase
                 var res = await tls.RequestUnlockFromClientAsync(device, requestId, correlationEnabled, ct);
                 Logger.Log($"[Tile] net_request_done clientId={device.ClientId} result={res ?? "null"} elapsedMs={sendTimer.ElapsedMilliseconds} requestId='{requestId}'");
                 if (res != null) return (res, device);
+
+                if (!ct.IsCancellationRequested)
+                {
+                    statusAggregator.Report(UnlockTransportStage.Searching);
+                    try { await Task.Delay(2000, ct); } catch (OperationCanceledException) { break; }
+                }
             }
 
             if (useBluetooth && bt != null && bt.IsClientConnected(device.ClientId))
@@ -1321,6 +1342,12 @@ public class PortalWinTile : PortalWinTileBase
                 var res = await bt.RequestUnlockFromClientAsync(device.ClientId, requestId, correlationEnabled, ct);
                 Logger.Log($"[Tile] bt_request_done clientId={device.ClientId} result={res ?? "null"} elapsedMs={sendTimer.ElapsedMilliseconds} requestId='{requestId}'");
                 if (res != null) return (res, device);
+
+                if (!ct.IsCancellationRequested)
+                {
+                    statusAggregator.Report(UnlockTransportStage.Searching);
+                    try { await Task.Delay(2000, ct); } catch (OperationCanceledException) { break; }
+                }
             }
 
             if (!ct.IsCancellationRequested)

@@ -44,6 +44,7 @@ public partial class MainWindow : Window
         _viewModel.PropertyChanged += ViewModel_PropertyChanged;
         _viewModel.OpenLogsWindowRequested += OnOpenLogsWindowRequested;
         _viewModel.WindowBackdropChanged += OnWindowBackdropChanged;
+        _viewModel.RequestClearPasswordInputs += OnRequestClearPasswordInputs;
 
         Loaded += MainWindow_Loaded;
         SourceInitialized += MainWindow_SourceInitialized;
@@ -97,6 +98,7 @@ public partial class MainWindow : Window
         _viewModel.PropertyChanged -= ViewModel_PropertyChanged;
         _viewModel.OpenLogsWindowRequested -= OnOpenLogsWindowRequested;
         _viewModel.WindowBackdropChanged -= OnWindowBackdropChanged;
+        _viewModel.RequestClearPasswordInputs -= OnRequestClearPasswordInputs;
         CloseUpdateToastWindow();
         CloseLogsWindow();
         _viewModel.OnWindowClosing();
@@ -137,8 +139,33 @@ public partial class MainWindow : Window
         _logsWindow = null;
     }
 
+    private void OnRequestClearPasswordInputs()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (InputPass != null)
+            {
+                InputPass.Password = string.Empty;
+            }
+            if (InputPassVisible != null)
+            {
+                InputPassVisible.Text = string.Empty;
+            }
+            if (InputTwoFactorPin != null)
+            {
+                InputTwoFactorPin.Password = string.Empty;
+            }
+        });
+    }
+
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (string.Equals(e.PropertyName, nameof(MainViewModel.ShowWizard), StringComparison.Ordinal)
+            && !_viewModel.ShowWizard)
+        {
+            OnRequestClearPasswordInputs();
+        }
+
         if (string.Equals(e.PropertyName, nameof(MainViewModel.WizTwoFactorPin), StringComparison.Ordinal)
             && string.IsNullOrEmpty(_viewModel.WizTwoFactorPin) && InputTwoFactorPin != null)
         {

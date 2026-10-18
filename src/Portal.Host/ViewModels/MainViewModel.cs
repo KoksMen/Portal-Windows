@@ -387,6 +387,7 @@ public partial class MainViewModel : ObservableObject
 
     private string? _restoreBackupFilePath;
     public event Action? OpenLogsWindowRequested;
+    public event Action? RequestClearPasswordInputs;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowHostTriggerSelector))]
@@ -605,6 +606,11 @@ public partial class MainViewModel : ObservableObject
     partial void OnWizRequiresTwoFactorPinChanged(bool value)
     {
         OnPropertyChanged(nameof(WizShowTwoFactorPinInput));
+        if (!value)
+        {
+            WizTwoFactorPin = string.Empty;
+            RequestClearPasswordInputs?.Invoke();
+        }
     }
 
     partial void OnWizTwoFactorGracePeriodIndexChanged(int value)
@@ -2288,6 +2294,7 @@ public partial class MainViewModel : ObservableObject
         WizTwoFactorGraceCustomMinutes = "5";
         ShowWizard = false;
         ShowDashboard = false; // Return to Settings
+        RequestClearPasswordInputs?.Invoke();
     }
 
     // --- Commands (Settings actions) ---
@@ -3381,6 +3388,8 @@ public partial class MainViewModel : ObservableObject
         WizTwoFactorGraceCustomMinutes = "5";
         WizTwoFactorPinHint = Services.LocalizationService.T("Enter 4–30 digits or characters.");
 
+        RequestClearPasswordInputs?.Invoke();
+
         return sessionId;
     }
 
@@ -4145,6 +4154,7 @@ public partial class MainViewModel : ObservableObject
                 ShowWizard = false;
                 ShowDashboard = false; // Show settings panel again
                 if (passwordParams is System.Windows.Controls.PasswordBox passBox) passBox.Password = "";
+                RequestClearPasswordInputs?.Invoke();
                 return;
             }
 
@@ -4199,6 +4209,8 @@ public partial class MainViewModel : ObservableObject
                 _pairingContext.TwoFactorGracePeriodMinutes = null;
             }
 
+            if (passwordParams is System.Windows.Controls.PasswordBox passBoxAdd) passBoxAdd.Password = "";
+            RequestClearPasswordInputs?.Invoke();
             _credsSignal?.TrySetResult(true);
         }
         finally
@@ -4284,6 +4296,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         SetShowStep("StepSuccess");
+        RequestClearPasswordInputs?.Invoke();
         await Task.Delay(2000);
         if (IsCurrentWizardSession(sessionId))
         {

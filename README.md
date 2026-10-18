@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">✨ Portal-Windows ✨</h1>
-<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.2) 🪄</h3>
+<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.3) 🪄</h3>
 
 <p align="center">
   <b>Бесшовная, безопасная и мгновенная разблокировка Windows с помощью вашего смартфона или умных часов</b><br>
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.2--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.2-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.3--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.3-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
@@ -113,18 +113,22 @@
 ### 📡 6. Двойной канал связи (Wi-Fi/LAN + Bluetooth)
 - 🚀 **Локальный mTLS WebSocket:** Высокоскоростной обмен пакетами по Wi-Fi / Ethernet с минимальной задержкой (RTT < 15 мс).
 - 📶 **Прямой Bluetooth RFCOMM канал:** Работает автономно при отключенном роутере, отсутствии Wi-Fi или сбоях интернета.
+- 🎯 **Строгая изоляция учетных записей по Bluetooth (Host Policy & RequestId Correlation):** Запросы разблокировки строго коррелируются по уникальному `RequestId` и политике активной плитки. Исключены ложные срабатывания, путаница учетных записей и отправка уведомлений не на тот аккаунт.
+- 🛑 **Двусторонняя отмена запросов (Host Unlock Cancel):** При смене пользователя на экране блокировки или ручном вводе пароля на смартфон отправляется сигнал `host_unlock_cancel`, мгновенно скрывая устаревшее уведомление на телефоне и предотвращая спам.
 - 📊 **Живой индикатор транспорта:** В подробностях плитки выводится активный транспорт и локальный IP-адрес (`Wi-Fi: Активен (192.168.1.5)` / `Bluetooth: Подключён (1)`).
 
 ### 🔍 7. Автоматическое обнаружение сети (Zero-Config mDNS)
 - Компьютер автоматически объявляет о себе в локальной сети по протоколу mDNS (`_portal._tcp.local.`).
 - Мобильное приложение находит ПК моментально без ручного ввода IP-адресов или настройки портов.
 
-### 🌐 8. Динамическая сетевая адаптация (NetworkChange)
+### 🌐 8. Динамическая сетевая адаптация (NetworkChange) и поддержка WireGuard VPN
 - Служба отслеживает системные события `System.Net.NetworkInformation.NetworkChange`.
+- **WireGuard & Wintun VPN Compatibility:** Полная поддержка работы при активном WireGuard/Wintun туннеле (с глобальным маршрутом `0.0.0.0/0`). Виртуальные адаптеры туннелей автоматически исключаются из анонсов mDNS и привязок TLS, а mDNS-ответы направляются юникастом напрямую в физическую локальную подсеть смартфона в обход VPN-шлюза.
 - При переключении между Wi-Fi сетями, точками доступа, проводным Ethernet или VPN слушатели обновляются автоматически, а mDNS-сервис плавно перезапускается.
 
 ### 🪟 9. Эргономичный интерфейс управления (Fluent Design)
 - **Современный UI в стиле Windows 11:** Эффекты размытия Mica Alt & Acrylic, мягкие скругления, динамическая смена светлой и тёмной темы.
+- **Безопасная очистка учетных данных:** Поля ввода пароля и 2FA PIN в мастере добавления и редактирования аккаунтов гарантированно очищаются из UI и оперативной памяти при завершении, отмене или возврате назад.
 - **Живая LSA-валидация паролей:** При запуске приложения и отображении карточек устройств выполняется проверка сохраненного пароля через нативный системный вызов `LogonUserW` с бейджами `[✓ Пароль верен]` или `[✕ Неверный пароль]`.
 - **Интерактивная диагностика:** Кнопка **«⚡ Проверить связь»** для измерения реальной задержки сети (RTT в миллисекундах) с подключенным телефоном.
 - **Экспорт отчёта диагностики в один клик:** Формирование единого ZIP-архива `portal-diagnostics-*.zip` со всеми логами и параметрами для быстрого решения технических вопросов.
@@ -195,53 +199,53 @@
 
 1. **Установите мобильное приложение:**
    - Скачайте клиент из [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) или установите APK из [репозитория Android](https://github.com/xXMRK888YTXx/Portal-Android/releases).
-198: 2. **Скачайте Portal-Windows:**
-199:    - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.9.2-win-x64.zip`.
-200: 3. **Распакуйте и запустите:**
-201:    - Распакуйте архив в постоянный каталог (например, `C:\Program Files\Portal` или в каталог профиля пользователя).
-202:    - Запустите файл `Portal.Host.exe` от имени администратора.
-203: 4. **Активируйте службу:**
-204:    - В открывшемся главном окне нажмите большую кнопку **«СТАРТ»**.
-205:    - Приложение автоматически настроит правила брандмауэра и зарегистрирует COM-библиотеку провайдера.
-206: 5. **Подключите смартфон:**
-207:    - Перейдите на вкладку **Устройства** и нажмите **«+ Добавить устройство»**.
-208:    - На экране появится защищённый одноразовый QR-код.
-209:    - Откройте приложение Portal на смартфоне, нажмите **«Сканировать QR-код»** и наведите камеру на монитор.
-210:    - Задайте имя компьютеру — сопряжение завершено! 🎉
-211: 6. **(Опционально) Настройте 2FA PIN:**
-212:    - В меню карточки устройства нажмите **«Настроить 2FA PIN»** и задайте PIN-код для двухфакторной аутентификации.
-213: 7. **Попробуйте в действии:**
-214:    - Заблокируйте Windows комбинацией клавиш <kbd>Win</kbd> + <kbd>L</kbd>.
-215:    - Вы увидите плитку Portal с живым прогресс-баром ожидания.
-216:    - Подтвердите вход на смартфоне (и введите 2FA PIN при необходимости) — компьютер мгновенно разблокирован! 🪄✨
-217: 
-218: ---
-219: 
-220: ## 💻 Сборка из исходников
-221: 
-222: Для самостоятельной сборки решения:
-223: - **Visual Studio 2022** (версия 17.12+) / **JetBrains Rider** / **.NET 10 SDK**.
-224: - Рабочая нагрузка **.NET Desktop Development** (WPF).
-225: - PowerShell 7+ или Windows PowerShell 5.1.
-226: 
-227: ### Шаги сборки:
-228: 
-229: ```powershell
-230: # 1. Клонирование репозитория
-231: git clone https://github.com/KoksMen/Portal-Windows.git
-232: cd Portal-Windows
-233: 
-234: # 2. Восстановление зависимостей
-235: dotnet restore Portal-Windows.slnx
-236: 
-237: # 3. Сборка решения в конфигурации Release
-238: dotnet build Portal-Windows.slnx -c Release
-239: 
-240: # 4. Сборка чистого релизного пакета с подписью
-241: powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-242: ```
-243: 
-244: Готовые файлы дистрибутива будут собраны в каталоге `dist/`, а готовый архив — в корне репозитория (`PortalWin-1.9.2-win-x64.zip`).
+2. **Скачайте Portal-Windows:**
+   - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.9.3-win-x64.zip`.
+3. **Распакуйте и запустите:**
+   - Распакуйте архив в постоянный каталог (например, `C:\Program Files\Portal` или в каталог профиля пользователя).
+   - Запустите файл `Portal.Host.exe` от имени администратора.
+4. **Активируйте службу:**
+   - В открывшемся главном окне нажмите большую кнопку **«СТАРТ»**.
+   - Приложение автоматически настроит правила брандмауэра и зарегистрирует COM-библиотеку провайдера.
+5. **Подключите смартфон:**
+   - Перейдите на вкладку **Устройства** и нажмите **«+ Добавить устройство»**.
+   - На экране появится защищённый одноразовый QR-код.
+   - Откройте приложение Portal на смартфоне, нажмите **«Сканировать QR-код»** и наведите камеру на монитор.
+   - Задайте имя компьютеру — сопряжение завершено! 🎉
+6. **(Опционально) Настройте 2FA PIN:**
+   - В меню карточки устройства нажмите **«Настроить 2FA PIN»** и задайте PIN-код для двухфакторной аутентификации.
+7. **Попробуйте в действии:**
+   - Заблокируйте Windows комбинацией клавиш <kbd>Win</kbd> + <kbd>L</kbd>.
+   - Вы увидите плитку Portal с живым прогресс-баром ожидания.
+   - Подтвердите вход на смартфоне (и введите 2FA PIN при необходимости) — компьютер мгновенно разблокирован! 🪄✨
+
+---
+
+## 💻 Сборка из исходников
+
+Для самостоятельной сборки решения:
+- **Visual Studio 2022** (версия 17.12+) / **JetBrains Rider** / **.NET 10 SDK**.
+- Рабочая нагрузка **.NET Desktop Development** (WPF).
+- PowerShell 7+ или Windows PowerShell 5.1.
+
+### Шаги сборки:
+
+```powershell
+# 1. Клонирование репозитория
+git clone https://github.com/KoksMen/Portal-Windows.git
+cd Portal-Windows
+
+# 2. Восстановление зависимостей
+dotnet restore Portal-Windows.slnx
+
+# 3. Сборка решения в конфигурации Release
+dotnet build Portal-Windows.slnx -c Release
+
+# 4. Сборка чистого релизного пакета с подписью
+powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
+```
+
+Готовые файлы дистрибутива будут собраны в каталоге `dist/`, а готовый архив — в корне репозитория (`PortalWin-1.9.3-win-x64.zip`).
 
 ---
 
@@ -325,18 +329,22 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 ### 📡 6. Dual-Channel Connectivity (Wi-Fi/LAN + Bluetooth)
 - 🚀 **High-Speed mTLS WebSocket:** Lightning-fast local network packet transfer with sub-15ms round-trip latency.
 - 📶 **Direct Bluetooth RFCOMM:** Direct duplex Bluetooth channel operates autonomously even when routers or Internet access are offline.
+- 🎯 **Strict Account Isolation over Bluetooth (Host Policy & RequestId Correlation):** Unlock requests are strictly correlated by unique `RequestId` and the active tile's device policy. Eliminates false-positive triggers, wrong-account sign-in, and cross-account notification spam.
+- 🛑 **Bidirectional Cancellation Protocol (Host Unlock Cancel):** Switching users on the lock screen or typing a password immediately dispatches a `host_unlock_cancel` message over Bluetooth, instantly dismissing stale prompts on the phone.
 - 📊 **Live Transport Indicator:** Tile details view shows active transport interface and local IP address (`Wi-Fi: Active (192.168.1.5)` / `Bluetooth: Connected (1)`).
 
 ### 🔍 7. Zero-Configuration mDNS Discovery
 - Automatic local network computer announcement using multicast DNS (`_portal._tcp.local.`).
 - Smartphone discovers your PC automatically without requiring static IP configuration.
 
-### 🌐 8. Dynamic Network Adaptation (NetworkChange)
+### 🌐 8. Dynamic Network Adaptation (NetworkChange) & WireGuard VPN Compatibility
 - Powered by `System.Net.NetworkInformation.NetworkChange`.
+- **WireGuard & Wintun VPN Compatibility:** Seamless Wi-Fi unlock even when WireGuard/Wintun default tunnel routes (`0.0.0.0/0`) are active. Tunnel virtual interfaces are automatically excluded from mDNS announcements, and mDNS answers are unicast directly to the phone's physical on-link subnet route, bypassing the VPN tunnel.
 - Smoothly switches active listeners and debounces mDNS re-advertisement when moving between Wi-Fi networks, mobile hotspots, Ethernet, or VPNs.
 
 ### 🪟 9. Ergonomic Fluent UI Management
 - **Modern Windows 11 Design:** Mica Alt & Acrylic backdrops, smooth corner radiuses, and dynamic dark/light theme switching.
+- **Zero-Footprint Credential Hygiene:** Password and 2FA PIN input boxes in the Add/Edit Account wizard are securely cleared from UI controls and memory upon save, cancel, or navigation.
 - **Live LSA Password Validation:** Background audit via native `LogonUserW` verifies saved passwords on startup, showing `[✓ Password valid]` or `[✕ Invalid password]` badges.
 - **Interactive Diagnostics:** **«⚡ Check Connection»** button pings mobile devices and measures real-time Round-Trip Time (RTT latency in milliseconds).
 - **One-Click Diagnostic ZIP Export:** Bundles host logs, provider logs, network interfaces, and environment telemetry into `portal-diagnostics-*.zip`.
@@ -405,52 +413,52 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 
 1. **Install the Mobile Companion App:**
    - Get the app on [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) or download the APK from the [Android Repository](https://github.com/xXMRK888YTXx/Portal-Android/releases).
-408: 2. **Download Portal-Windows:**
-409:    - Grab the latest `PortalWin-1.9.2-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
-410: 3. **Extract & Launch:**
-411:    - Extract to a permanent folder (e.g. `C:\Program Files\Portal`).
-412:    - Run `Portal.Host.exe` as Administrator.
-413: 4. **Start the Service:**
-414:    - Click the prominent **«START»** button on the dashboard to register the Credential Provider with Windows.
-415: 5. **Pair Your Device:**
-416:    - Go to the **Devices** tab and click **«+ Add Device»**.
-417:    - A secure single-use QR code will be generated on your screen.
-418:    - Open Portal on your smartphone, tap **«Scan QR Code»**, and scan your monitor.
-419:    - Name your PC — pairing is complete! 🎉
-420: 6. **(Optional) Enable 2FA PIN:**
-421:    - On the device card, select **«Configure 2FA PIN»** and set a security PIN for two-factor authentication.
-422: 7. **Experience the Magic:**
-423:    - Lock Windows (<kbd>Win</kbd> + <kbd>L</kbd>).
-424:    - See the live progress bar waiting for confirmation.
-425:    - Tap your phone's fingerprint sensor (and enter your 2FA PIN if configured) — Windows unlocks instantly! 🪄✨
-426: 
-427: ---
-428: 
-429: ## 💻 Building from Source
-430: 
-431: To build the project from source, you will need:
-432: - **Visual Studio 2022** (v17.12+) or **JetBrains Rider**, or **.NET 10 SDK**.
-433: - **.NET Desktop Development** workload (WPF).
-434: - PowerShell 7+ or Windows PowerShell 5.1.
-435: 
-436: ### Build Steps:
-437: 
-438: ```powershell
-439: # 1. Clone repository
-440: git clone https://github.com/KoksMen/Portal-Windows.git
-441: cd Portal-Windows
-442: 
-443: # 2. Restore dependencies
-444: dotnet restore Portal-Windows.slnx
-445: 
-446: # 3. Build Release
-447: dotnet build Portal-Windows.slnx -c Release
-448: 
-449: # 4. Package clean release with signing
-450: powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-451: ```
-452: 
-453: The published binaries and Credential Provider COM registration components will be assembled in the `dist/` directory, and the release archive will be located in the repository root (`PortalWin-1.9.2-win-x64.zip`).
+2. **Download Portal-Windows:**
+   - Grab the latest `PortalWin-1.9.3-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
+3. **Extract & Launch:**
+   - Extract to a permanent folder (e.g. `C:\Program Files\Portal`).
+   - Run `Portal.Host.exe` as Administrator.
+4. **Start the Service:**
+   - Click the prominent **«START»** button on the dashboard to register the Credential Provider with Windows.
+5. **Pair Your Device:**
+   - Go to the **Devices** tab and click **«+ Add Device»**.
+   - A secure single-use QR code will be generated on your screen.
+   - Open Portal on your smartphone, tap **«Scan QR Code»**, and scan your monitor.
+   - Name your PC — pairing is complete! 🎉
+6. **(Optional) Enable 2FA PIN:**
+   - On the device card, select **«Configure 2FA PIN»** and set a security PIN for two-factor authentication.
+7. **Experience the Magic:**
+   - Lock Windows (<kbd>Win</kbd> + <kbd>L</kbd>).
+   - See the live progress bar waiting for confirmation.
+   - Tap your phone's fingerprint sensor (and enter your 2FA PIN if configured) — Windows unlocks instantly! 🪄✨
+
+---
+
+## 💻 Building from Source
+
+To build the project from source, you will need:
+- **Visual Studio 2022** (v17.12+) or **JetBrains Rider**, or **.NET 10 SDK**.
+- **.NET Desktop Development** workload (WPF).
+- PowerShell 7+ or Windows PowerShell 5.1.
+
+### Build Steps:
+
+```powershell
+# 1. Clone repository
+git clone https://github.com/KoksMen/Portal-Windows.git
+cd Portal-Windows
+
+# 2. Restore dependencies
+dotnet restore Portal-Windows.slnx
+
+# 3. Build Release
+dotnet build Portal-Windows.slnx -c Release
+
+# 4. Package clean release with signing
+powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
+```
+
+The published binaries and Credential Provider COM registration components will be assembled in the `dist/` directory, and the release archive will be located in the repository root (`PortalWin-1.9.3-win-x64.zip`).
 
 ---
 

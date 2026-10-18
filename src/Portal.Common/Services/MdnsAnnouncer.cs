@@ -68,8 +68,8 @@ public class MdnsAnnouncer : IMdnsAnnouncer
 
             if (!string.IsNullOrEmpty(ipAddress) && IPAddress.TryParse(ipAddress, out var preferredTargetIp))
             {
-                allIps.Clear();
-                allIps.Add(preferredTargetIp);
+                allIps.Remove(preferredTargetIp);
+                allIps.Insert(0, preferredTargetIp);
             }
 
             var hostAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -161,17 +161,37 @@ public class MdnsAnnouncer : IMdnsAnnouncer
 
             Logger.Log($"[MdnsAnnouncer] {_mdns}");
 
-            // Log incoming queries for diagnostics and directly answer host resolution queries
+            // Log incoming queries for diagnostics and directly answer discovery queries via unicast
             _mdns.QueryReceived += (s, e) =>
             {
                 try
                 {
                     var responseRecords = new List<ResourceRecord>();
+                    var profileNameStr = _profile?.FullyQualifiedName.ToString().TrimEnd('.') ?? string.Empty;
+
                     foreach (var q in e.Message.Questions)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[MdnsAnnouncer] Query received: {q.Name} ({q.Type})");
-
                         var qNameStr = q.Name.ToString().TrimEnd('.');
+                        System.Diagnostics.Debug.WriteLine($"[MdnsAnnouncer] Query received: {qNameStr} ({q.Type}) from {e.RemoteEndPoint}");
+
+                        bool isServiceQuery = _profile != null && (
+                            qNameStr.Equals("_portalwin._tcp", StringComparison.OrdinalIgnoreCase)
+                            || qNameStr.Equals("_portalwin._tcp.local", StringComparison.OrdinalIgnoreCase)
+                            || qNameStr.Equals("_services._dns-sd._udp", StringComparison.OrdinalIgnoreCase)
+                            || qNameStr.Equals("_services._dns-sd._udp.local", StringComparison.OrdinalIgnoreCase)
+                            || qNameStr.Equals(profileNameStr, StringComparison.OrdinalIgnoreCase));
+
+                        if (isServiceQuery && _profile != null)
+                        {
+                            foreach (var res in _profile.Resources)
+                            {
+                                if (q.Type == DnsType.ANY || res.Type == q.Type || res is AddressRecord)
+                                {
+                                    responseRecords.Add(res);
+                                }
+                            }
+                        }
+
                         bool isHostMatch = hostAliases.Contains(qNameStr)
                             || hostAliases.Contains($"{qNameStr}.local")
                             || qNameStr.StartsWith(machineName, StringComparison.OrdinalIgnoreCase)
@@ -200,11 +220,20 @@ public class MdnsAnnouncer : IMdnsAnnouncer
                     if (responseRecords.Count > 0)
                     {
                         var response = e.Message.CreateResponse();
-                        response.Answers.AddRange(responseRecords);
-                        _mdns.SendAnswer(response);
-                        foreach (var a in responseRecords)
+                        var distinctRecords = responseRecords
+                            .GroupBy(r => (r.Name.ToString().ToLowerInvariant(), r.Type, r.ToString()))
+                            .Select(g => g.First())
+                            .ToList();
+                        response.Answers.AddRange(distinctRecords);
+
+                        // Direct unicast answer to query.RemoteEndPoint:
+                        // Guarantees delivery to the phone on local Wi-Fi/Ethernet subnet, bypassing WireGuard 0.0.0.0/0 route!
+                        _mdns.SendAnswer(response, e, checkDuplicate: false);
+                        _mdns.SendAnswer(response, checkDuplicate: false);
+
+                        foreach (var a in distinctRecords)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[MdnsAnnouncer] Direct answer sent: {a.Name} ({a.Type}) -> {((AddressRecord)a).Address}");
+                            System.Diagnostics.Debug.WriteLine($"[MdnsAnnouncer] Direct answer sent to {e.RemoteEndPoint}: {a.Name} ({a.Type})");
                         }
                     }
                 }
@@ -295,14 +324,16 @@ public class MdnsAnnouncer : IMdnsAnnouncer
             return false;
         }
 
-        if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel || (int)ni.NetworkInterfaceType == 53)
+        if (vpnCompatibilityModeEnabled)
         {
-            return false;
-        }
-
-        if (IsVirtualOrVpnInterface(ni))
-        {
-            return false;
+            if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel ||
+                (int)ni.NetworkInterfaceType == 53 ||
+                (int)ni.NetworkInterfaceType == 23 ||
+                (int)ni.NetworkInterfaceType == 1 ||
+                IsVirtualOrVpnInterface(ni))
+            {
+                return false;
+            }
         }
 
         return true;

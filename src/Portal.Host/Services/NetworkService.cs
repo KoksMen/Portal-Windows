@@ -219,7 +219,10 @@ public class NetworkService : IDisposable
 
     private static bool IsAdapterVpnCompatible(NetworkInterface ni)
     {
-        if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel)
+        if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel ||
+            (int)ni.NetworkInterfaceType == 53 ||
+            (int)ni.NetworkInterfaceType == 23 ||
+            (int)ni.NetworkInterfaceType == 1)
         {
             return false;
         }
@@ -243,6 +246,12 @@ public class NetworkService : IDisposable
             "NDIS",
             "Wintun",
             "TAP",
+            "TUN",
+            "sing-tun",
+            "sing-box",
+            "ProxyControl",
+            "Proxy",
+            "Tunnel",
             "PPP");
     }
 

@@ -943,6 +943,9 @@ public class TlsUnlockService : IDisposable
         {
             var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
                 .Where(IsAdapterEligibleForAdvertise)
+                .Where(ni => ni.GetIPProperties().UnicastAddresses.Any(ua =>
+                    ua.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                    !IsLinkLocalOrLoopback(ua.Address)))
                 .ToList();
 
             var best = interfaces.FirstOrDefault(ni => ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Ethernet)
@@ -987,7 +990,10 @@ public class TlsUnlockService : IDisposable
             return true;
         }
 
-        if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Tunnel)
+        if (ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Tunnel ||
+            (int)ni.NetworkInterfaceType == 53 ||
+            (int)ni.NetworkInterfaceType == 23 ||
+            (int)ni.NetworkInterfaceType == 1)
         {
             return false;
         }
@@ -1011,6 +1017,12 @@ public class TlsUnlockService : IDisposable
             "NDIS",
             "Wintun",
             "TAP",
+            "TUN",
+            "sing-tun",
+            "sing-box",
+            "ProxyControl",
+            "Proxy",
+            "Tunnel",
             "PPP");
     }
 

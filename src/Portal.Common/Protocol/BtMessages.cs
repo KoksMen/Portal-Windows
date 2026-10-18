@@ -78,3 +78,14 @@ public class BtHostUnlockResponse : BtMessage
     [JsonPropertyName("requestId")]
     public string? RequestId { get; set; }
 }
+
+public class BtHostUnlockCancel : BtMessage
+{
+    public BtHostUnlockCancel() { Type = "host_unlock_cancel"; }
+
+    [JsonPropertyName("clientId")]
+    public string ClientId { get; set; } = string.Empty;
+
+    [JsonPropertyName("requestId")]
+    public string? RequestId { get; set; }
+}
