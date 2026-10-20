@@ -1,7 +1,7 @@
 param(
     [string]$PublishDir = "publish",
     [string]$DistDir = "dist",
-    [string]$Version = "1.9.4"
+    [string]$Version = "1.9.5"
 )
 
 $ErrorActionPreference = "Stop"
@@ -83,12 +83,23 @@ $specificSignings = @(
     @{ Path = Join-Path "$DistDir\Updater" "Portal.Common.dll"; Cert = $commonCertSha1 }
 )
 
+function Invoke-SignBinary {
+    param([string]$FilePath, [string]$CertSha1)
+    $tsa = "http://timestamp.acs.microsoft.com"
+    $cmd = "`"$signTool`" sign /sha1 $CertSha1 /tr $tsa /td sha256 /fd sha256 `"$FilePath`" >nul 2>nul"
+    cmd.exe /c $cmd
+    if ($LASTEXITCODE -ne 0) {
+        $cmdNoTsa = "`"$signTool`" sign /sha1 $CertSha1 /fd sha256 `"$FilePath`" >nul 2>nul"
+        cmd.exe /c $cmdNoTsa
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to sign $FilePath"
+        }
+    }
+}
+
 foreach ($target in $specificSignings) {
     if (Test-Path $target.Path) {
-        & $signTool sign /sha1 $target.Cert /tr $tsaUrl /td sha256 /fd sha256 $target.Path | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to sign $($target.Path)"
-        }
+        Invoke-SignBinary -FilePath $target.Path -CertSha1 $target.Cert
         Write-Host "  [Dedicated] Signed: $(Split-Path $target.Path -Leaf)" -ForegroundColor Green
     }
 }
@@ -100,10 +111,7 @@ foreach ($bin in $allBinaries) {
     $sig = Get-AuthenticodeSignature $bin.FullName
     if ($sig.Status -eq 'NotSigned') {
         Write-Host "  [Common] Signing unsigned binary: $($bin.FullName.Replace((Resolve-Path $DistDir).Path, ''))" -ForegroundColor Yellow
-        & $signTool sign /sha1 $commonCertSha1 /tr $tsaUrl /td sha256 /fd sha256 $bin.FullName | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to sign $($bin.FullName)"
-        }
+        Invoke-SignBinary -FilePath $bin.FullName -CertSha1 $commonCertSha1
     } else {
         $subject = $sig.SignerCertificate.Subject
         Write-Host "  [Verified] Signed: $($bin.Name) ($subject)" -ForegroundColor Green

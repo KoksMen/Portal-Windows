@@ -3,7 +3,7 @@
 </p>
 
 <h1 align="center">✨ Portal-Windows ✨</h1>
-<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.4) 🪄</h3>
+<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.5) 🪄</h3>
 
 <p align="center">
   <b>Бесшовная, безопасная и мгновенная разблокировка Windows с помощью вашего смартфона или умных часов</b><br>
@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.4--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.4-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.5--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.5-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
@@ -200,7 +200,7 @@
 1. **Установите мобильное приложение:**
    - Скачайте клиент из [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) или установите APK из [репозитория Android](https://github.com/xXMRK888YTXx/Portal-Android/releases).
 2. **Скачайте Portal-Windows:**
-   - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.9.4-win-x64.zip`.
+   - Перейдите в раздел [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest) и скачайте архив `PortalWin-1.9.5-win-x64.zip`.
 3. **Распакуйте и запустите:**
    - Распакуйте архив в постоянный каталог (например, `C:\Program Files\Portal` или в каталог профиля пользователя).
    - Запустите файл `Portal.Host.exe` от имени администратора.
@@ -245,7 +245,7 @@ dotnet build Portal-Windows.slnx -c Release
 powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 ```
 
-Готовые файлы дистрибутива будут собраны в каталоге `dist/`, а готовый архив — в корне репозитория (`PortalWin-1.9.4-win-x64.zip`).
+Готовые файлы дистрибутива будут собраны в каталоге `dist/`, а готовый архив — в корне репозитория (`PortalWin-1.9.5-win-x64.zip`).
 
 ---
 
@@ -414,7 +414,7 @@ To pair and unlock your PC, install the companion **Portal** mobile client:
 1. **Install the Mobile Companion App:**
    - Get the app on [**Google Play**](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) or download the APK from the [Android Repository](https://github.com/xXMRK888YTXx/Portal-Android/releases).
 2. **Download Portal-Windows:**
-   - Grab the latest `PortalWin-1.9.4-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
+   - Grab the latest `PortalWin-1.9.5-win-x64.zip` from [**Releases**](https://github.com/KoksMen/Portal-Windows/releases/latest).
 3. **Extract & Launch:**
    - Extract to a permanent folder (e.g. `C:\Program Files\Portal`).
    - Run `Portal.Host.exe` as Administrator.
@@ -458,7 +458,7 @@ dotnet build Portal-Windows.slnx -c Release
 powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 ```
 
-The published binaries and Credential Provider COM registration components will be assembled in the `dist/` directory, and the release archive will be located in the repository root (`PortalWin-1.9.4-win-x64.zip`).
+The published binaries and Credential Provider COM registration components will be assembled in the `dist/` directory, and the release archive will be located in the repository root (`PortalWin-1.9.5-win-x64.zip`).
 
 ---
 

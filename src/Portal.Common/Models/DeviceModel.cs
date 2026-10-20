@@ -178,6 +178,27 @@ public abstract class DeviceModel : INotifyPropertyChanged
     [JsonIgnore]
     public string TwoFactorPinBadgeText => Helpers.Localization.T("2FA PIN");
 
+    public void RefreshLocalizedTexts()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StateText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StateToolTip)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StateBadgeText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TransportBadgeText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AccountLabel)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PairedLabel)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TestButtonText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TestToolTip)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InfoToolTip)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EditToolTip)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PasswordStatusText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PasswordStatusToolTip)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SecretIntegrityBadgeText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SecretIntegrityWarning)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InactivityBadgeText)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InactivityWarning)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(TwoFactorPinBadgeText)));
+    }
+
     public void NotifyAccountPolicyChanged()
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasInactivityIssue)));

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.IO;
@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -530,6 +531,269 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    // --- Application & Provider Icon Customization ---
+    [ObservableProperty] private AppIconPreset _selectedAppIcon = AppIconPreset.Primary;
+    [ObservableProperty] private AppIconPreset _selectedProviderIcon = AppIconPreset.Primary;
+    [ObservableProperty] private string _customAppIconPath = string.Empty;
+    [ObservableProperty] private string _customProviderIconPath = string.Empty;
+
+    public bool IsCustomAppIconSelected => SelectedAppIcon == AppIconPreset.Custom;
+    public bool IsCustomProviderIconSelected => SelectedProviderIcon == AppIconPreset.Custom;
+
+    [ObservableProperty] private ImageSource? _appIconSource;
+    [ObservableProperty] private ImageSource? _providerPreviewSource;
+    [ObservableProperty] private ImageSource? _customAppIconPreview;
+    [ObservableProperty] private ImageSource? _customProviderIconPreview;
+
+    private bool _suppressIconChange;
+
+    partial void OnSelectedAppIconChanged(AppIconPreset value)
+    {
+        OnPropertyChanged(nameof(IsCustomAppIconSelected));
+        ApplyAppIcon(value);
+    }
+
+    partial void OnSelectedProviderIconChanged(AppIconPreset value)
+    {
+        OnPropertyChanged(nameof(IsCustomProviderIconSelected));
+        ApplyProviderIcon(value);
+    }
+
+    private void ApplyAppIcon(AppIconPreset preset)
+    {
+        if (_suppressIconChange) return;
+        if (_config != null)
+        {
+            _config.AppIcon = preset;
+            _config.Save();
+            Logger.Log($"[Settings] App icon changed to: {preset}");
+        }
+        _suppressIconChange = true;
+        SelectedAppIcon = preset;
+        _suppressIconChange = false;
+        OnPropertyChanged(nameof(IsCustomAppIconSelected));
+        UpdateAppIconSource();
+    }
+
+    private void ApplyProviderIcon(AppIconPreset preset)
+    {
+        if (_suppressIconChange) return;
+        if (_config != null)
+        {
+            _config.ProviderIcon = preset;
+            _config.Save();
+            Logger.Log($"[Settings] Provider icon changed to: {preset}");
+        }
+        _suppressIconChange = true;
+        SelectedProviderIcon = preset;
+        _suppressIconChange = false;
+        OnPropertyChanged(nameof(IsCustomProviderIconSelected));
+        UpdateProviderPreviewSource();
+        ExportActiveProviderIconToDisk();
+    }
+
+    private void UpdateAppIconSource()
+    {
+        AppIconSource = LoadIconImageSource(_config?.AppIcon ?? AppIconPreset.Primary, _config?.CustomAppIconPath);
+        if (_config?.AppIcon == AppIconPreset.Custom && !string.IsNullOrEmpty(_config.CustomAppIconPath))
+            CustomAppIconPreview = AppIconSource;
+    }
+
+    private void UpdateProviderPreviewSource()
+    {
+        ProviderPreviewSource = LoadIconImageSource(_config?.ProviderIcon ?? AppIconPreset.Primary, _config?.CustomProviderIconPath);
+        if (_config?.ProviderIcon == AppIconPreset.Custom && !string.IsNullOrEmpty(_config.CustomProviderIconPath))
+            CustomProviderIconPreview = ProviderPreviewSource;
+    }
+
+    private void ExportActiveProviderIconToDisk()
+    {
+        try
+        {
+            var preset = _config?.ProviderIcon ?? AppIconPreset.Primary;
+            byte[]? pngBytes = GetIconBytes(preset, _config?.CustomProviderIconPath);
+            if (pngBytes != null && pngBytes.Length > 0)
+            {
+                var sharedTile = Path.Combine(PortalStoragePaths.ConfigDirectory, "tile-icon.png");
+                File.WriteAllBytes(sharedTile, pngBytes);
+
+                const string localCpTile = @"E:\Software\Portal\CredentialProvider\tile-icon.png";
+                if (Directory.Exists(Path.GetDirectoryName(localCpTile)))
+                {
+                    File.WriteAllBytes(localCpTile, pngBytes);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[Settings] Failed to export tile-icon.png: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseCustomAppIconAsync()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = Services.LocalizationService.T("Select Application Icon"),
+            Filter = Services.LocalizationService.T("Image Files (*.png;*.jpg;*.jpeg;*.ico;*.bmp)|*.png;*.jpg;*.jpeg;*.ico;*.bmp|All Files (*.*)|*.*")
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            try
+            {
+                var ext = Path.GetExtension(dlg.FileName);
+                var sharedPath = Path.Combine(PortalStoragePaths.ConfigDirectory, "custom-app-icon" + ext);
+                File.Copy(dlg.FileName, sharedPath, true);
+                CustomAppIconPath = sharedPath;
+                if (_config != null)
+                {
+                    _config.CustomAppIconPath = sharedPath;
+                }
+                _suppressIconChange = true;
+                SelectedAppIcon = AppIconPreset.Custom;
+                _suppressIconChange = false;
+                ApplyAppIcon(AppIconPreset.Custom);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[Settings] Failed to apply custom app icon", ex);
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Icon Error"), ex.Message);
+            }
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseCustomProviderIconAsync()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = Services.LocalizationService.T("Select Provider Lock Screen Icon"),
+            Filter = Services.LocalizationService.T("Image Files (*.png;*.jpg;*.jpeg;*.ico;*.bmp)|*.png;*.jpg;*.jpeg;*.ico;*.bmp|All Files (*.*)|*.*")
+        };
+        if (dlg.ShowDialog() == true)
+        {
+            try
+            {
+                var ext = Path.GetExtension(dlg.FileName);
+                var sharedPath = Path.Combine(PortalStoragePaths.ConfigDirectory, "custom-provider-icon" + ext);
+                File.Copy(dlg.FileName, sharedPath, true);
+                CustomProviderIconPath = sharedPath;
+                if (_config != null)
+                {
+                    _config.CustomProviderIconPath = sharedPath;
+                }
+                _suppressIconChange = true;
+                SelectedProviderIcon = AppIconPreset.Custom;
+                _suppressIconChange = false;
+                ApplyProviderIcon(AppIconPreset.Custom);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[Settings] Failed to apply custom provider icon", ex);
+                await _dialogService.ShowNotificationAsync(Services.LocalizationService.T("Icon Error"), ex.Message);
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void SyncProviderWithAppIcon()
+    {
+        if (_config == null) return;
+        if (SelectedAppIcon == AppIconPreset.Custom)
+        {
+            CustomProviderIconPath = CustomAppIconPath;
+            _config.CustomProviderIconPath = CustomAppIconPath;
+        }
+        ApplyProviderIcon(SelectedAppIcon);
+    }
+
+    private static ImageSource? LoadIconImageSource(AppIconPreset preset, string? customPath)
+    {
+        try
+        {
+            if (preset == AppIconPreset.Custom)
+            {
+                var sharedCustom = Path.Combine(PortalStoragePaths.ConfigDirectory, "custom-app-icon.png");
+                string? path = !string.IsNullOrWhiteSpace(customPath) && File.Exists(customPath)
+                    ? customPath
+                    : (File.Exists(sharedCustom) ? sharedCustom : null);
+
+                if (path != null)
+                {
+                    var bi = new BitmapImage();
+                    bi.BeginInit();
+                    bi.CacheOption = BitmapCacheOption.OnLoad;
+                    bi.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                    bi.UriSource = new Uri(path, UriKind.Absolute);
+                    bi.EndInit();
+                    bi.Freeze();
+                    return bi;
+                }
+            }
+
+            string packUri = preset switch
+            {
+                AppIconPreset.Tactical => "pack://application:,,,/Assets/icon-tactical.png",
+                AppIconPreset.Casual => "pack://application:,,,/Assets/icon-casual.png",
+                AppIconPreset.Elegance => "pack://application:,,,/Assets/icon-elegance.png",
+                AppIconPreset.Hoodie => "pack://application:,,,/Assets/icon-hoodie.png",
+                AppIconPreset.Alternative => "pack://application:,,,/Assets/icon-alternative.png",
+                AppIconPreset.Classic => "pack://application:,,,/Assets/icon-classic.png",
+                _ => "pack://application:,,,/Assets/icon-primary.png"
+            };
+
+            var resBi = new BitmapImage();
+            resBi.BeginInit();
+            resBi.CacheOption = BitmapCacheOption.OnLoad;
+            resBi.UriSource = new Uri(packUri, UriKind.Absolute);
+            resBi.EndInit();
+            resBi.Freeze();
+            return resBi;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[Settings] Failed to load ImageSource for {preset}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static byte[]? GetIconBytes(AppIconPreset preset, string? customPath)
+    {
+        try
+        {
+            if (preset == AppIconPreset.Custom && !string.IsNullOrWhiteSpace(customPath) && File.Exists(customPath))
+            {
+                return File.ReadAllBytes(customPath);
+            }
+
+            string assetName = preset switch
+            {
+                AppIconPreset.Tactical => "icon-tactical.png",
+                AppIconPreset.Casual => "icon-casual.png",
+                AppIconPreset.Elegance => "icon-elegance.png",
+                AppIconPreset.Hoodie => "icon-hoodie.png",
+                AppIconPreset.Alternative => "icon-alternative.png",
+                AppIconPreset.Classic => "icon-classic.png",
+                _ => "icon-primary.png"
+            };
+
+            var uri = new Uri($"pack://application:,,,/Assets/{assetName}", UriKind.Absolute);
+            var streamInfo = Application.GetResourceStream(uri);
+            if (streamInfo != null)
+            {
+                using var ms = new MemoryStream();
+                streamInfo.Stream.CopyTo(ms);
+                return ms.ToArray();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning($"[Settings] Failed to get icon bytes for {preset}: {ex.Message}");
+        }
+        return null;
+    }
+
     partial void OnCustomWaitingTextChanged(string value)
     {
         if (_suppressCustomWaitingTextChange) return;
@@ -817,6 +1081,7 @@ public partial class MainViewModel : ObservableObject
         RebuildAccountPolicyOptions();
         RefreshActivityJournal();
         UpdateCurrentVersionText = BuildCurrentVersionText();
+        RefreshLocalizedTexts();
         _ = LoadAboutAvatarsAsync();
     }
 
@@ -919,6 +1184,19 @@ public partial class MainViewModel : ObservableObject
         _suppressCustomWaitingTextChange = true;
         CustomWaitingText = _config.CustomWaitingText ?? string.Empty;
         _suppressCustomWaitingTextChange = false;
+
+        _suppressIconChange = true;
+        SelectedAppIcon = _config.AppIcon;
+        CustomAppIconPath = _config.CustomAppIconPath ?? string.Empty;
+        SelectedProviderIcon = _config.ProviderIcon;
+        CustomProviderIconPath = _config.CustomProviderIconPath ?? string.Empty;
+        _suppressIconChange = false;
+
+        OnPropertyChanged(nameof(IsCustomAppIconSelected));
+        OnPropertyChanged(nameof(IsCustomProviderIconSelected));
+
+        UpdateAppIconSource();
+        UpdateProviderPreviewSource();
 
         RefreshDevicesList();
     }
@@ -1151,7 +1429,7 @@ public partial class MainViewModel : ObservableObject
                 IsFirewallOk = isFirewallOk;
                 IsCertOk = isCertOk;
                 IsServiceActive = providerHealth.IsHealthy;
-                ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : "Install";
+                ProviderInstallButtonText = providerHealth.IsHealthy ? Services.LocalizationService.T("Reinstall") : Services.LocalizationService.T("Install");
 
                 ProviderStatusText = IsRegisteredOk
                     ? Services.LocalizationService.T("Installed")
@@ -1510,6 +1788,35 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     private void RefreshLocalizedTexts()
     {
+        // Primary dashboard actions and subtitles
+        StartActivateButtonText = Services.LocalizationService.T("START / ACTIVATE");
+        AddDeviceButtonText = Services.LocalizationService.T("+ Add Another Device");
+        ResetAllButtonText = Services.LocalizationService.T("⚠ Reset & Re-create All");
+        RecentActivityButtonText = Services.LocalizationService.T("✨  Recent Activity");
+        AdvancedSettingsButtonText = Services.LocalizationService.T("⚙  Advanced Settings");
+        AboutPortalButtonText = Services.LocalizationService.T("About Portal");
+        SetupRequiredTitleText = Services.LocalizationService.T("⚠ Setup Required");
+        RemoteUnlockSystemSubtitleText = Services.LocalizationService.T("Remote Unlock System");
+
+        // Settings and maintenance buttons / texts
+        SaveConfigBtnText = Services.LocalizationService.T("Save Configuration");
+        UninstallBtnText = Services.LocalizationService.T("Uninstall Everything");
+        RestoreBackupFileText = string.IsNullOrEmpty(_restoreBackupFilePath)
+            ? Services.LocalizationService.T("No backup file selected")
+            : Path.GetFileName(_restoreBackupFilePath);
+        CertificateInfoTitle = Services.LocalizationService.T("Certificate Information");
+        FaqRefreshButtonText = Services.LocalizationService.T("Update Wiki");
+
+        // Busy operation dialog defaults
+        if (!IsBusyOperationActive)
+        {
+            BusyOperationTitle = Services.LocalizationService.T("Working");
+            BusyOperationStatus = Services.LocalizationService.T("Please wait...");
+        }
+        BusyOperationHintText = Services.LocalizationService.T("Action is in progress. Please wait and avoid interacting with Host until it finishes.");
+        BusyCancelButtonText = Services.LocalizationService.T("Cancel action");
+        UpdateToastTitle = Services.LocalizationService.T("Update available");
+
         // Dashboard / status area (async: MainStatusText, SetupIssue*, ClientCountText, IpAddressText, ProviderInstallButtonText).
         _ = RefreshStatusAsync();
         ProviderStatusText = IsRegisteredOk
@@ -1583,9 +1890,16 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
+        // Devices
+        foreach (var device in Devices)
+        {
+            device.RefreshLocalizedTexts();
+        }
+
         // Activity section (filter/sort options, summary and cards are language-dependent).
         UpdateActivityLanguageOptions();
         RebuildAccountPolicyOptions();
+        RefreshActivityJournal();
     }
 
     public void RebuildAccountPolicyOptions()

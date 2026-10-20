@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="clr-namespace:Portal.Host.Converters"
     xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+    xmlns:models="clr-namespace:Portal.Common.Models;assembly=Portal.Common"
     Title="Portal Manager"
     Width="540"
     Height="760"
@@ -12,7 +13,7 @@
     AllowsTransparency="False"
     Background="Transparent"
     Closing="Window_Closing"
-    Icon="/Assets/portal-icon.png"
+    Icon="{Binding AppIconSource}"
     PreviewKeyDown="Window_PreviewKeyDown"
     ResizeMode="CanResize"
     WindowStyle="None"
@@ -1143,6 +1144,54 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="IconCard" TargetType="RadioButton">
+            <Setter Property="Background" Value="{StaticResource InputBg}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border
+                            x:Name="bd"
+                            Margin="0,0,0,8"
+                            Padding="12,10"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Cursor="Hand">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Ellipse
+                                    x:Name="dot"
+                                    Width="12"
+                                    Height="12"
+                                    Margin="0,0,12,0"
+                                    VerticalAlignment="Center"
+                                    Stroke="{StaticResource AccentBlueBrush}"
+                                    StrokeThickness="1.5" />
+                                <ContentPresenter
+                                    Grid.Column="1"
+                                    VerticalAlignment="Center"
+                                    Content="{TemplateBinding Content}" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBlueBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="#181828" />
+                                <Setter TargetName="dot" Property="Fill" Value="{StaticResource AccentBlueBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBlueBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="WindowControlButton" TargetType="Button">
             <Setter Property="Width" Value="40" />
             <Setter Property="Height" Value="28" />
@@ -1238,10 +1287,10 @@
                     BorderThickness="1"
                     CornerRadius="12">
                     <Image
-                        Margin="6"
+                        Margin="2"
                         RenderOptions.BitmapScalingMode="Fant"
                         SnapsToDevicePixels="True"
-                        Source="/Assets/portal-icon.png"
+                        Source="{Binding AppIconSource}"
                         Stretch="Uniform" />
                 </Border>
 
@@ -1358,7 +1407,7 @@
                             VerticalAlignment="Center"
                             RenderOptions.BitmapScalingMode="HighQuality"
                             SnapsToDevicePixels="True"
-                            Source="/Assets/portal-icon.png"
+                            Source="{Binding AppIconSource}"
                             Stretch="Uniform" />
                     </Border>
 
@@ -3124,8 +3173,221 @@
                         Header="Appearance &amp; Styling"
                         Style="{StaticResource SettingsSectionExpander}">
                         <StackPanel>
+                            <!-- Application Icon Customization -->
                             <TextBlock
-                                Margin="0,0,0,8"
+                                Margin="0,0,0,6"
+                                FontSize="12"
+                                Foreground="{StaticResource TextMuted}"
+                                Text="Application Icon" />
+
+                            <ComboBox
+                                x:Name="AppIconSelector"
+                                SelectedValue="{Binding SelectedAppIcon}"
+                                SelectedValuePath="Tag"
+                                Style="{StaticResource PortalComboBox}">
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Primary}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-primary.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Primary (Officer Girl)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Tactical}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-tactical.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Special Ops (Tactical Girl)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Casual}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-casual.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Casual (Summer Frills)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Elegance}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-elegance.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Elegance (Detailed Frills)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Hoodie}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-hoodie.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Tactical Hoodie" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Alternative}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-alternative.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Tactical Compact" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Classic}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-classic.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Classic (Portal Shield)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Custom}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="{Binding CustomAppIconPreview}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Custom Image..." VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                            </ComboBox>
+
+                            <!-- Custom App Icon path & browse -->
+                            <Grid Margin="0,8,0,0" Visibility="{Binding IsCustomAppIconSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    Grid.Column="0"
+                                    Text="{Binding CustomAppIconPath, Mode=OneWay}"
+                                    IsReadOnly="True"
+                                    Style="{StaticResource DarkTextBox}"
+                                    VerticalAlignment="Center" />
+                                <Button
+                                    Grid.Column="1"
+                                    Content="Browse..."
+                                    Command="{Binding BrowseCustomAppIconCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="12,5"
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Lock Screen Provider Tile Icon Customization -->
+                            <Grid Margin="0,14,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    Foreground="{StaticResource TextMuted}"
+                                    Text="Credential Provider Tile Icon" />
+                                <Button
+                                    Grid.Column="1"
+                                    Content="Sync with Application Icon"
+                                    Command="{Binding SyncProviderWithAppIconCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="8,3"
+                                    FontSize="11" />
+                            </Grid>
+
+                            <ComboBox
+                                x:Name="ProviderIconSelector"
+                                SelectedValue="{Binding SelectedProviderIcon}"
+                                SelectedValuePath="Tag"
+                                Style="{StaticResource PortalComboBox}">
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Primary}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-primary.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Primary (Officer Girl)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Tactical}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-tactical.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Special Ops (Tactical Girl)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Casual}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-casual.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Casual (Summer Frills)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Elegance}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-elegance.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Elegance (Detailed Frills)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Hoodie}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-hoodie.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Tactical Hoodie" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Alternative}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-alternative.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Tactical Compact" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Classic}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="/Assets/icon-classic.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Classic (Portal Shield)" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                                <ComboBoxItem Tag="{x:Static models:AppIconPreset.Custom}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="#141E34" BorderBrush="#385287" BorderThickness="1" Margin="0,0,10,0">
+                                            <Image Source="{Binding CustomProviderIconPreview}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                                        </Border>
+                                        <TextBlock Text="Custom Image..." VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold" FontSize="12" />
+                                    </StackPanel>
+                                </ComboBoxItem>
+                            </ComboBox>
+
+                            <!-- Custom Provider Icon path & browse -->
+                            <Grid Margin="0,8,0,0" Visibility="{Binding IsCustomProviderIconSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    Grid.Column="0"
+                                    Text="{Binding CustomProviderIconPath, Mode=OneWay}"
+                                    IsReadOnly="True"
+                                    Style="{StaticResource DarkTextBox}"
+                                    VerticalAlignment="Center" />
+                                <Button
+                                    Grid.Column="1"
+                                    Content="Browse..."
+                                    Command="{Binding BrowseCustomProviderIconCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="12,5"
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center" />
+                            </Grid>
+                            <TextBlock
+                                Margin="0,16,0,8"
                                 FontSize="12"
                                 Foreground="{StaticResource TextMuted}"
                                 Text="Window Backdrop Material" />

@@ -1,3 +1,4 @@
+﻿using Portal.Common.Models;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -166,29 +167,55 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
     {
         try
         {
-            // Check multiple possible embedded resource names
-            var asm = typeof(PortalWinProviderBase).Assembly;
-            var embeddedCandidates = new[]
-            {
-                "Portal.CredentialProvider.Assets.portal-icon.png",
-                "Portal.CredentialProvider.Assets.tile-icon.bmp",
-                "Portal.CredentialProvider.Assets.tile-icon.png",
-                "Portal.CredentialProvider.Assets.logo.bmp"
-            };
+            var config = PortalWinConfig.Load();
 
-            foreach (var resName in embeddedCandidates)
+            // 1. Check custom provider icon if configured
+            if (config.ProviderIcon == AppIconPreset.Custom)
             {
-                using (var stream = asm.GetManifestResourceStream(resName))
+                var sharedCustom = Path.Combine(PortalStoragePaths.ConfigDirectory, "custom-provider-icon.png");
+                string? customPath = !string.IsNullOrWhiteSpace(config.CustomProviderIconPath) && File.Exists(config.CustomProviderIconPath)
+                    ? config.CustomProviderIconPath
+                    : (File.Exists(sharedCustom) ? sharedCustom : null);
+
+                if (customPath != null)
                 {
-                    if (stream != null)
+                    try
                     {
-                        Logger.Log($"[{GetType().Name}] Logo loaded from embedded resource: {resName}");
-                        using var original = new Bitmap(stream);
+                        Logger.Log($"[{GetType().Name}] Logo loading custom from: {customPath}");
+                        using var original = new Bitmap(customPath);
                         return NormalizeLogoBitmap(original);
+                    }
+                    catch (Exception exCustom)
+                    {
+                        Logger.LogWarning($"[{GetType().Name}] Failed to load custom logo from '{customPath}', falling back: {exCustom.Message}");
                     }
                 }
             }
 
+            // 2. Check embedded preset matching config
+            string preferredRes = config.ProviderIcon switch
+            {
+                AppIconPreset.Tactical => "Portal.CredentialProvider.Assets.icon-tactical.png",
+                AppIconPreset.Casual => "Portal.CredentialProvider.Assets.icon-casual.png",
+                AppIconPreset.Elegance => "Portal.CredentialProvider.Assets.icon-elegance.png",
+                AppIconPreset.Hoodie => "Portal.CredentialProvider.Assets.icon-hoodie.png",
+                AppIconPreset.Alternative => "Portal.CredentialProvider.Assets.icon-alternative.png",
+                AppIconPreset.Classic => "Portal.CredentialProvider.Assets.icon-classic.png",
+                _ => "Portal.CredentialProvider.Assets.icon-primary.png"
+            };
+
+            var asm = typeof(PortalWinProviderBase).Assembly;
+            using (var stream = asm.GetManifestResourceStream(preferredRes))
+            {
+                if (stream != null)
+                {
+                    Logger.Log($"[{GetType().Name}] Logo loaded from embedded preset: {preferredRes}");
+                    using var original = new Bitmap(stream);
+                    return NormalizeLogoBitmap(original);
+                }
+            }
+
+            // 3. Check disk candidates in ConfigDirectory or application base directory
             var appDir = System.AppDomain.CurrentDomain.BaseDirectory ?? "";
             var baseDir = Path.Combine(appDir, "CredentialProvider");
             if (!Directory.Exists(baseDir))
@@ -196,8 +223,9 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
 
             var candidates = new[]
             {
-                Path.Combine(baseDir, "logo.bmp"),
-                Path.Combine(baseDir, "tile-icon.png")
+                Path.Combine(PortalStoragePaths.ConfigDirectory, "tile-icon.png"),
+                Path.Combine(baseDir, "tile-icon.png"),
+                Path.Combine(baseDir, "logo.bmp")
             };
 
             foreach (var path in candidates)
@@ -209,6 +237,27 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
                     return NormalizeLogoBitmap(original);
                 }
             }
+
+            // 4. Fallback to default embedded resources
+            var fallbackCandidates = new[]
+            {
+                "Portal.CredentialProvider.Assets.portal-icon.png",
+                "Portal.CredentialProvider.Assets.tile-icon.png",
+                "Portal.CredentialProvider.Assets.tile-icon.bmp",
+                "Portal.CredentialProvider.Assets.logo.bmp"
+            };
+
+            foreach (var resName in fallbackCandidates)
+            {
+                using var stream = asm.GetManifestResourceStream(resName);
+                if (stream != null)
+                {
+                    Logger.Log($"[{GetType().Name}] Logo loaded from fallback resource: {resName}");
+                    using var original = new Bitmap(stream);
+                    return NormalizeLogoBitmap(original);
+                }
+            }
+
             Logger.LogWarning($"[{GetType().Name}] Logo not found (embedded or external).");
         }
         catch (Exception ex)

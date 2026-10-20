@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Portal.Common.Helpers;
@@ -44,6 +44,27 @@ public class PortalWinConfig
     /// </summary>
     [JsonPropertyName("windowBackdrop")]
     public string WindowBackdrop { get; set; } = "Mica";
+    /// <summary>
+    /// Selected application icon preset: "Primary", "Alternative", "Classic", or "Custom".
+    /// Default: Primary (photo_2026-10-20_06-17-15.jpg).
+    /// </summary>
+    [JsonPropertyName("appIcon")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public AppIconPreset AppIcon { get; set; } = AppIconPreset.Primary;
+
+    [JsonPropertyName("customAppIconPath")]
+    public string? CustomAppIconPath { get; set; }
+
+    /// <summary>
+    /// Selected credential provider (lock screen tile) icon preset: "Primary", "Alternative", "Classic", or "Custom".
+    /// Default: Primary (photo_2026-10-20_06-17-15.jpg).
+    /// </summary>
+    [JsonPropertyName("providerIcon")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public AppIconPreset ProviderIcon { get; set; } = AppIconPreset.Primary;
+
+    [JsonPropertyName("customProviderIconPath")]
+    public string? CustomProviderIconPath { get; set; }
 
     [JsonPropertyName("unlockMode")]
     public UnlockMode UnlockMode { get; set; } = UnlockMode.Both;

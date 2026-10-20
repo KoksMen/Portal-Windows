@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Portal.Common.Helpers;
@@ -580,6 +580,22 @@ public static class Localization
         ,["Opaque dark background. Automatic fallback on Windows 10."] = "Сплошной темный фон. Автоматический режим на Windows 10."
         ,["Windows 11 detected: Native Fluent Mica / Acrylic backdrops active"] = "Обнаружена Windows 11: активны нативные эффекты Mica / Acrylic"
         ,["Windows 10 detected: Solid dark fallback is active (Mica requires Windows 11)"] = "Обнаружена Windows 10: активен сплошной темный фон (Mica доступна только на Windows 11)"
+        ,["Application Icon"] = "Иконка приложения"
+        ,["Credential Provider Tile Icon"] = "Иконка плитки входа (LogonUI)"
+        ,["Primary (Tactical Girl)"] = "Основная (Тактическая)"
+        ,["Alternative (Tactical Girl 2)"] = "Альтернативная (Тактическая 2)"
+        ,["Classic (Portal Shield)"] = "Классическая (Щит Portal)"
+        ,["Custom Image..."] = "Пользовательское изображение..."
+        ,["Browse..."] = "Обзор..."
+        ,["Sync with Application Icon"] = "Синхронизировать с иконкой приложения"
+        ,["Select Application Icon"] = "Выберите иконку приложения"
+        ,["Select Provider Lock Screen Icon"] = "Выберите иконку провайдера разблокировки"
+        ,["Image Files (*.png;*.jpg;*.jpeg;*.ico;*.bmp)|*.png;*.jpg;*.jpeg;*.ico;*.bmp|All Files (*.*)|*.*"] = "Файлы изображений (*.png;*.jpg;*.jpeg;*.ico;*.bmp)|*.png;*.jpg;*.jpeg;*.ico;*.bmp|Все файлы (*.*)|*.*"
+        ,["New primary application icon (photo_2026-10-20_06-17-15.jpg)."] = "Новая основная тактическая иконка (photo_2026-10-20_06-17-15.jpg)."
+        ,["Alternative tactical variant (photo_2026-10-20_06-17-18.jpg)."] = "Альтернативный тактический вариант (photo_2026-10-20_06-17-18.jpg)."
+        ,["Original classic shield icon."] = "Оригинальная классическая иконка щита с замком."
+        ,["Custom image file from your PC (.png, .jpg, .ico, .bmp)."] = "Собственное изображение с компьютера (.png, .jpg, .ico, .bmp)."
+        ,["Choose which icon is displayed on the Windows logon and lock screen tile."] = "Выберите, какая иконка отображается на плитке экрана блокировки и входа Windows."
 
         // --- Credential Provider (lock screen) ---
         ,["PortalWin Remote Unlock"] = "PortalWin — Удалённая разблокировка"

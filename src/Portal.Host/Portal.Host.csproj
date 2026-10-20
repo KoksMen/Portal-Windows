@@ -14,6 +14,13 @@
 
     <ItemGroup>
         <Resource Include="Assets\portal-icon.png" />
+        <Resource Include="Assets\icon-primary.png" />
+        <Resource Include="Assets\icon-tactical.png" />
+        <Resource Include="Assets\icon-casual.png" />
+        <Resource Include="Assets\icon-elegance.png" />
+        <Resource Include="Assets\icon-hoodie.png" />
+        <Resource Include="Assets\icon-alternative.png" />
+        <Resource Include="Assets\icon-classic.png" />
     </ItemGroup>
 
     <PropertyGroup>

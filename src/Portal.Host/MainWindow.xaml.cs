@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -45,6 +45,10 @@ public partial class MainWindow : Window
         _viewModel.OpenLogsWindowRequested += OnOpenLogsWindowRequested;
         _viewModel.WindowBackdropChanged += OnWindowBackdropChanged;
         _viewModel.RequestClearPasswordInputs += OnRequestClearPasswordInputs;
+        if (_viewModel.AppIconSource != null)
+        {
+            Icon = _viewModel.AppIconSource;
+        }
 
         Loaded += MainWindow_Loaded;
         SourceInitialized += MainWindow_SourceInitialized;
@@ -160,6 +164,11 @@ public partial class MainWindow : Window
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (string.Equals(e.PropertyName, nameof(MainViewModel.AppIconSource), StringComparison.Ordinal)
+            && _viewModel.AppIconSource != null)
+        {
+            Dispatcher.Invoke(() => Icon = _viewModel.AppIconSource);
+        }
         if (string.Equals(e.PropertyName, nameof(MainViewModel.ShowWizard), StringComparison.Ordinal)
             && !_viewModel.ShowWizard)
         {
