@@ -10,6 +10,8 @@
 
 # 🇷🇺 Portal-Windows (Русская версия)
 
+[![Website](https://img.shields.io/badge/Website-Portal--Unlock-58a6ff?style=flat&logo=google-chrome&logoColor=white)](https://koksmen.github.io/Portal-Windows/)
+
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows">
     <img src="assets/logo.png" width="132" height="132" alt="Portal-Windows Mascot Logo" style="border-radius: 28px; box-shadow: 0 8px 24px rgba(124, 77, 255, 0.35);" />
@@ -399,6 +401,8 @@ powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 <a id="english"></a>
 
 # 🇬🇧 Portal-Windows (English Version)
+
+[![Website](https://img.shields.io/badge/Website-Portal--Unlock-58a6ff?style=flat&logo=google-chrome&logoColor=white)](https://koksmen.github.io/Portal-Windows/)
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows">

@@ -1,0 +1,1942 @@
+<!doctype html>
+<html lang="ru" data-lang="ru" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Portal — Мгновенная биометрическая разблокировка Windows с телефона и смарт-часов</title>
+  <meta name="description" content="Portal превращает смартфон и часы Wear OS в защищённый аппаратный ключ от Windows 10/11. Разблокировка экрана входа LogonUI и диалогов UAC без ввода пароля. Zero-Cloud, mTLS, LSA Secret Store.">
+  <meta name="keywords" content="Portal, Windows unlock, разблокировка windows, credential provider, биометрия windows, wear os unlock, android pc unlock, zero-cloud, mtls, uac bypass">
+  <meta name="theme-color" content="#060913">
+
+  <!-- Open Graph / Social Cards -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Portal — Мгновенная разблокировка Windows с телефона и смарт-часов">
+  <meta property="og:description" content="Бесшовная биометрическая разблокировка Windows и окон UAC без ручного ввода пароля. 100% P2P, Zero-Cloud, mTLS.">
+  <meta property="og:image" content="assets/logo.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Portal Unlock — Instant Biometric Windows Access">
+  <meta name="twitter:description" content="Turn your phone and Wear OS watch into a wireless hardware security key for Windows. Zero-cloud, open source GPL-3.0.">
+  <meta name="twitter:image" content="assets/logo.png">
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="apple-touch-icon" href="assets/logo.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+
+  <style>
+    /* ==========================================================================
+       CSS Variables: Dark & Light Themes
+       ========================================================================== */
+    :root, :root[data-theme="dark"] {
+      --bg: #060913;
+      --bg-2: #0b1226;
+      --surface: #0e1730;
+      --surface-card: #121c38;
+      --surface-hover: #172447;
+      --line: rgba(160, 185, 255, 0.14);
+      --line-bright: rgba(160, 185, 255, 0.28);
+      --fg: #eaf0ff;
+      --fg-dim: #9aa7c7;
+      --blue: #58a6ff;
+      --blue-deep: #3864dc;
+      --violet: #9850e6;
+      --ok: #4cd964;
+      --ok-glow: rgba(76, 217, 100, 0.25);
+      --glow-a: rgba(56, 100, 220, 0.35);
+      --glow-b: rgba(152, 80, 230, 0.22);
+      --btn-fg: #ffffff;
+      --card-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+      --device-bezel: #000000;
+      --font-display: 'Unbounded', 'Onest', system-ui, sans-serif;
+      --font-body: 'Onest', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+      color-scheme: dark;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f4f6fc;
+      --bg-2: #e8ecf8;
+      --surface: #ffffff;
+      --surface-card: #f9faff;
+      --surface-hover: #f0f4ff;
+      --line: rgba(30, 50, 110, 0.12);
+      --line-bright: rgba(30, 50, 110, 0.25);
+      --fg: #0a1128;
+      --fg-dim: #4d5b7c;
+      --blue: #235cd6;
+      --blue-deep: #1e4bc4;
+      --violet: #7838d0;
+      --ok: #158838;
+      --ok-glow: rgba(21, 136, 56, 0.2);
+      --glow-a: rgba(56, 100, 220, 0.12);
+      --glow-b: rgba(152, 80, 230, 0.08);
+      --btn-fg: #ffffff;
+      --card-shadow: 0 12px 30px rgba(30, 50, 110, 0.08);
+      --device-bezel: #0b0f19;
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: 16.5px;
+      line-height: 1.58;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+      padding-block: 0;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(900px 600px at 12% -5%, var(--glow-a), transparent 70%),
+        radial-gradient(800px 600px at 100% 30%, var(--glow-b), transparent 70%);
+      background-repeat: no-repeat;
+      transition: background-color .25s ease, color .25s ease;
+    }
+
+    a { color: inherit; }
+    img { display: block; max-width: 100%; height: auto; }
+    .w { max-width: 1140px; margin-inline: auto; }
+
+    /* ==========================================================================
+       Language Switcher (CSS Zero-Flicker & Guaranteed Display)
+       ========================================================================== */
+    html:not([data-lang="en"]) [data-l="en"] {
+      display: none !important;
+    }
+    html[data-lang="en"] [data-l="ru"] {
+      display: none !important;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: var(--font-display);
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1.2;
+      text-wrap: balance;
+      margin: 0;
+    }
+    h2 { font-size: clamp(24px, 3.2vw, 38px); }
+    h3 { font-size: 18px; font-weight: 600; }
+    p { margin: 0; }
+    .dim { color: var(--fg-dim); }
+    .mono { font-family: var(--font-mono); }
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      display: inline-block;
+    }
+
+    /* ==========================================================================
+       Navigation Bar & Controls (Ergonomic, No Collisions)
+       ========================================================================== */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: color-mix(in srgb, var(--bg) 85%, transparent);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+      padding-inline: max(16px, env(safe-area-inset-left, 0px));
+      border-bottom: 1px solid var(--line);
+      transition: background-color .25s ease, border-color .25s ease;
+    }
+    .nav .w {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 68px;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      box-shadow: 0 4px 14px rgba(124, 77, 255, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .brand-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(124, 77, 255, 0.15);
+      color: var(--violet);
+      border: 1px solid rgba(124, 77, 255, 0.28);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-left: auto;
+      margin-right: 12px;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--fg-dim);
+      transition: color .15s ease;
+      white-space: nowrap;
+    }
+    .nav-links a:hover { color: var(--fg); }
+
+    /* Controls Group (Theme + Lang + Mobile Hamburger) */
+    .nav-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 60%, transparent);
+      color: var(--fg);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      cursor: pointer;
+      transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+    }
+    .theme-toggle:hover {
+      border-color: var(--blue);
+      transform: scale(1.05);
+    }
+
+    .lang-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 3px;
+      background: color-mix(in srgb, var(--surface) 60%, transparent);
+      height: 36px;
+    }
+    .lang-pill button {
+      font: inherit;
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+      background: none;
+      border: 0;
+      color: var(--fg-dim);
+      padding: 4px 11px;
+      border-radius: 999px;
+      cursor: pointer;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color .15s ease, color .15s ease;
+    }
+    .lang-pill button:hover { color: var(--fg); }
+    .lang-pill button[aria-pressed="true"] {
+      background: var(--blue-deep);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .mob-menu-btn {
+      display: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--surface) 60%, transparent);
+      color: var(--fg);
+      font-size: 18px;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* Mobile Drawer Menu */
+    .mob-drawer {
+      display: none;
+      position: fixed;
+      top: 68px;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      padding: 16px 24px;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 99;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+    }
+    .mob-drawer.open { display: flex; }
+    .mob-drawer a {
+      text-decoration: none;
+      color: var(--fg);
+      font-size: 15.5px;
+      font-weight: 500;
+      padding-block: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    @media (max-width: 960px) {
+      .nav-links { display: none; }
+      .mob-menu-btn { display: inline-flex; }
+    }
+
+    /* ==========================================================================
+       Buttons & Ergonomics (Consistent Height, Clean Alignments)
+       ========================================================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      height: 48px;
+      padding-inline: 18px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+    }
+    .btn-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue-deep), var(--violet));
+      color: var(--btn-fg);
+      box-shadow: 0 10px 28px -10px var(--violet);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px -8px var(--violet);
+    }
+    .btn-ghost {
+      border-color: var(--line);
+      background: color-mix(in srgb, var(--surface) 60%, transparent);
+      color: var(--fg);
+    }
+    .btn-ghost:hover {
+      border-color: var(--blue);
+      transform: translateY(-2px);
+      background: var(--surface);
+    }
+    .btn-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      margin-left: 2px;
+    }
+
+    /* ==========================================================================
+       Hero Section & Motif Strip
+       ========================================================================== */
+    .hero {
+      padding-block: clamp(40px, 7vw, 84px) clamp(36px, 5vw, 64px);
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+      gap: clamp(28px, 4.5vw, 56px);
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: minmax(0, 1fr); }
+    }
+    .hero h1 {
+      font-size: clamp(30px, 4.4vw, 52px);
+      margin-block: 16px 18px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, var(--blue), var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .hero .lead {
+      font-size: clamp(16.5px, 1.5vw, 19.5px);
+      color: var(--fg-dim);
+      max-width: 35em;
+    }
+    .cta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-top: 28px;
+    }
+    @media (min-width: 901px) {
+      .cta {
+        flex-wrap: nowrap;
+      }
+    }
+    @media (max-width: 640px) {
+      .cta {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+      }
+      .cta .btn {
+        width: 100%;
+      }
+    }
+    .facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 24px;
+      font-size: 13.5px;
+      color: var(--fg-dim);
+    }
+    .facts > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .facts > span::before {
+      content: "✓";
+      color: var(--ok);
+      font-weight: 700;
+    }
+
+    /* Signature Motif: Terminal Countdown Strip */
+    .strip {
+      margin-top: 28px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: clamp(12.5px, 1.8vw, 16px);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 18px;
+      background: color-mix(in srgb, var(--surface) 75%, transparent);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 480px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      user-select: none;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .15s ease;
+    }
+    .strip:hover {
+      border-color: var(--blue);
+      transform: translateY(-1px);
+    }
+    .strip.done {
+      border-color: var(--ok);
+      box-shadow: 0 10px 24px var(--ok-glow);
+    }
+    .strip .row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .strip .bar {
+      letter-spacing: 0;
+      color: var(--blue);
+      transition: color .2s ease;
+    }
+    .strip.done .bar { color: var(--ok); }
+    .strip .t {
+      color: var(--fg);
+      min-width: 3.4em;
+      text-align: center;
+    }
+    .strip .st {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--fg-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: color .2s ease;
+    }
+    .strip.done .st {
+      color: var(--ok);
+      font-weight: 700;
+    }
+    .strip .hint {
+      font-size: 11px;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--blue);
+      opacity: 0.85;
+    }
+
+    .shot {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      background: var(--device-bezel);
+      box-shadow: 0 30px 80px -30px var(--glow-b), 0 0 0 1px rgba(255,255,255,0.02) inset;
+    }
+    .shot img {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+    }
+
+    /* Sections */
+    section, footer { scroll-margin-top: 76px; }
+    section {
+      padding-block: clamp(48px, 6vw, 84px);
+      border-top: 1px solid var(--line);
+    }
+    .sec-head {
+      max-width: 44em;
+      margin-bottom: clamp(24px, 4vw, 44px);
+      display: grid;
+      gap: 14px;
+    }
+    .sec-head p {
+      color: var(--fg-dim);
+      font-size: 17.5px;
+    }
+
+    /* Steps */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+      gap: 16px;
+      counter-reset: s;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .steps li {
+      counter-increment: s;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      background: color-mix(in srgb, var(--surface) 55%, transparent);
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      min-width: 0;
+      transition: border-color .2s ease;
+    }
+    .steps li:hover { border-color: var(--line-bright); }
+    .steps li::before {
+      content: counter(s, decimal-leading-zero);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--blue);
+      font-size: 14px;
+    }
+    .steps p {
+      color: var(--fg-dim);
+      font-size: 14.5px;
+    }
+
+    /* Splits */
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+      gap: clamp(24px, 4vw, 56px);
+      align-items: center;
+    }
+    .split.rev {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    }
+    @media (max-width: 900px) {
+      .split, .split.rev { grid-template-columns: minmax(0, 1fr); }
+      .split.rev .shot { order: 2; }
+    }
+
+    /* Lists */
+    .list {
+      display: grid;
+      gap: 18px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .list li {
+      display: grid;
+      gap: 4px;
+      padding-left: 18px;
+      border-left: 2px solid var(--line);
+      min-width: 0;
+      transition: border-left-color .15s ease;
+    }
+    .list li:hover { border-left-color: var(--blue); }
+    .list b { font-weight: 600; color: var(--fg); font-size: 15.5px; }
+    .list span { color: var(--fg-dim); font-size: 14.5px; }
+
+    /* Modes */
+    .modes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .mode {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      background: color-mix(in srgb, var(--surface) 55%, transparent);
+      transition: border-color .2s ease;
+    }
+    .mode:hover { border-color: var(--line-bright); }
+    .mode .tag {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--violet);
+      font-weight: 600;
+    }
+    .mode p { color: var(--fg-dim); font-size: 14.5px; }
+
+    
+    .pair-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px 28px;
+      align-items: start;
+    }
+    .pair-grid .sec-head {
+      margin-bottom: 0;
+    }
+    @media (max-width: 860px) {
+      .pair-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+      .pair-grid .head-uac { order: 1; }
+      .pair-grid .shot-uac { order: 2; }
+      .pair-grid .head-conn { order: 3; }
+      .pair-grid .shot-conn { order: 4; }
+    }
+
+    .pair {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px;
+      align-items: stretch;
+    }
+    @media (max-width: 860px) {
+      
+    .pair-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px 28px;
+      align-items: start;
+    }
+    .pair-grid .sec-head {
+      margin-bottom: 0;
+    }
+    @media (max-width: 860px) {
+      .pair-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+      .pair-grid .head-uac { order: 1; }
+      .pair-grid .shot-uac { order: 2; }
+      .pair-grid .head-conn { order: 3; }
+      .pair-grid .shot-conn { order: 4; }
+    }
+
+    .pair {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+    .pair-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .pair-col .sec-head {
+      display: flex;
+      flex-direction: column;
+      flex: 1 0 auto;
+      margin-bottom: 20px;
+    }
+    .pair-col .sec-head h2 {
+      min-height: 2.6em;
+      margin-block: 10px 14px;
+    }
+    .pair-col .sec-head p {
+      min-height: 3.2em;
+      margin: 0;
+    }
+    .pair-col .shot {
+      margin-top: auto;
+    }
+
+    /* ==========================================================================
+       Ecosystem Interfaces (Balanced, Proportionate, Device-Bezel Enclosed)
+       ========================================================================== */
+    .showcase-block {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+    .platform-card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: color-mix(in srgb, var(--surface) 60%, transparent);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      box-shadow: var(--card-shadow);
+    }
+    .platform-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .platform-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    /* Windows Dual Mockup */
+    .win-mockup-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+      gap: 20px;
+      align-items: center;
+    }
+    @media (max-width: 860px) {
+      .win-mockup-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    .win-frame {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--device-bezel);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+    }
+    .win-frame-bar {
+      height: 28px;
+      background: color-mix(in srgb, var(--surface) 90%, #000);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      padding-inline: 12px;
+      gap: 6px;
+    }
+    .win-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(160, 185, 255, 0.25);
+    }
+    .win-frame-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--fg-dim);
+      margin-left: 6px;
+    }
+    .win-frame img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+
+    /* Phones Strip (3 phones with exact smartphone proportions) */
+    .phones-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+    }
+    @media (max-width: 760px) {
+      .phones-grid { grid-template-columns: minmax(0, 1fr); max-width: 320px; margin-inline: auto; }
+    }
+    .phone-item {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .phone-shell {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      background: var(--surface-card);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .phone-shell:hover {
+      transform: translateY(-4px);
+      border-color: var(--blue);
+      box-shadow: 0 20px 44px rgba(56, 100, 220, 0.2);
+    }
+    .phone-shell img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .phone-cap {
+      font-size: 13.5px;
+      color: var(--fg-dim);
+      text-align: center;
+    }
+
+    /* Wear OS Strip (4 clean round smartwatches) */
+    .watches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 20px;
+      text-align: center;
+    }
+    .watch-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .watch-bezel {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 3px solid var(--line);
+      background: var(--device-bezel);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+    .watch-bezel img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .watch-cap {
+      font-size: 13px;
+      color: var(--fg-dim);
+    }
+
+    /* Comparison Matrix */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--surface) 60%, transparent);
+      box-shadow: var(--card-shadow);
+    }
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14.5px;
+      min-width: 640px;
+    }
+    .matrix-table th, .matrix-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .matrix-table th {
+      background: color-mix(in srgb, var(--surface) 80%, transparent);
+      font-family: var(--font-display);
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .matrix-table tr:last-child td { border-bottom: none; }
+    .matrix-table td.brand-col {
+      background: rgba(56, 100, 220, 0.12);
+      font-weight: 600;
+      color: var(--blue);
+    }
+
+    /* Download */
+    .dl {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+      gap: 20px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 28px;
+      background: color-mix(in srgb, var(--surface) 70%, transparent);
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      min-width: 0;
+      box-shadow: var(--card-shadow);
+    }
+    .card h3 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .card ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--fg-dim);
+      font-size: 14.5px;
+      display: grid;
+      gap: 6px;
+    }
+    .card .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    /* Fingerprint Block */
+    .fp {
+      margin-top: 22px;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+      background: color-mix(in srgb, var(--surface) 40%, transparent);
+    }
+    .fp code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      word-break: break-all;
+      color: var(--fg);
+      background: var(--bg-2);
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: block;
+      user-select: all;
+      border: 1px solid var(--line);
+    }
+    .copy {
+      font: inherit;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      background: none;
+      color: var(--blue);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      justify-self: start;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .15s ease;
+    }
+    .copy:hover {
+      border-color: var(--blue);
+      background: rgba(56, 100, 220, 0.1);
+    }
+    .copy.copied {
+      border-color: var(--ok) !important;
+      color: var(--ok) !important;
+      background: var(--ok-glow) !important;
+    }
+
+    /* FAQ */
+    details {
+      border-top: 1px solid var(--line);
+      padding-block: 4px;
+    }
+    details:last-of-type { border-bottom: 1px solid var(--line); }
+    summary {
+      cursor: pointer;
+      list-style: none;
+      padding-block: 16px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 16px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+";
+      font-family: var(--font-mono);
+      color: var(--blue);
+      font-size: 20px;
+      line-height: 1;
+    }
+    details[open] summary::after { content: "–"; }
+    details p {
+      color: var(--fg-dim);
+      padding-bottom: 18px;
+      max-width: 46em;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--line);
+      padding-block: 36px 48px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 28px;
+      align-items: center;
+      color: var(--fg-dim);
+      font-size: 14px;
+    }
+    footer a { text-decoration: none; }
+    footer a:hover { color: var(--fg); }
+    footer .sp { margin-left: auto; }
+
+    /* Floating Back-to-Top */
+    .btt {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      color: var(--fg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(12px);
+      transition: all .25s ease;
+      z-index: 90;
+    }
+    .btt.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .btt:hover {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .btn, .strip { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation Header -->
+<header class="nav" role="banner">
+  <div class="w">
+    <a class="brand" href="#top">
+      <img src="assets/logo.png" alt="Portal Logo" width="36" height="36">
+      <span>Portal</span>
+      <span class="brand-tag">v1.9.5 Herta</span>
+    </a>
+
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#how"><span data-l="ru">Как работает</span><span data-l="en">How it works</span></a>
+      <a href="#modes"><span data-l="ru">Режимы</span><span data-l="en">Modes</span></a>
+      <a href="#screens"><span data-l="ru">Интерфейс</span><span data-l="en">Interface</span></a>
+      <a href="#setup"><span data-l="ru">Настройка</span><span data-l="en">Setup</span></a>
+      <a href="#everywhere"><span data-l="ru">Возможности</span><span data-l="en">Features</span></a>
+      <a href="#security"><span data-l="ru">Безопасность</span><span data-l="en">Security</span></a>
+      <a href="#compare"><span data-l="ru">Сравнение</span><span data-l="en">Compare</span></a>
+      <a href="#download"><span data-l="ru">Скачать</span><span data-l="en">Download</span></a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <!-- Controls (Theme Toggle + Language Pill + Mobile Hamburger) -->
+    <div class="nav-controls">
+      <button type="button" class="theme-toggle" id="theme-btn" aria-label="Toggle Theme" title="Сменить тему / Toggle Theme">
+        <span id="theme-icon">☀️</span>
+      </button>
+
+      <div class="lang-pill" role="group" aria-label="Language">
+        <button type="button" id="b-ru" aria-pressed="true">RU</button>
+        <button type="button" id="b-en" aria-pressed="false">EN</button>
+      </div>
+
+      <button type="button" class="mob-menu-btn" id="mob-btn" aria-label="Toggle navigation menu">
+        ☰
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Drawer Menu -->
+  <div class="mob-drawer" id="mob-drawer">
+    <a href="#how" class="mob-item"><span data-l="ru">Как работает</span><span data-l="en">How it works</span></a>
+    <a href="#modes" class="mob-item"><span data-l="ru">Режимы разблокировки</span><span data-l="en">Unlock Modes</span></a>
+    <a href="#screens" class="mob-item"><span data-l="ru">Интерфейс экосистемы</span><span data-l="en">Ecosystem Interface</span></a>
+    <a href="#setup" class="mob-item"><span data-l="ru">Быстрая настройка</span><span data-l="en">Quick Setup</span></a>
+    <a href="#everywhere" class="mob-item"><span data-l="ru">UAC и каналы связи</span><span data-l="en">UAC & Connectivity</span></a>
+    <a href="#security" class="mob-item"><span data-l="ru">Архитектура безопасности</span><span data-l="en">Security Architecture</span></a>
+    <a href="#compare" class="mob-item"><span data-l="ru">Сравнение решений</span><span data-l="en">Comparison Matrix</span></a>
+    <a href="#download" class="mob-item"><span data-l="ru">Скачать клиенты</span><span data-l="en">Download Clients</span></a>
+    <a href="#faq" class="mob-item">FAQ</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- Hero Section -->
+  <div class="w">
+    <div class="hero">
+      <div>
+        <div class="eyebrow">
+          <span>Windows · Android · Wear OS</span>
+        </div>
+        <h1>
+          <span data-l="ru">Откройте ПК <em>отпечатком</em>, а не паролем</span>
+          <span data-l="en">Unlock your PC with a <em>fingerprint</em>, not a password</span>
+        </h1>
+        <p class="lead">
+          <span data-l="ru">Portal превращает телефон и часы в защищённый беспроводной ключ от Windows. Работает на системном экране входа LogonUI и в диалогах UAC — без серверов, рекламы и подписок.</span>
+          <span data-l="en">Portal turns your phone and watch into a secure wireless key for Windows. It works directly on the LogonUI sign-in screen and in UAC prompts, with no cloud, no ads, and no subscriptions.</span>
+        </p>
+
+        <!-- Ergonomic Aligned Hero CTA Buttons -->
+        <div class="cta">
+          <a class="btn btn-primary" href="#download">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.401H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.951-1.951"/>
+            </svg>
+            <span data-l="ru">Скачать для Windows</span>
+            <span data-l="en">Get for Windows</span>
+            <span class="btn-badge">v1.9.5</span>
+          </a>
+
+          <a class="btn btn-ghost" href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal" target="_blank" rel="noopener">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.609 1.814L13.792 12 3.61 22.186a2.38 2.38 0 01-.61-.954V2.768c.15-.36.368-.691.61-.954zm11.24 11.24l2.128 2.129-11.77 6.643 9.642-8.772zm0-2.108L5.207 2.174l11.77 6.643-2.128 2.129zm1.488 1.054l3.197 1.804c1.173.662 1.173 1.744 0 2.406l-3.197 1.804-1.854-1.855 1.854-1.854v-.305z"/>
+            </svg>
+            <span>Google Play</span>
+          </a>
+
+          <a class="btn btn-ghost" href="https://github.com/KoksMen/Portal-Windows" target="_blank" rel="noopener">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            <span>GitHub</span>
+          </a>
+        </div>
+
+        <div class="facts">
+          <span><span data-l="ru">100% Бесплатно</span><span data-l="en">100% Free</span></span>
+          <span><span data-l="ru">Открытый код, GPL-3.0</span><span data-l="en">Open source, GPL-3.0</span></span>
+          <span><span data-l="ru">Zero-Cloud (локально и BT)</span><span data-l="en">Zero-Cloud (LAN & BT)</span></span>
+          <span><span data-l="ru">LSA Secret Store</span><span data-l="en">LSA Secret Store</span></span>
+        </div>
+
+        
+      </div>
+
+      <!-- Hero Visual GIF -->
+      <div class="shot">
+        <img data-l="ru" src="assets/anim/win-unlock.ru.gif" width="720" height="405" alt="Экран входа Windows: прогресс-бар, запрос на телефоне, отпечаток, ПК открыт">
+        <img data-l="en" src="assets/anim/win-unlock.en.gif" width="720" height="405" alt="Windows sign-in screen: progress bar, request on the phone, fingerprint, PC unlocked">
+      </div>
+    </div>
+  </div>
+
+  <div class="w">
+    <!-- Section 1: How it works -->
+    <section id="how">
+      <div class="sec-head">
+        <div class="eyebrow"><span data-l="ru">Как это работает</span><span data-l="en">How it works</span></div>
+        <h2><span data-l="ru">Три шага от блокировки до рабочего стола</span><span data-l="en">Three steps from lock screen to desktop</span></h2>
+      </div>
+
+      <ol class="steps">
+        <li>
+          <h3><span data-l="ru">ПК ждёт подтверждения</span><span data-l="en">The PC waits for approval</span></h3>
+          <p><span data-l="ru">На системной плитке пользователя появляется живая шкала с таймером. Windows заблокирован, пароль вводить не нужно.</span><span data-l="en">A live progress bar with a timer appears on the user tile. Windows stays locked and you type nothing.</span></p>
+        </li>
+        <li>
+          <h3><span data-l="ru">Запрос приходит на телефон и часы</span><span data-l="en">The request reaches your phone and watch</span></h3>
+          <p><span data-l="ru">Всплывает окно «Unlock Request». Ответить можно на любом устройстве: кто первый ответил, тот и решает.</span><span data-l="en">An “Unlock Request” appears. Answer on either device: the first decision wins.</span></p>
+        </li>
+        <li>
+          <h3><span data-l="ru">Отпечаток — и ПК открыт</span><span data-l="en">A fingerprint, and the PC opens</span></h3>
+          <p><span data-l="ru">Телефон подтверждает вас биометрией, и рабочий стол мгновенно разблокируется за доли секунды.</span><span data-l="en">Your phone confirms you with biometrics and the desktop unlocks in seconds.</span></p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- Section 2: Modes -->
+    <section id="modes">
+      <div class="sec-head">
+        <div class="eyebrow"><span data-l="ru">Режимы</span><span data-l="en">Modes</span></div>
+        <h2><span data-l="ru">Три способа открыть компьютер</span><span data-l="en">Three ways to unlock the computer</span></h2>
+        <p><span data-l="ru">Инициируйте сами, ответьте на запрос от ПК или управляйте с запястья.</span><span data-l="en">Start it yourself, answer a request from the PC, or act from your wrist.</span></p>
+      </div>
+
+      <div class="modes">
+        <div class="mode">
+          <div class="tag">01 · <span data-l="ru">С телефона</span><span data-l="en">From the phone</span></div>
+          <h3><span data-l="ru">Нажали — открылось</span><span data-l="en">Tap and it opens</span></h3>
+          <p><span data-l="ru">Из приложения, ярлыком на рабочем столе или плиткой в шторке быстрых настроек.</span><span data-l="en">From the app, a home-screen shortcut or a Quick Settings tile.</span></p>
+        </div>
+        <div class="mode">
+          <div class="tag">02 · <span data-l="ru">Запрос с ПК</span><span data-l="en">Request from the PC</span></div>
+          <h3><span data-l="ru">ПК сам просит ключ</span><span data-l="en">The PC asks for the key</span></h3>
+          <p><span data-l="ru">Например, при включении или пробуждении. Вам остаётся только подтвердить биометрию.</span><span data-l="en">For example on boot or wake. You only confirm via biometrics.</span></p>
+        </div>
+        <div class="mode">
+          <div class="tag">03 · Wear OS</div>
+          <h3><span data-l="ru">Прямо с часов</span><span data-l="en">Straight from the watch</span></h3>
+          <p><span data-l="ru">Разблокировка, Wake-on-LAN и ответ на запросы без необходимости брать телефон в руки.</span><span data-l="en">Unlock, Wake-on-LAN and answering requests without touching the phone.</span></p>
+        </div>
+      </div>
+
+      <div class="pair">
+        <div class="shot">
+          <img data-l="ru" loading="lazy" src="assets/anim/and-modes.ru.gif" width="720" height="405" alt="Три режима разблокировки">
+          <img data-l="en" loading="lazy" src="assets/anim/and-modes.en.gif" width="720" height="405" alt="Three unlock modes">
+        </div>
+        <div class="shot">
+          <img data-l="ru" loading="lazy" src="assets/anim/and-wear.ru.gif" width="720" height="405" alt="Запрос на часах Wear OS">
+          <img data-l="en" loading="lazy" src="assets/anim/and-wear.en.gif" width="720" height="405" alt="Request on a Wear OS watch">
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Ecosystem Interfaces Showcase (Verified Ports & Fully Bilingual) -->
+    <section id="screens">
+      <div class="sec-head">
+        <div class="eyebrow"><span data-l="ru">Интерфейс экосистемы</span><span data-l="en">Ecosystem Interface</span></div>
+        <h2><span data-l="ru">Так выглядит Portal на всех ваших экранах</span><span data-l="en">How Portal looks on all your screens</span></h2>
+        <p><span data-l="ru">Нативное приложение Windows 11, экран входа LogonUI с живой сетевой телеметрией, Android-клиент и круглые смарт-часы Wear OS.</span><span data-l="en">Native Windows 11 desktop application, LogonUI sign-in screen with live network telemetry, Android client, and round Wear OS smartwatch app.</span></p>
+      </div>
+
+      <div class="showcase-block">
+        <!-- 1. Windows PC Client & LogonUI (Exact Port 29170 & 5353) -->
+        <div class="platform-card">
+          <div class="platform-header">
+            <div class="platform-title">
+              <span>🖥️</span>
+              <span data-l="ru">Windows 11: Десктопное приложение Portal.Host и Экран входа LogonUI</span>
+              <span data-l="en">Windows 11: Portal.Host Desktop Application & LogonUI Screen</span>
+            </div>
+            <span class="dim" style="font-size: 13px; font-family: var(--font-mono);">
+              <span data-l="ru">Порт TCP 29170 · mDNS UDP 5353 · Bluetooth RFCOMM</span>
+              <span data-l="en">Port TCP 29170 · mDNS UDP 5353 · Bluetooth RFCOMM</span>
+            </span>
+          </div>
+
+          <div class="win-mockup-grid">
+            <div class="win-frame">
+              <div class="win-frame-bar">
+                <span class="win-dot"></span><span class="win-dot"></span><span class="win-dot"></span>
+                <span class="win-frame-title">Windows 11 LogonUI — Credential Provider (TCP 29170)</span>
+              </div>
+              <img data-l="ru" loading="lazy" src="assets/screens/win11-logon-ru-details.png" alt="Экран входа Windows 11 с активной телеметрией">
+              <img data-l="en" loading="lazy" src="assets/screens/win11-logon-en-details.png" alt="Windows 11 Lockscreen with active telemetry">
+            </div>
+
+            <div class="win-frame">
+              <div class="win-frame-bar">
+                <span class="win-dot"></span><span class="win-dot"></span><span class="win-dot"></span>
+                <span class="win-frame-title">Portal.Host — Device Manager & Pairing</span>
+              </div>
+              <img data-l="ru" loading="lazy" src="assets/screens/host/host-main-ru.png" alt="Панель Portal.Host">
+              <img data-l="en" loading="lazy" src="assets/screens/host/host-main-en.png" alt="Portal.Host Dashboard">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Android Smartphone Companion (Fully Localized RU / EN Play Store Screenshots) -->
+        <div class="platform-card">
+          <div class="platform-header">
+            <div class="platform-title">
+              <span>📱</span>
+              <span data-l="ru">Android: Мобильное приложение Portal</span>
+              <span data-l="en">Android: Portal Mobile Client</span>
+            </div>
+            <span class="dim" style="font-size: 13px; font-family: var(--font-mono);">Material You · Biometrics · Zero-Cloud</span>
+          </div>
+
+          <div class="phones-grid">
+            <div class="phone-item">
+              <div class="phone-shell">
+                <img data-l="ru" loading="lazy" src="assets/play/ru-screen-01-devices.png" alt="Управление устройствами">
+                <img data-l="en" loading="lazy" src="assets/play/en-screen-01-devices.jpg" alt="Manage Your Devices">
+              </div>
+              <div class="phone-cap">
+                <b><span data-l="ru">1. Список устройств</span><span data-l="en">1. Device List</span></b><br>
+                <span data-l="ru">Тап по карточке — мгновенный вход</span><span data-l="en">Tap card for instant unlock</span>
+              </div>
+            </div>
+
+            <div class="phone-item">
+              <div class="phone-shell">
+                <img data-l="ru" loading="lazy" src="assets/play/ru-screen-02-security.png" alt="Настройки безопасности">
+                <img data-l="en" loading="lazy" src="assets/play/en-screen-02-security.jpg" alt="Setup Your Security">
+              </div>
+              <div class="phone-cap">
+                <b><span data-l="ru">2. Безопасность</span><span data-l="en">2. Security Setup</span></b><br>
+                <span data-l="ru">Ключи mTLS, биометрия и 2FA PIN</span><span data-l="en">mTLS keys, biometrics & 2FA PIN</span>
+              </div>
+            </div>
+
+            <div class="phone-item">
+              <div class="phone-shell">
+                <img data-l="ru" loading="lazy" src="assets/play/ru-screen-03-shortcuts.png" alt="Создайте ярлыки">
+                <img data-l="en" loading="lazy" src="assets/play/en-screen-03-shortcuts.jpg" alt="Create Your Shortcuts">
+              </div>
+              <div class="phone-cap">
+                <b><span data-l="ru">3. Быстрые ярлыки</span><span data-l="en">3. Home Shortcuts</span></b><br>
+                <span data-l="ru">Виджеты и плитки в шторке</span><span data-l="en">Widgets & Quick Settings tiles</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Wear OS Smartwatch Companion -->
+        <div class="platform-card">
+          <div class="platform-header">
+            <div class="platform-title">
+              <span>⌚</span>
+              <span data-l="ru">Wear OS: Автономное приложение для смарт-часов</span>
+              <span data-l="en">Wear OS: Autonomous Smartwatch Client</span>
+            </div>
+            <span class="dim" style="font-size: 13px; font-family: var(--font-mono);">Standalone · Wake-on-LAN · First Decision Wins</span>
+          </div>
+
+          <div class="watches-grid">
+            <div class="watch-item">
+              <div class="watch-bezel">
+                <img loading="lazy" src="assets/screens/wearos/0.png" alt="Статус ПК">
+              </div>
+              <div class="watch-cap">
+                <b><span data-l="ru">1. Статус ПК</span><span data-l="en">1. PC Status</span></b><br>
+                <span data-l="ru">Список компьютеров</span><span data-l="en">Paired device list</span>
+              </div>
+            </div>
+
+            <div class="watch-item">
+              <div class="watch-bezel">
+                <img loading="lazy" src="assets/screens/wearos/1.png" alt="Разблокировка в один тап">
+              </div>
+              <div class="watch-cap">
+                <b><span data-l="ru">2. Вход в один тап</span><span data-l="en">2. Tap to Unlock</span></b><br>
+                <span data-l="ru">Кнопка прямо на экране</span><span data-l="en">Large wrist button</span>
+              </div>
+            </div>
+
+            <div class="watch-item">
+              <div class="watch-bezel">
+                <img loading="lazy" src="assets/screens/wearos/2.png" alt="Меню действий">
+              </div>
+              <div class="watch-cap">
+                <b><span data-l="ru">3. Меню действий</span><span data-l="en">3. Action Menu</span></b><br>
+                <span data-l="ru">Выбор протокола связи</span><span data-l="en">Connection modes</span>
+              </div>
+            </div>
+
+            <div class="watch-item">
+              <div class="watch-bezel">
+                <img loading="lazy" src="assets/screens/wearos/3.png" alt="Wake-on-LAN">
+              </div>
+              <div class="watch-cap">
+                <b><span data-l="ru">4. Wake-on-LAN</span><span data-l="en">4. Wake-on-LAN</span></b><br>
+                <span data-l="ru">Включение ПК по сети</span><span data-l="en">Remote power-on</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Setup -->
+    <section id="setup">
+      <div class="split">
+        <div>
+          <div class="sec-head">
+            <div class="eyebrow"><span data-l="ru">Настройка</span><span data-l="en">Setup</span></div>
+            <h2><span data-l="ru">Подключение занимает минуту</span><span data-l="en">Pairing takes about a minute</span></h2>
+          </div>
+          <ol class="steps" style="grid-template-columns: minmax(0, 1fr);">
+            <li>
+              <h3><span data-l="ru">Запустите службу на ПК</span><span data-l="en">Start the service on the PC</span></h3>
+              <p><span data-l="ru">Откройте <span class="mono">Portal.Host.exe</span> от имени администратора. Служба зарегистрирует Credential Provider и автоматически откроет порт TCP 29170 и UDP 5353 в брандмауэре Windows.</span><span data-l="en">Run <span class="mono">Portal.Host.exe</span> as administrator. The service registers the Credential Provider and opens TCP 29170 and UDP 5353 in Windows Defender Firewall.</span></p>
+            </li>
+            <li>
+              <h3><span data-l="ru">Выберите Wi-Fi или Bluetooth</span><span data-l="en">Pick Wi-Fi or Bluetooth</span></h3>
+              <p><span data-l="ru">Во вкладке «Устройства» нажмите «Добавить» и укажите предпочтительный канал связи.</span><span data-l="en">In the Devices tab add a device and choose how it connects.</span></p>
+            </li>
+            <li>
+              <h3><span data-l="ru">Отсканируйте QR-код</span><span data-l="en">Scan the QR code</span></h3>
+              <p><span data-l="ru">Наведите камеру смартфона на монитор. Устройства безопасно обменяются криптографическими сертификатами mTLS.</span><span data-l="en">Point the phone camera at the monitor. The devices securely exchange mutual mTLS certificates.</span></p>
+            </li>
+            <li>
+              <h3><span data-l="ru">Готово к работе</span><span data-l="en">Done</span></h3>
+              <p><span data-l="ru">Нажмите Win + L и подтвердите вход отпечатком пальца.</span><span data-l="en">Press Win + L and approve the sign-in with your fingerprint.</span></p>
+            </li>
+          </ol>
+        </div>
+        <div class="shot">
+          <img data-l="ru" loading="lazy" src="assets/anim/win-pairing.ru.gif" width="720" height="405" alt="Сопряжение по QR-коду">
+          <img data-l="en" loading="lazy" src="assets/anim/win-pairing.en.gif" width="720" height="405" alt="Pairing by QR code">
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Features (UAC & Connectivity) -->
+    <section id="everywhere">
+      <div class="pair">
+        <div>
+          <div class="sec-head">
+            <div class="eyebrow">UAC Elevation</div>
+            <h2><span data-l="ru">Права администратора тоже без пароля</span><span data-l="en">Admin rights without a password too</span></h2>
+            <p><span data-l="ru">Окна «Контроль учётных записей» подтверждаются с телефона, как и вход. Никаких ручных наборов сложного пароля админа.</span><span data-l="en">User Account Control prompts are approved from the phone, just like sign-in. Never type lengthy admin passwords again.</span></p>
+          </div>
+          <div class="shot">
+            <img data-l="ru" loading="lazy" src="assets/anim/win-uac.ru.gif" width="720" height="405" alt="Подтверждение окна UAC с телефона">
+            <img data-l="en" loading="lazy" src="assets/anim/win-uac.en.gif" width="720" height="405" alt="Approving a UAC prompt from the phone">
+          </div>
+        </div>
+
+        <div>
+          <div class="sec-head">
+            <div class="eyebrow"><span data-l="ru">Связь</span><span data-l="en">Connectivity</span></div>
+            <h2><span data-l="ru">Работает, даже когда сеть подвела</span><span data-l="en">Keeps working when the network doesn’t</span></h2>
+            <p><span data-l="ru">Основной скоростной канал — локальная сеть TCP 29170, резервный автономный — Bluetooth RFCOMM. Смена сети и VPN подхватываются автоматически.</span><span data-l="en">High-speed primary network channel over TCP 29170, autonomous fallback over Bluetooth RFCOMM. Network switches and VPNs are picked up smoothly.</span></p>
+          </div>
+          <div class="shot">
+            <img data-l="ru" loading="lazy" src="assets/anim/win-channels.ru.gif" width="720" height="405" alt="Два канала связи: Wi-Fi и Bluetooth">
+            <img data-l="en" loading="lazy" src="assets/anim/win-channels.en.gif" width="720" height="405" alt="Two channels: Wi-Fi and Bluetooth">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: Security -->
+    <section id="security">
+      <div class="split rev">
+        <div class="shot">
+          <img data-l="ru" loading="lazy" src="assets/anim/win-security.ru.gif" width="720" height="405" alt="Безопасность Portal">
+          <img data-l="en" loading="lazy" src="assets/anim/win-security.en.gif" width="720" height="405" alt="Portal security">
+        </div>
+        <div>
+          <div class="sec-head">
+            <div class="eyebrow"><span data-l="ru">Безопасность</span><span data-l="en">Security</span></div>
+            <h2><span data-l="ru">Пароль никогда не покидает ПК</span><span data-l="en">Your password never leaves the PC</span></h2>
+          </div>
+          <ul class="list">
+            <li>
+              <b>Windows LSA Secret Store</b>
+              <span data-l="ru">Пароль не лежит в файлах или реестре. Он зашифрован системными ключами ОС и доступен строго процессу LogonUI в нулевой сессии.</span>
+              <span data-l="en">The password is not in files or the registry. It is protected by OS encryption and read strictly by LogonUI in session 0.</span>
+            </li>
+            <li>
+              <b>mTLS X.509 (TCP 29170)</b>
+              <span data-l="ru">Обе стороны проверяют индивидуальные сертификаты друг друга. Перехват или повтор пакетов полностью исключён.</span>
+              <span data-l="en">Both sides verify each other’s certificates. Replayed or intercepted packets are discarded immediately.</span>
+            </li>
+            <li>
+              <b><span data-l="ru">Сопряжение только по QR</span><span data-l="en">QR-only pairing</span></b>
+              <span data-l="ru">Разблокировать ПК может лишь то устройство, которое физически считало одноразовый динамический код с монитора.</span>
+              <span data-l="en">Only a device that physically scanned the dynamic one-time pairing QR code on your display is trusted.</span>
+            </li>
+            <li>
+              <b><span data-l="ru">Биометрия и 2FA PIN</span><span data-l="en">Biometrics and 2FA PIN</span></b>
+              <span data-l="ru">Каждый вход подтверждается на телефоне. По желанию активируйте второй фактор — ввод PIN на клавиатуре ПК (PBKDF2-SHA256, 100 000 итераций).</span>
+              <span data-l="en">Every sign-in is confirmed on the phone. Optionally enable 2FA with a personal PIN typed on the PC keyboard.</span>
+            </li>
+            <li>
+              <b><span data-l="ru">Zero-Cloud P2P</span><span data-l="en">Zero-Cloud P2P</span></b>
+              <span data-l="ru">Всё идёт напрямую по вашей домашней сети (порт 29170, mDNS 5353) или Bluetooth. Никаких сторонних серверов, телеметрии или облаков.</span>
+              <span data-l="en">Everything goes straight over your local network (port 29170, mDNS 5353) or Bluetooth. No external clouds, telemetry, or relays.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7: Comparison Matrix -->
+    <section id="compare">
+      <div class="sec-head">
+        <div class="eyebrow"><span data-l="ru">Сравнение</span><span data-l="en">Comparison</span></div>
+        <h2><span data-l="ru">Почему именно Portal?</span><span data-l="en">Why Choose Portal?</span></h2>
+        <p><span data-l="ru">Объективное сопоставление ключевых способов входа в Windows.</span><span data-l="en">Direct feature comparison against alternative Windows authentication methods.</span></p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th><span data-l="ru">Параметр</span><span data-l="en">Feature</span></th>
+              <th class="th-portal" style="background: rgba(56, 100, 220, 0.28); color: var(--blue); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);"><b>Portal Unlock</b></th>
+              <th><span data-l="ru">Windows Hello</span><span data-l="en">Windows Hello</span></th>
+              <th><span data-l="ru">Обычный пароль</span><span data-l="en">Standard Password</span></th>
+              <th><span data-l="ru">Облачные утилиты</span><span data-l="en">Cloud Tools</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b><span data-l="ru">Скорость входа</span><span data-l="en">Unlock Speed</span></b></td>
+              <td class="brand-col" style="background: rgba(56, 100, 220, 0.12); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);">⚡ <b><span data-l="ru">Мгновенно (P2P)</span><span data-l="en">Instant (P2P)</span></b></td>
+              <td>⚡ <span data-l="ru">Мгновенно</span><span data-l="en">Instant</span></td>
+              <td>❌ <span data-l="ru">Медленно</span><span data-l="en">Slow (manual)</span></td>
+              <td>⚡ <span data-l="ru">Быстро</span><span data-l="en">Fast</span></td>
+            </tr>
+            <tr>
+              <td><b><span data-l="ru">Оборудование ПК</span><span data-l="en">Hardware Needed</span></b></td>
+              <td class="brand-col" style="background: rgba(56, 100, 220, 0.12); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);">✅ <b><span data-l="ru">Любой ПК (ноутбук/десктоп)</span><span data-l="en">Any PC (desktop/laptop)</span></b></td>
+              <td>❌ <span data-l="ru">Нужна IR-камера / USB-сканер</span><span data-l="en">Needs IR Camera / Sensor</span></td>
+              <td>✅ <span data-l="ru">Клавиатура</span><span data-l="en">Keyboard</span></td>
+              <td>✅ <span data-l="ru">Любой ПК</span><span data-l="en">Any PC</span></td>
+            </tr>
+            <tr>
+              <td><b><span data-l="ru">Работа без интернета</span><span data-l="en">Offline Operation</span></b></td>
+              <td class="brand-col" style="background: rgba(56, 100, 220, 0.12); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);">✅ <b><span data-l="ru">Да (LAN / Bluetooth)</span><span data-l="en">Yes (LAN / Bluetooth)</span></b></td>
+              <td>✅ <span data-l="ru">Да</span><span data-l="en">Yes</span></td>
+              <td>✅ <span data-l="ru">Да</span><span data-l="en">Yes</span></td>
+              <td>❌ <span data-l="ru">Нет (нужен интернет)</span><span data-l="en">No (internet required)</span></td>
+            </tr>
+            <tr>
+              <td><b><span data-l="ru">Конфиденциальность</span><span data-l="en">Privacy & Data</span></b></td>
+              <td class="brand-col" style="background: rgba(56, 100, 220, 0.12); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);">🛡️ <b><span data-l="ru">Zero-Cloud, mTLS X.509</span><span data-l="en">Zero-Cloud, mTLS X.509</span></b></td>
+              <td>✅ <span data-l="ru">Локально на ПК</span><span data-l="en">Local on PC</span></td>
+              <td>⚠️ <span data-l="ru">Риск подглядывания</span><span data-l="en">Shoulder surfing risk</span></td>
+              <td>❌ <span data-l="ru">Трафик через чужие сервера</span><span data-l="en">Routed via 3rd party cloud</span></td>
+            </tr>
+            <tr>
+              <td><b><span data-l="ru">Подтверждение UAC</span><span data-l="en">UAC Elevation</span></b></td>
+              <td class="brand-col" style="background: rgba(56, 100, 220, 0.12); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);">✅ <b><span data-l="ru">Да (в один тап)</span><span data-l="en">Yes (One-tap biometric)</span></b></td>
+              <td>⚠️ <span data-l="ru">Не во всех сценариях</span><span data-l="en">Limited scenarios</span></td>
+              <td>❌ <span data-l="ru">Ручной ввод</span><span data-l="en">Manual typing</span></td>
+              <td>❌ <span data-l="ru">Не поддерживается</span><span data-l="en">Not supported</span></td>
+            </tr>
+            <tr>
+              <td><b><span data-l="ru">Управление с часов</span><span data-l="en">Smartwatch Support</span></b></td>
+              <td class="brand-col" style="background: rgba(56, 100, 220, 0.12); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);">⌚ <b><span data-l="ru">Wear OS автономно</span><span data-l="en">Standalone Wear OS</span></b></td>
+              <td>❌ <span data-l="ru">Нет</span><span data-l="en">No</span></td>
+              <td>❌ <span data-l="ru">Нет</span><span data-l="en">No</span></td>
+              <td>⚠️ <span data-l="ru">Редко / платно</span><span data-l="en">Rare / Paid plugin</span></td>
+            </tr>
+            <tr>
+              <td><b><span data-l="ru">Стоимость и лицензия</span><span data-l="en">Price & License</span></b></td>
+              <td class="brand-col" style="background: rgba(56, 100, 220, 0.12); border-left: 2px solid var(--blue); border-right: 2px solid var(--blue);">🌟 <b><span data-l="ru">Open Source (GPL-3.0)</span><span data-l="en">Open Source (GPL-3.0)</span></b></td>
+              <td>✅ <span data-l="ru">Бесплатно</span><span data-l="en">Free</span></td>
+              <td>✅ <span data-l="ru">Бесплатно</span><span data-l="en">Free</span></td>
+              <td>❌ <span data-l="ru">Подписка / реклама</span><span data-l="en">Subscription / Ads</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 8: Download (Uniform Buttons, Clean Layout) -->
+    <section id="download">
+      <div class="sec-head">
+        <div class="eyebrow"><span data-l="ru">Скачать</span><span data-l="en">Download</span></div>
+        <h2><span data-l="ru">Нужны две части: ПК и телефон</span><span data-l="en">You need two parts: a PC and a phone</span></h2>
+        <p><span data-l="ru">Установите клиент на компьютер с Windows и бесплатное приложение на смартфон или часы.</span><span data-l="en">Install the Windows client on your PC and the free mobile app on your smartphone or watch.</span></p>
+      </div>
+
+      <div class="dl">
+        <div class="card">
+          <h3>
+            <span>Portal-Windows</span>
+            <span class="brand-tag">v1.9.5 Herta</span>
+          </h3>
+          <ul>
+            <li><span data-l="ru">Windows 10 (1809+) или Windows 11, x64</span><span data-l="en">Windows 10 (1809+) or Windows 11, x64</span></li>
+            <li><span data-l="ru">Включает нативный модуль Credential Provider V2 и службу Portal.Host</span><span data-l="en">Includes native Credential Provider V2 and Portal.Host desktop app</span></li>
+            <li><span data-l="ru">.NET 10 Desktop Runtime входит в архив</span><span data-l="en">Embedded .NET 10 Desktop Runtime included</span></li>
+            <li><span data-l="ru">Релизы подписаны Authenticode, есть SHA-256 и подпись PKCS#7</span><span data-l="en">Authenticode-signed releases with SHA-256 and PKCS#7 signature</span></li>
+          </ul>
+          <div class="btns">
+            <a class="btn btn-primary" href="https://github.com/KoksMen/Portal-Windows/releases/latest" target="_blank" rel="noopener">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.401H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.951-1.951"/>
+              </svg>
+              <span data-l="ru">Скачать для Windows</span>
+              <span data-l="en">Download for Windows</span>
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/KoksMen/Portal-Windows" target="_blank" rel="noopener">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span>GitHub</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>
+            <span>Portal <span class="dim" style="font-weight:400">Android · Wear OS</span></span>
+            <span class="brand-tag" style="background: rgba(76, 217, 100, 0.15); color: var(--ok); border-color: rgba(76, 217, 100, 0.28);">Google Play</span>
+          </h3>
+          <ul>
+            <li><span data-l="ru">Android 8.0+ с биометрическим сканером</span><span data-l="en">Android 8.0+ with a biometric sensor</span></li>
+            <li><span data-l="ru">Приложение для смарт-часов Wear OS в комплекте</span><span data-l="en">Standalone Wear OS watch app is included</span></li>
+            <li><span data-l="ru">Виджеты на рабочий стол и переключатели в шторку</span><span data-l="en">Home-screen shortcuts and Quick Settings tiles</span></li>
+            <li><span data-l="ru">Без рекламы, трекеров и скрытых платежей</span><span data-l="en">No ads, no tracking, no hidden costs</span></li>
+          </ul>
+          <div class="btns">
+            <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal" target="_blank" rel="noopener">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3.609 1.814L13.792 12 3.61 22.186a2.38 2.38 0 01-.61-.954V2.768c.15-.36.368-.691.61-.954zm11.24 11.24l2.128 2.129-11.77 6.643 9.642-8.772zm0-2.108L5.207 2.174l11.77 6.643-2.128 2.129zm1.488 1.054l3.197 1.804c1.173.662 1.173 1.744 0 2.406l-3.197 1.804-1.854-1.855 1.854-1.854v-.305z"/>
+              </svg>
+              <span>Google Play</span>
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/xXMRK888YTXx/Portal-Android/releases" target="_blank" rel="noopener">
+              <span>📦</span>
+              <span>APK</span>
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/xXMRK888YTXx/Portal-Android" target="_blank" rel="noopener">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+              <span>GitHub</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fingerprint Verification Block -->
+      <div class="fp">
+        <b><span data-l="ru">Проверьте подпись сборки из Google Play</span><span data-l="en">Verify the Google Play build signature</span></b>
+        <span class="dim" style="font-size:14.5px;">
+          <span data-l="ru">Официальный SHA-256 отпечаток ключа. Сборки с другими подписями автор не выпускал.</span>
+          <span data-l="en">SHA-256 key fingerprint. The author did not publish builds signed with other keys.</span>
+        </span>
+        <code id="fp">11:B8:C9:72:70:0E:87:EB:4E:B9:00:4E:15:68:D8:72:32:87:2C:9F:0F:73:A5:3D:30:E7:CD:CF:49:AF:88:85</code>
+        <button type="button" class="copy" id="copy" aria-label="Copy fingerprint">
+          <span id="copy-label">
+            <span data-l="ru">Скопировать отпечаток</span>
+            <span data-l="en">Copy fingerprint</span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 9: FAQ (Exact Ports: TCP 29170 & UDP 5353) -->
+    <section id="faq">
+      <div class="sec-head">
+        <div class="eyebrow">FAQ</div>
+        <h2><span data-l="ru">Частые вопросы</span><span data-l="en">Common questions</span></h2>
+      </div>
+
+      <details>
+        <summary><span data-l="ru">Нужен ли интернет для работы Portal?</span><span data-l="en">Do I need an internet connection?</span></summary>
+        <p><span data-l="ru">Нет. Телефон и ПК общаются строго напрямую по локальной сети через порт TCP 29170 или через Bluetooth RFCOMM. Никаких внешних облачных серверов у Portal нет.</span><span data-l="en">No. The phone and PC communicate strictly peer-to-peer over your local network on port TCP 29170 or via direct Bluetooth RFCOMM. Portal has zero external cloud servers.</span></p>
+      </details>
+
+      <details>
+        <summary><span data-l="ru">Можно ли по-прежнему вводить пароль вручную?</span><span data-l="en">Can I still type my password?</span></summary>
+        <p><span data-l="ru">Да, в любой момент. Если начать вводить пароль на клавиатуре ПК, запрос на телефон немедленно отменяется, а фокус возвращается в стандартное поле ввода пароля Windows.</span><span data-l="en">Yes, anytime. As soon as you type on the keyboard, the pending mobile request is cancelled, with focus returned to the standard Windows password field.</span></p>
+      </details>
+
+      <details>
+        <summary><span data-l="ru">Телефон не находит ПК. Какие порты используются?</span><span data-l="en">Phone cannot find PC. What network ports are used?</span></summary>
+        <p><span data-l="ru">Служба Portal.Host использует порт <strong>TCP 29170</strong> для защищённого соединения mTLS и порт <strong>UDP 5353</strong> для сетевого обнаружения mDNS (Zeroconf _portalwin._tcp). При запуске от администратора приложение само добавляет эти правила в брандмауэр Windows. Кнопка «Проверить связь» в карточке устройства поможет протестировать задержку, а в меню настроек доступен экспорт диагностического ZIP-отчёта.</span><span data-l="en">The Portal.Host service uses port <strong>TCP 29170</strong> for the secure mTLS connection and port <strong>UDP 5353</strong> for mDNS discovery (Zeroconf _portalwin._tcp). When run as administrator, the app adds these rules to Windows Defender Firewall automatically. The "Test Connection" button tests latency, and the Settings menu provides an Export Diagnostics ZIP tool.</span></p>
+      </details>
+
+      <details>
+        <summary><span data-l="ru">Работает ли с VPN и сменой сетей?</span><span data-l="en">Does it work with VPNs and network roaming?</span></summary>
+        <p><span data-l="ru">Да, в том числе с WireGuard и OpenVPN. Виртуальные адаптеры туннеля исключаются из анонсов mDNS автоматически, а переключение между Wi-Fi и Bluetooth происходит бесшовно.</span><span data-l="en">Yes, WireGuard and OpenVPN included. Virtual tunnel adapters are filtered out of mDNS broadcasts automatically, with smooth fallback to Bluetooth.</span></p>
+      </details>
+
+      <details>
+        <summary><span data-l="ru">Есть ли версия для iPhone (iOS)?</span><span data-l="en">Is there an iPhone (iOS) version?</span></summary>
+        <p><span data-l="ru">Нет. Portal работает со смартфонами на базе Android и смарт-часами под управлением Wear OS.</span><span data-l="en">No. Portal currently supports Android smartphones and Wear OS smartwatches.</span></p>
+      </details>
+
+      <details>
+        <summary><span data-l="ru">Это действительно бесплатно?</span><span data-l="en">Is it truly free?</span></summary>
+        <p><span data-l="ru">Да. Оба проекта (Portal-Windows и Portal-Android) полностью открыты под свободной лицензией GPL-3.0, без рекламы, телеметрии и скрытых платежей.</span><span data-l="en">Yes. Both projects are 100% open source under GPL-3.0, with no ads, no trackers, and no hidden subscriptions.</span></p>
+      </details>
+    </section>
+
+    <!-- Footer -->
+    <footer role="contentinfo">
+      <a class="brand" href="#top">
+        <img src="assets/logo.png" alt="Portal Logo" width="28" height="28">
+        <span>Portal</span>
+      </a>
+      <a href="https://github.com/KoksMen/Portal-Windows" target="_blank" rel="noopener">Portal-Windows</a>
+      <a href="https://github.com/xXMRK888YTXx/Portal-Android" target="_blank" rel="noopener">Portal-Android</a>
+      <a href="https://github.com/xXMRK888YTXx/Portal-Docs/blob/master/Android/Privacy%20policy.md" target="_blank" rel="noopener">
+        <span data-l="ru">Политика конфиденциальности</span>
+        <span data-l="en">Privacy policy</span>
+      </a>
+      <span class="sp">
+        GPL-3.0 · <a href="https://github.com/KoksMen" target="_blank" rel="noopener">@KoksMen</a> · <a href="https://github.com/xXMRK888YTXx" target="_blank" rel="noopener">@xXMRK888YTXx</a>
+      </span>
+    </footer>
+  </div>
+</main>
+
+<!-- Floating Back to Top -->
+<a href="#top" class="btt" id="btt" aria-label="Back to top" title="Наверх">↑</a>
+
+<script>
+(function () {
+  var root = document.documentElement;
+
+  /* ==========================================================================
+     1. Language Toggle (Guaranteed Reactive State & Persistence)
+     ========================================================================== */
+  var currentLang = 'ru';
+
+  function setLang(l) {
+    currentLang = l;
+    root.setAttribute('data-lang', l);
+    root.setAttribute('lang', l);
+
+    var bRu = document.getElementById('b-ru');
+    var bEn = document.getElementById('b-en');
+    if (bRu) bRu.setAttribute('aria-pressed', String(l === 'ru'));
+    if (bEn) bEn.setAttribute('aria-pressed', String(l === 'en'));
+
+    document.title = (l === 'ru')
+      ? 'Portal — Мгновенная биометрическая разблокировка Windows с телефона и смарт-часов'
+      : 'Portal — Instant Biometric Windows PC Unlock via Phone & Smartwatch';
+
+    try { localStorage.setItem('portal-lang', l); } catch (e) {}
+
+  }
+
+  var savedLang = null;
+  try { savedLang = localStorage.getItem('portal-lang'); } catch (e) {}
+  var nav = (navigator.language || 'ru').toLowerCase();
+  var initialLang = savedLang || (nav.indexOf('ru') === 0 || nav.indexOf('uk') === 0 || nav.indexOf('be') === 0 ? 'ru' : 'en');
+  setLang(initialLang);
+
+  var btnRu = document.getElementById('b-ru');
+  var btnEn = document.getElementById('b-en');
+  if (btnRu) btnRu.addEventListener('click', function () { setLang('ru'); });
+  if (btnEn) btnEn.addEventListener('click', function () { setLang('en'); });
+
+  /* ==========================================================================
+     2. Theme Toggle (Dark & Light Mode with Icon Animation & Persistence)
+     ========================================================================== */
+  var themeBtn = document.getElementById('theme-btn');
+  var themeIcon = document.getElementById('theme-icon');
+
+  function setTheme(t) {
+    root.setAttribute('data-theme', t);
+    if (themeIcon) {
+      themeIcon.textContent = (t === 'dark') ? '☀️' : '🌙';
+    }
+    if (themeBtn) {
+      themeBtn.setAttribute('title', (t === 'dark') ? 'Включить светлую тему / Switch to Light' : 'Включить тёмную тему / Switch to Dark');
+    }
+    try { localStorage.setItem('portal-theme', t); } catch (e) {}
+  }
+
+  var savedTheme = null;
+  try { savedTheme = localStorage.getItem('portal-theme'); } catch (e) {}
+  var initialTheme = savedTheme || 'dark';
+  setTheme(initialTheme);
+
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme') || 'dark';
+      setTheme(cur === 'dark' ? 'light' : 'dark');
+    });
+  }
+
+  /* ==========================================================================
+     3. Mobile Drawer Navigation
+     ========================================================================== */
+  var mobBtn = document.getElementById('mob-btn');
+  var mobDrawer = document.getElementById('mob-drawer');
+  if (mobBtn && mobDrawer) {
+    mobBtn.addEventListener('click', function () {
+      var open = mobDrawer.classList.toggle('open');
+      mobBtn.textContent = open ? '✕' : '☰';
+    });
+
+    var mobItems = document.querySelectorAll('.mob-item');
+    for (var i = 0; i < mobItems.length; i++) {
+      mobItems[i].addEventListener('click', function () {
+        mobDrawer.classList.remove('open');
+        mobBtn.textContent = '☰';
+      });
+    }
+  }
+
+  /* ==========================================================================
+     4. Authentic Interactive Countdown Strip
+     ========================================================================== */
+  var N = 22;
+  var bar = document.getElementById('bar');
+  var tm = document.getElementById('tm');
+  var stText = document.getElementById('st-text');
+  var strip = document.getElementById('strip');
+  var total = 59;
+  var left = 42;
+  var phase = 'wait';
+  var hold = 0;
+
+  function updateStatusText() {
+    if (!stText) return;
+    if (phase === 'ok') {
+      stText.innerHTML = (currentLang === 'ru') ? 'Вход разрешён ✓' : 'PC unlock approved ✓';
+    } else {
+      stText.innerHTML = '<span data-l="ru">Ожидание подтверждения…</span><span data-l="en">Awaiting approval…</span>';
+    }
+  }
+
+  function draw() {
+    if (!bar || !tm) return;
+    var filled = Math.max(0, Math.round(N * left / total));
+    var s = '[';
+    for (var j = 0; j < N; j++) {
+      s += (j < filled) ? '█' : '░';
+    }
+    bar.textContent = s + ']';
+    tm.textContent = '0:' + (left < 10 ? '0' : '') + left;
+  }
+  draw();
+
+  function triggerInstantUnlock() {
+    if (!strip) return;
+    phase = 'ok';
+    hold = 0;
+    strip.classList.add('done');
+    if (bar) bar.textContent = '[' + new Array(N + 1).join('█') + ']';
+    if (tm) tm.textContent = '✓';
+  }
+
+  function resetStrip() {
+    if (!strip) return;
+    phase = 'wait';
+    left = 59;
+    strip.classList.remove('done');
+    draw();
+  }
+
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduceMotion) {
+    setInterval(function () {
+      if (phase === 'wait') {
+        left -= 1;
+        draw();
+        if (left <= 26) {
+          triggerInstantUnlock();
+        }
+      } else {
+        hold += 1;
+        if (hold > 4) {
+          resetStrip();
+        }
+      }
+    }, 600);
+  }
+
+  if (strip) {
+    strip.addEventListener('click', function () {
+      triggerInstantUnlock();
+      setTimeout(resetStrip, 2600);
+    });
+  }
+
+  /* ==========================================================================
+     5. Enhanced Copy Fingerprint with Visual Feedback
+     ========================================================================== */
+  var cp = document.getElementById('copy');
+  var copyLabel = document.getElementById('copy-label');
+  if (cp && copyLabel) {
+    cp.addEventListener('click', function () {
+      var el = document.getElementById('fp');
+      var txt = el ? el.textContent.trim() : '';
+      function fallback() {
+        if (!el) return;
+        var r = document.createRange();
+        r.selectNodeContents(el);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+      }
+      try {
+        navigator.clipboard.writeText(txt).catch(fallback);
+      } catch (e) {
+        fallback();
+      }
+
+      cp.classList.add('copied');
+      var originalHTML = copyLabel.innerHTML;
+      copyLabel.innerHTML = (currentLang === 'ru') ? '✓ Скопировано в буфер!' : '✓ Copied to clipboard!';
+
+      setTimeout(function () {
+        cp.classList.remove('copied');
+        copyLabel.innerHTML = originalHTML;
+      }, 1800);
+    });
+  }
+
+  /* ==========================================================================
+     6. Floating Back-to-Top Button
+     ========================================================================== */
+  var btt = document.getElementById('btt');
+  if (btt) {
+    window.addEventListener('scroll', function () {
+      if (window.scrollY > 400) {
+        btt.classList.add('show');
+      } else {
+        btt.classList.remove('show');
+      }
+    }, { passive: true });
+  }
+})();
+</script>
+
+</body>
+</html>
