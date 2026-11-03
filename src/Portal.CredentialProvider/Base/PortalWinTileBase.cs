@@ -378,5 +378,6 @@ public abstract class PortalWinTileBase : CredentialTile2
 
     protected virtual void OnManualPasswordInputChanged()
     {
+        _providerBase.ClearPendingEarlyUnlock("ManualPasswordInput");
     }
 }

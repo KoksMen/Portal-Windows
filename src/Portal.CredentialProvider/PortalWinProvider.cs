@@ -67,6 +67,8 @@ public class PortalWinProvider : PortalWinProviderBase
         Portal.Common.Services.FailSafeLockoutGuard.RecordSuccessfulInitialization();
         Logger.Log($"[PortalWinProvider] GetControls called for scenario: {cpus}");
 
+        TryApplyPendingEarlyUnlock("GetControls");
+
         yield return new CredentialProviderLabelControl("ProviderLabel", Localization.T("PortalWin Remote Unlock"));
 
         var logoImage = LoadLogo();
@@ -141,6 +143,20 @@ public class PortalWinProvider : PortalWinProviderBase
             }
         }
 
+        // If an early unlock request was buffered before tiles were created, pre-assign this user tile as default
+        lock (_earlyUnlockLock)
+        {
+            if (_pendingEarlyUnlock != null && !_pendingEarlyUnlock.IsExpired(EarlyUnlockTtl))
+            {
+                if (IsMatchingUser(user, _pendingEarlyUnlock.Username, _pendingEarlyUnlock.Domain, _pendingEarlyUnlock.UserSid))
+                {
+                    this.DefaultTile = tile;
+                    this.DefaultTileAutoLogon = false;
+                    Logger.Log($"[PortalWinProvider] Pre-assigned startup default tile to early unlock user '{user.QualifiedUserName ?? user.UserName ?? "Unknown"}'.");
+                }
+            }
+        }
+
         return tile;
     }
 
@@ -155,12 +171,16 @@ public class PortalWinProvider : PortalWinProviderBase
             var config = PortalWinConfig.Load();
             var targetTile = FindMatchingTile<PortalWinTile>(username, domain, userSid);
 
-            Portal.Common.Models.DeviceAccount? targetAccount = null;
-            if (targetTile != null)
+            if (targetTile == null)
             {
-                targetAccount = targetTile.ResolveCurrentTileAccount(config);
+                Logger.LogWarning($"[PortalWinProvider] Tiles collection not available or no suitable tile yet (Tiles == null: {this.Tiles == null}). Buffering early unlock request for '{username}' (TTL: {EarlyUnlockTtl.TotalSeconds:F0}s)...");
+                SetPendingEarlyUnlock(username, password, domain, userSid);
+                return;
             }
 
+            ClearPendingEarlyUnlock("UnlockTargetTileFound");
+
+            Portal.Common.Models.DeviceAccount? targetAccount = targetTile.ResolveCurrentTileAccount(config);
             if (targetAccount == null)
             {
                 foreach (var device in config.Devices)
@@ -223,10 +243,6 @@ public class PortalWinProvider : PortalWinProviderBase
                     // Record unlock activity timestamp for inactivity timer
                     config.RecordAccountUnlockActivity(username, domain, userSid);
                 }
-            }
-            else
-            {
-                Logger.LogError("[PortalWinProvider] Failed to find any suitable tile to trigger unlock.");
             }
         }
         catch (Exception ex)

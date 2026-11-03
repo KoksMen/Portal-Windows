@@ -189,6 +189,9 @@ public class PortalWinTile : PortalWinTileBase
         base.Initialize();
         RegisterTileInstance();
 
+        // Check if an early unlock request was buffered before LogonUI completed tile creation
+        Provider.TryApplyPendingEarlyUnlock("TileInitialize");
+
         if (_requestButton != null)
         {
             _requestButton.OnClick = OnRequestUnlockClicked;
@@ -236,6 +239,10 @@ public class PortalWinTile : PortalWinTileBase
         }
         CancelHostInitiatedRequestsOnOtherTiles();
         ApplyHostInitiatedTlsPolicy(PortalWinConfig.Load(), "selected");
+
+        // Check if an early unlock request can be applied on tile selection
+        Provider.TryApplyPendingEarlyUnlock("TileSelected");
+
         // Explicit tile selection must win over any provisional/early request
         // started before LogonUI finished selecting the user tile.
         TryAutoRequestUnlock(forceTakeover: true, source: "selected");
@@ -315,6 +322,12 @@ public class PortalWinTile : PortalWinTileBase
 
     private bool ShouldAttemptEarlyStart()
     {
+        if (Provider.HasPendingEarlyUnlock)
+        {
+            Logger.Log("[PortalWinTile] ShouldAttemptEarlyStart: skipping auto-request because early unlock request is buffered.");
+            return false;
+        }
+
         if (!AllowsHostInitiated) return false;
 
         var trigger = Provider.HostRequestTrigger;
@@ -1401,6 +1414,8 @@ public class PortalWinTile : PortalWinTileBase
 
     private void OnCancelUnlockClicked()
     {
+        Provider.ClearPendingEarlyUnlock("UserCancelled");
+
         if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
         {
             Logger.Log("[Tile] 2FA PIN mode cancelled by user.");
@@ -1430,6 +1445,7 @@ public class PortalWinTile : PortalWinTileBase
     protected override void OnManualPasswordInputChanged()
     {
         base.OnManualPasswordInputChanged();
+        Provider.ClearPendingEarlyUnlock("ManualPasswordInput");
 
         if (_isAwaiting2FaPin || IsAnyTileAwaitingTwoFactorPin)
         {
