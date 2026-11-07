@@ -19,7 +19,7 @@
 </p>
 
 <h1 align="center">✨ Portal-Windows ✨</h1>
-<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.6) 🪄</h3>
+<h3 align="center">🔮 Кодовое имя: <em>Herta</em> (v1.9.7) 🪄</h3>
 
 <p align="center">
   <b>Мгновенная биометрическая разблокировка Windows с телефона и смарт-часов без ввода пароля</b><br>
@@ -27,7 +27,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.6--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.6-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.7--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.7-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
@@ -41,7 +41,7 @@
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows/releases/latest">
-    <img src="https://img.shields.io/badge/📥_Скачать_для_Windows-v1.9.6_Release-7c4dff?style=for-the-badge&logo=windows&logoColor=white" alt="Download Portal-Windows" />
+    <img src="https://img.shields.io/badge/📥_Скачать_для_Windows-v1.9.7_Release-7c4dff?style=for-the-badge&logo=windows&logoColor=white" alt="Download Portal-Windows" />
   </a>
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal">
     <img src="https://img.shields.io/badge/📱_Google_Play-Portal_Android-0F9D58?style=for-the-badge&logo=googleplay&logoColor=white" alt="Download on Google Play" />
@@ -142,7 +142,7 @@
 </p>
 
 1. **Установите мобильный клиент** из [Google Play](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) или скачайте APK из [репозитория Android](https://github.com/xXMRK888YTXx/Portal-Android/releases).
-2. **Скачайте Portal-Windows** — архив `PortalWin-1.9.6-win-x64.zip` со страницы [GitHub Releases](https://github.com/KoksMen/Portal-Windows/releases/latest).
+2. **Скачайте Portal-Windows** — архив `PortalWin-1.9.7-win-x64.zip` со страницы [GitHub Releases](https://github.com/KoksMen/Portal-Windows/releases/latest).
 3. **Распакуйте в постоянную папку** (например, `C:\Program Files\Portal`) и запустите `Portal.Host.exe` **от имени администратора**.
 4. **Нажмите «СТАРТ»** — приложение зарегистрирует COM-провайдер и настроит правила брандмауэра Windows.
 5. **Сопряжение за секунды:**
@@ -409,7 +409,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 </p>
 
 <h1 align="center">✨ Portal-Windows ✨</h1>
-<h3 align="center">🔮 Codename: <em>Herta</em> (v1.9.6) 🪄</h3>
+<h3 align="center">🔮 Codename: <em>Herta</em> (v1.9.7) 🪄</h3>
 
 <p align="center">
   <b>Instant biometric Windows PC unlock via your Android phone and Wear OS smartwatch without passwords</b><br>
@@ -417,7 +417,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 </p>
 
 <p align="center">
-  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.6--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.6-Herta" /></a>
+  <a href="https://github.com/KoksMen/Portal-Windows/releases"><img src="https://img.shields.io/badge/Version-v1.9.7--Herta-7c4dff?style=for-the-badge&logo=github&logoColor=white" alt="Portal-Windows v1.9.7-Herta" /></a>
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 10/11" />
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal"><img src="https://img.shields.io/badge/Google%20Play-Portal%20Android-34A853?style=for-the-badge&logo=googleplay&logoColor=white" alt="Google Play" /></a>
@@ -431,7 +431,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
 
 <p align="center">
   <a href="https://github.com/KoksMen/Portal-Windows/releases/latest">
-    <img src="https://img.shields.io/badge/📥_Download_for_Windows-v1.9.6_Release-7c4dff?style=for-the-badge&logo=windows&logoColor=white" alt="Download Portal-Windows" />
+    <img src="https://img.shields.io/badge/📥_Download_for_Windows-v1.9.7_Release-7c4dff?style=for-the-badge&logo=windows&logoColor=white" alt="Download Portal-Windows" />
   </a>
   <a href="https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal">
     <img src="https://img.shields.io/badge/📱_Google_Play-Portal_Android-0F9D58?style=for-the-badge&logo=googleplay&logoColor=white" alt="Download on Google Play" />
@@ -532,7 +532,7 @@ Seamless biometric authorization for **UAC** administrative elevation:
 </p>
 
 1. **Install the mobile app** from [Google Play](https://play.google.com/store/apps/details?id=com.xxmrk888ytxx.portal) or download the APK from the [Android Repository Releases](https://github.com/xXMRK888YTXx/Portal-Android/releases).
-2. **Download Portal-Windows** — grab `PortalWin-1.9.6-win-x64.zip` from [GitHub Releases](https://github.com/KoksMen/Portal-Windows/releases/latest).
+2. **Download Portal-Windows** — grab `PortalWin-1.9.7-win-x64.zip` from [GitHub Releases](https://github.com/KoksMen/Portal-Windows/releases/latest).
 3. **Extract to a permanent folder** (e.g., `C:\Program Files\Portal`) and run `Portal.Host.exe` **as Administrator**.
 4. **Click "START"** — Portal registers the COM Credential Provider and configures local firewall rules.
 5. **Pair in seconds:**
