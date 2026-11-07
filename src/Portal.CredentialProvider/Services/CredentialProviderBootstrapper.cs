@@ -1,4 +1,6 @@
+using System.Security;
 using Portal.Common;
+using Portal.CredentialProvider.Base;
 
 namespace Portal.CredentialProvider.Services;
 
@@ -13,6 +15,21 @@ public static class CredentialProviderBootstrapper
 
     private static WeakReference<Portal.CredentialProvider.Base.PortalWinProviderBase>? _currentProviderRef;
     private static CancellationTokenSource? _stopServicesCts;
+
+    private static EarlyUnlockRequest? _pendingBootstrapperUnlock;
+    private static readonly object _earlyUnlockLock = new();
+    private static readonly TimeSpan EarlyUnlockTtl = TimeSpan.FromSeconds(15);
+
+    public static bool HasPendingUnlock
+    {
+        get
+        {
+            lock (_earlyUnlockLock)
+            {
+                return _pendingBootstrapperUnlock != null && !_pendingBootstrapperUnlock.IsExpired(EarlyUnlockTtl);
+            }
+        }
+    }
 
     public static Portal.CredentialProvider.Base.PortalWinProviderBase? CurrentProvider
     {
@@ -51,6 +68,9 @@ public static class CredentialProviderBootstrapper
         {
             var config = PortalWinConfig.Load();
             TlsService = new TlsUnlockService(config);
+            TlsService.UnlockRequested += OnServiceUnlockRequested;
+            TlsService.NetworkConnectionChanged += OnServiceNetworkConnectionChanged;
+            TlsService.StatusChanged += OnServiceStatusChanged;
             TlsService.Start();
             Logger.Log("[Bootstrapper] TlsUnlockService started.");
         }
@@ -63,6 +83,9 @@ public static class CredentialProviderBootstrapper
         try
         {
             BtService = new BluetoothUnlockService();
+            BtService.UnlockRequested += OnServiceUnlockRequested;
+            BtService.BtConnectionChanged += OnServiceBtConnectionChanged;
+            BtService.StatusChanged += OnServiceStatusChanged;
             _ = BtService.StartAsync();
             Logger.Log("[Bootstrapper] BluetoothUnlockService started.");
         }
@@ -107,14 +130,10 @@ public static class CredentialProviderBootstrapper
                 _stopServicesCts = null;
             }
 
-            if (_currentProviderRef != null && _currentProviderRef.TryGetTarget(out var oldProvider) && oldProvider != provider)
-            {
-                Logger.Log("[Bootstrapper] Detaching events from previous provider instance.");
-                DetachProviderEvents(oldProvider);
-            }
-
             _currentProviderRef = new WeakReference<Portal.CredentialProvider.Base.PortalWinProviderBase>(provider);
             Logger.Log($"[Bootstrapper] Registered new provider instance: {provider.GetType().Name}");
+
+            TryApplyPendingUnlock(provider);
         }
     }
 
@@ -122,7 +141,6 @@ public static class CredentialProviderBootstrapper
     {
         lock (_lock)
         {
-            DetachProviderEvents(provider);
             if (_currentProviderRef != null && _currentProviderRef.TryGetTarget(out var current) && current == provider)
             {
                 _currentProviderRef = null;
@@ -153,20 +171,111 @@ public static class CredentialProviderBootstrapper
         }
     }
 
-    private static void DetachProviderEvents(Portal.CredentialProvider.Base.PortalWinProviderBase provider)
+    public static bool TryApplyPendingUnlock(Portal.CredentialProvider.Base.PortalWinProviderBase provider)
+    {
+        EarlyUnlockRequest? pending = null;
+        lock (_earlyUnlockLock)
+        {
+            if (_pendingBootstrapperUnlock == null) return false;
+
+            if (_pendingBootstrapperUnlock.IsExpired(EarlyUnlockTtl))
+            {
+                Logger.LogWarning($"[Bootstrapper] Discarded expired pending unlock for '{_pendingBootstrapperUnlock.Username}'.");
+                _pendingBootstrapperUnlock.Dispose();
+                _pendingBootstrapperUnlock = null;
+                return false;
+            }
+
+            pending = _pendingBootstrapperUnlock;
+            _pendingBootstrapperUnlock = null;
+        }
+
+        if (pending != null)
+        {
+            try
+            {
+                Logger.Log($"[Bootstrapper] Applying buffered early unlock request for '{pending.Username}' to provider '{provider.GetType().Name}'.");
+                provider.OnUnlockRequestedInternal(pending.Username, pending.Password, pending.Domain, pending.UserSid);
+                return true;
+            }
+            finally
+            {
+                pending.Dispose();
+            }
+        }
+
+        return false;
+    }
+
+    public static void ClearPendingUnlock(string reason)
+    {
+        lock (_earlyUnlockLock)
+        {
+            if (_pendingBootstrapperUnlock != null)
+            {
+                Logger.Log($"[Bootstrapper] Cleared pending early unlock ({reason}) for user '{_pendingBootstrapperUnlock.Username}'.");
+                _pendingBootstrapperUnlock.Dispose();
+                _pendingBootstrapperUnlock = null;
+            }
+        }
+    }
+
+    private static void OnServiceUnlockRequested(string username, SecureString? password, string domain, string? userSid)
+    {
+        Portal.CredentialProvider.Base.PortalWinProviderBase? provider;
+        lock (_lock)
+        {
+            provider = CurrentProvider;
+        }
+
+        if (provider != null)
+        {
+            Logger.Log($"[Bootstrapper] Forwarding unlock request for '{username}' to CurrentProvider '{provider.GetType().Name}'.");
+            provider.OnUnlockRequestedInternal(username, password, domain, userSid);
+            return;
+        }
+
+        lock (_earlyUnlockLock)
+        {
+            Logger.LogWarning($"[Bootstrapper] No active provider instance registered. Buffering pending early unlock request for user '{username}' (Domain: '{domain}', SID: '{userSid ?? "none"}', TTL: {EarlyUnlockTtl.TotalSeconds:F0}s)...");
+            _pendingBootstrapperUnlock?.Dispose();
+            _pendingBootstrapperUnlock = new EarlyUnlockRequest(username, password, domain, userSid);
+        }
+    }
+
+    private static void OnServiceNetworkConnectionChanged(string clientId, bool connected)
     {
         try
         {
-            if (TlsService != null) TlsService.UnlockRequested -= provider.OnUnlockRequestedInternal;
-            if (TlsService != null) TlsService.NetworkConnectionChanged -= provider.OnNetworkConnectionChangedInternal;
-            if (TlsService != null) TlsService.StatusChanged -= provider.OnTransportStatusChangedInternal;
-            if (BtService != null) BtService.UnlockRequested -= provider.OnUnlockRequestedInternal;
-            if (BtService != null) BtService.BtConnectionChanged -= provider.OnBtConnectionChangedInternal;
-            if (BtService != null) BtService.StatusChanged -= provider.OnTransportStatusChangedInternal;
+            CurrentProvider?.OnNetworkConnectionChangedInternal(clientId, connected);
         }
         catch (Exception ex)
         {
-            Logger.LogError("[Bootstrapper] Error detaching events", ex);
+            Logger.LogError("[Bootstrapper] Error forwarding NetworkConnectionChanged", ex);
+        }
+    }
+
+    private static void OnServiceBtConnectionChanged(string clientId, bool connected)
+    {
+        try
+        {
+            CurrentProvider?.OnBtConnectionChangedInternal(clientId, connected);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[Bootstrapper] Error forwarding BtConnectionChanged", ex);
+        }
+    }
+
+    private static void OnServiceStatusChanged()
+    {
+        try
+        {
+            CurrentProvider?.OnTransportStatusChangedInternal();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[Bootstrapper] Error forwarding StatusChanged", ex);
         }
     }
 
@@ -184,6 +293,30 @@ public static class CredentialProviderBootstrapper
     {
         lock (_lock)
         {
+            ClearPendingUnlock($"StopServices: {reason}");
+
+            try
+            {
+                if (TlsService != null)
+                {
+                    TlsService.UnlockRequested -= OnServiceUnlockRequested;
+                    TlsService.NetworkConnectionChanged -= OnServiceNetworkConnectionChanged;
+                    TlsService.StatusChanged -= OnServiceStatusChanged;
+                }
+            }
+            catch { }
+
+            try
+            {
+                if (BtService != null)
+                {
+                    BtService.UnlockRequested -= OnServiceUnlockRequested;
+                    BtService.BtConnectionChanged -= OnServiceBtConnectionChanged;
+                    BtService.StatusChanged -= OnServiceStatusChanged;
+                }
+            }
+            catch { }
+
             try
             {
                 TlsService?.DisconnectAllWebSocketClients($"Bootstrapper stop: {reason}");

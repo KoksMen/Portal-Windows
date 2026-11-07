@@ -66,6 +66,7 @@ public class TlsUnlockService : IDisposable
         _mdns = mdns;
         _rateLimiter = rateLimiter ?? new NetworkRateLimiter();
 
+        _unlockHandler.CanAcceptUnlock = () => UnlockRequested != null;
         _unlockHandler.UnlockRequested += (u, p, d, sid) => UnlockRequested?.Invoke(u, p, d, sid);
 
         _wsManager.UnlockApprovedWithoutPending += (clientId, reqId) =>
@@ -108,9 +109,15 @@ public class TlsUnlockService : IDisposable
                     return;
                 }
 
+                if (UnlockRequested == null)
+                {
+                    Logger.LogWarning($"[TlsUnlockService] UnlockRequested event has no subscribers for fallback unlock from client '{clientId}'.");
+                    return;
+                }
+
                 Logger.Log($"[TlsUnlockService] Fallback unlock APPROVED for user: {account.Username} (SID={account.UserSid ?? "none"}) from {device.Name}");
                 ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
-                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
+                UnlockRequested.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
             }
             catch (Exception ex)
             {

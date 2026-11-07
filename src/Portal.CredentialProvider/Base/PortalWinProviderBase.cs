@@ -33,6 +33,11 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
     {
         get
         {
+            if (CredentialProviderBootstrapper.HasPendingUnlock)
+            {
+                return true;
+            }
+
             lock (_earlyUnlockLock)
             {
                 return _pendingEarlyUnlock != null && !_pendingEarlyUnlock.IsExpired(EarlyUnlockTtl);
@@ -43,6 +48,7 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
     internal void CancelPendingAutoLogon()
     {
         ClearPendingEarlyUnlock("CancelPendingAutoLogon");
+        CredentialProviderBootstrapper.ClearPendingUnlock("CancelPendingAutoLogon");
         UnlockState.Clear();
         DefaultTileAutoLogon = false;
     }
@@ -183,46 +189,20 @@ public abstract class PortalWinProviderBase : CredentialProviderBase
     {
         Logger.Initialize("provider.log");
         Logger.Log($"[{GetType().Name}] OnLoad invoked. Initializing...");
+
+        // Register this provider instance for event routing BEFORE starting services.
+        // This ensures CurrentProvider is already set when services start processing events.
+        CredentialProviderBootstrapper.RegisterProvider(this);
         CredentialProviderBootstrapper.EnsureServicesStarted();
 
-        // Register this provider instance for event routing.
-        // This re-wires events if LogonUI reloaded for a different user session.
-        CredentialProviderBootstrapper.RegisterProvider(this);
-
-        // NEW: Signal to all connected clients (Network/BT) that the PC is now LOCKED.
+        // Signal to all connected clients (Network/BT) that the PC is now LOCKED.
         CredentialProviderBootstrapper.UpdateGlobalState("locked");
 
         // Ensure the auto-request can fire again for this session
         PortalWinTile.ResetAutoRequestClaim();
 
-        // === Primary instance: subscribe to TLS, BT, and IPC events ===
-        // === Secondary instance: subscribe only to IPC events ===
-        //
-        // IMPORTANT: Always unsubscribe first (defensive), then subscribe.
-        // This prevents duplicate subscriptions when LogonUI reloads
-        // the provider multiple times without calling OnUnload properly (Bug #2).
-
-        if (CredentialProviderBootstrapper.TlsService != null)
-        {
-            CredentialProviderBootstrapper.TlsService.UnlockRequested -= OnUnlockRequestedInternal;  // defensive
-            CredentialProviderBootstrapper.TlsService.UnlockRequested += OnUnlockRequestedInternal;
-            CredentialProviderBootstrapper.TlsService.NetworkConnectionChanged -= OnNetworkConnectionChangedInternal;
-            CredentialProviderBootstrapper.TlsService.NetworkConnectionChanged += OnNetworkConnectionChangedInternal;
-            CredentialProviderBootstrapper.TlsService.StatusChanged -= OnTransportStatusChangedInternal;
-            CredentialProviderBootstrapper.TlsService.StatusChanged += OnTransportStatusChangedInternal;
-            Logger.Log($"[{GetType().Name}] Subscribed to TlsUnlockService events.");
-        }
-
-        if (CredentialProviderBootstrapper.BtService != null)
-        {
-            CredentialProviderBootstrapper.BtService.UnlockRequested -= OnUnlockRequestedInternal;  // defensive
-            CredentialProviderBootstrapper.BtService.UnlockRequested += OnUnlockRequestedInternal;
-            CredentialProviderBootstrapper.BtService.BtConnectionChanged -= OnBtConnectionChangedInternal;
-            CredentialProviderBootstrapper.BtService.BtConnectionChanged += OnBtConnectionChangedInternal;
-            CredentialProviderBootstrapper.BtService.StatusChanged -= OnTransportStatusChangedInternal;
-            CredentialProviderBootstrapper.BtService.StatusChanged += OnTransportStatusChangedInternal;
-            Logger.Log($"[{GetType().Name}] Subscribed to BluetoothUnlockService events.");
-        }
+        // Apply any early unlock request buffered by Bootstrapper before provider was registered
+        CredentialProviderBootstrapper.TryApplyPendingUnlock(this);
     }
 
     public override void OnUnload()

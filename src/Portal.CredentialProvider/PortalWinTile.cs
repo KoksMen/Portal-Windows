@@ -243,6 +243,13 @@ public class PortalWinTile : PortalWinTileBase
         // Check if an early unlock request can be applied on tile selection
         Provider.TryApplyPendingEarlyUnlock("TileSelected");
 
+        if (Provider.UnlockState.HasPendingUnlock || Provider.HasPendingEarlyUnlock)
+        {
+            Logger.Log("[PortalWinTile] OnSelected: skipping auto-request because unlock is already pending.");
+            FocusPasswordField();
+            return;
+        }
+
         // Explicit tile selection must win over any provisional/early request
         // started before LogonUI finished selecting the user tile.
         TryAutoRequestUnlock(forceTakeover: true, source: "selected");
@@ -481,6 +488,12 @@ public class PortalWinTile : PortalWinTileBase
     {
         if (_isEmergencyRollbackActive) return;
         if (!AllowsHostInitiated) return;
+
+        if (Provider.UnlockState.HasPendingUnlock || Provider.HasPendingEarlyUnlock)
+        {
+            Logger.Log($"[PortalWinTile] TryAutoRequestUnlock: skipping auto-request (source={source}) because an unlock is already pending.");
+            return;
+        }
 
         var trigger = Provider.HostRequestTrigger;
         if (trigger == HostRequestTrigger.OnClick) return;
@@ -895,6 +908,12 @@ public class PortalWinTile : PortalWinTileBase
         _isEmergencyRollbackActive = false;
         ClearTwoFactorPinMode("Starting new unlock request");
         if (!AllowsHostInitiated) return;
+
+        if (Provider.UnlockState.HasPendingUnlock || Provider.HasPendingEarlyUnlock)
+        {
+            Logger.Log($"[PortalWinTile] StartUnlockRequest aborted (source={source}) because an unlock is already pending.");
+            return;
+        }
 
         if (_activeRequestCts != null && !_activeRequestCts.IsCancellationRequested) return;
 

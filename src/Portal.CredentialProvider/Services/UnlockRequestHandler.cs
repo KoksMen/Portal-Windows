@@ -10,6 +10,7 @@ public class UnlockRequestHandler
     private readonly AttemptTracker _attemptTracker;
 
     public event Action<string, SecureString?, string, string?>? UnlockRequested;
+    public Func<bool>? CanAcceptUnlock { get; set; }
 
     public UnlockRequestHandler(PortalWinConfig config, AttemptTracker attemptTracker)
     {
@@ -86,10 +87,22 @@ public class UnlockRequestHandler
             return Results.Json(new UnlockResponse(false, "No credentials"), statusCode: 400);
         }
 
+        if (CanAcceptUnlock != null && !CanAcceptUnlock())
+        {
+            Logger.LogWarning("[UnlockHandler] Service has no unlock subscribers ready! Rejecting unlock request to avoid false approval.");
+            return Results.Json(new UnlockResponse(false, "Credential provider is not ready to receive unlock command."), statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (UnlockRequested == null)
+        {
+            Logger.LogWarning("[UnlockHandler] UnlockRequested event has no subscribers! Rejecting unlock request to avoid false approval.");
+            return Results.Json(new UnlockResponse(false, "Credential provider is not ready to receive unlock command."), statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+
         _attemptTracker.RecordSuccess(clientIp);
         Logger.Log($"[UnlockHandler] Unlock APPROVED for user: {account.Username} (SID={account.UserSid ?? "none"}) from {device.Name}");
         ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{device.Name} approved an unlock request over Wi-Fi.", deviceName: device.Name, transport: "Wi-Fi");
-        UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
+        UnlockRequested.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
 
         return Results.Ok(new UnlockResponse(true, null));
     }

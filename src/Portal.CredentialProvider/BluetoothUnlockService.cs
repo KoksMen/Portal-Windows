@@ -445,10 +445,20 @@ public class BluetoothUnlockService : IDisposable
 
                 if (account != null && securePassword != null && securePassword.Length > 0)
                 {
+                    if (UnlockRequested == null)
+                    {
+                        Logger.LogWarning("[BluetoothUnlockService] UnlockRequested has no subscribers! Rejecting unlock request.");
+                        await BtProtocol.SendMessageAsync(stream,
+                            new BtUnlockResponse { Success = false, Error = "Credential provider not ready" },
+                            _cts?.Token ?? CancellationToken.None);
+                        socket.Dispose();
+                        return;
+                    }
+
                     await BtProtocol.SendMessageAsync(stream,
                         new BtUnlockResponse { Success = true }, _cts?.Token ?? CancellationToken.None);
                     ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{unlockDevice.Name} approved an unlock request over Bluetooth.", deviceName: unlockDevice.Name, transport: "Bluetooth");
-                    UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
+                    UnlockRequested.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
                 }
                 else
                 {
@@ -507,10 +517,19 @@ public class BluetoothUnlockService : IDisposable
 
                             if (account != null && securePassword != null && securePassword.Length > 0)
                             {
+                                if (UnlockRequested == null)
+                                {
+                                    Logger.LogWarning("[BluetoothUnlockService] UnlockRequested has no subscribers! Rejecting unlock request.");
+                                    await BtProtocol.SendMessageAsync(stream,
+                                        new BtUnlockResponse { Success = false, Error = "Credential provider not ready" },
+                                        _cts?.Token ?? CancellationToken.None);
+                                    continue;
+                                }
+
                                 await BtProtocol.SendMessageAsync(stream,
                                     new BtUnlockResponse { Success = true }, _cts?.Token ?? CancellationToken.None);
                                 ActivityJournal.Record("unlock", "✨", "PC unlock approved", $"{unlockDevice.Name} approved an unlock request over Bluetooth.", deviceName: unlockDevice.Name, transport: "Bluetooth");
-                                UnlockRequested?.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
+                                UnlockRequested.Invoke(account.Username, securePassword, account.Domain, account.UserSid);
                             }
                             else
                             {
